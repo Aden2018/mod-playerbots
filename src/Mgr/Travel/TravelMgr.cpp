@@ -27,6 +27,13 @@
 #include "Corpse.h"
 #include "CellImpl.h"
 
+#ifdef DIY_ADEN2008
+#include <unordered_map>
+#include <unordered_set>
+#define _USE_MATH_DEFINES
+#include <cmath>
+#endif
+
 // Navigation data
 
 struct Capital
@@ -4635,6 +4642,401 @@ void TravelMgr::PrepareZone2LevelBracket()
         zone2LevelBracket[zoneId] = {bracketPair.first, bracketPair.second};
 }
 
+#ifdef DIY_ADEN2008
+void TravelMgr::PrepareDestinationCache()
+{
+    uint32 startAll = getMSTime();
+    uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
+
+    // ---- 清空旧缓存 ----
+    hordeHubsPerLevelCache.clear();
+    allianceHubsPerLevelCache.clear();
+    bankerLocsPerLevelCache.clear();
+    locsPerLevelCache.clear();
+    hordeFlightMasterCache.clear();
+    allianceFlightMasterCache.clear();
+    bankerEntryToLocation.clear();
+
+    LOG_INFO("playerbots", "Preparing destination caches for {} levels...", maxLevel);
+
+    // ---- 允许的地图集合 ----
+    std::unordered_set<uint16> allowedMaps;
+    allowedMaps.reserve(sPlayerbotAIConfig.randomBotMaps.size());
+    for (uint16 mapId : sPlayerbotAIConfig.randomBotMaps)
+        allowedMaps.insert(mapId);
+
+    // ---- 预加载地图数据（仅为了让后续飞行/旅店/银行家快速获取 AreaId） ----
+    LOG_INFO("playerbots", "Preloading map data...");
+    uint32 preloadStart = getMSTime();
+    for (uint16 mapId : allowedMaps)
+    {
+        Map* map = sMapMgr->FindMap(mapId, 0);
+        if (map)
+            (void)map->GetAreaId(PHASEMASK_NORMAL, 0.0f, 0.0f, 0.0f);
+    }
+    LOG_INFO("playerbots", "Map preloading finished in {} ms", getMSTime() - preloadStart);
+
+    // ---- 缓存 Map* ----
+    std::unordered_map<uint16, Map*> mapCache;
+    mapCache.reserve(allowedMaps.size());
+    for (uint16 mapId : allowedMaps)
+    {
+        Map* map = sMapMgr->FindMap(mapId, 0);
+        if (map)
+            mapCache[mapId] = map;
+    }
+
+    // ---- 黑名单（静态集合，避免重复构造） ----
+    static const std::unordered_set<uint32> skipNpcEntries = {32820, 24196, 30627, 30617};
+    static const std::unordered_set<uint32> badFactions = {11, 71, 79, 85, 188, 1575};
+
+    // ---- 网格键生成函数 ----
+    auto makeGridKey = [](uint16 mapId, int32 rx, int32 ry, int32 rz) -> uint64
+    {
+        uint64 m = mapId;
+        uint64 ux = static_cast<uint32>(rx) & 0xFFFF;
+        uint64 uy = static_cast<uint32>(ry) & 0xFFFF;
+        uint64 uz = static_cast<uint32>(rz) & 0xFFFF;
+        return (m << 48) | (ux << 32) | (uy << 16) | uz;
+    };
+
+    // ---- 主缓存容器 ----
+    std::unordered_map<uint64, std::vector<CreatureData>> tempLocsCache;
+    tempLocsCache.reserve(200000);  // 足够容纳 15 万生物
+
+    // ---- 统计变量 ----
+    uint32 flightMastersCount = 0;
+    uint32 innkeepersCount = 0;
+    uint32 bankerCount = 0;
+    uint32 processed = 0;
+    uint32 skipped = 0;
+    uint32 normalCount = 0;
+    uint32 flightInnCount = 0;
+
+    const auto& allCreatureData = sObjectMgr->GetAllCreatureData();
+    uint32 totalCreatures = allCreatureData.size();
+    LOG_INFO("playerbots", "Total creatures in DB: {}", totalCreatures);
+
+    uint32 loopStart = getMSTime();
+
+    // ---- 主循环 ----
+    for (auto const& [guid, creatureData] : allCreatureData)
+    {
+        ++processed;
+        if (processed % 5000 == 0)
+        {
+            LOG_INFO("playerbots", "  Processed {}/{} creatures, elapsed {} ms", processed, totalCreatures,
+                     getMSTime() - loopStart);
+        }
+
+        // 获取模板
+        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureData.id1);
+        if (!ct)
+        {
+            ++skipped;
+            continue;
+        }
+
+        uint32 entry = ct->Entry;
+        uint16 mapId = creatureData.mapid;
+
+        // 过滤地图
+        if (!allowedMaps.count(mapId))
+        {
+            ++skipped;
+            continue;
+        }
+
+        // ---- 快速分类 ----
+        uint32 npcflag = ct->npcflag;
+        bool isNormal = (npcflag == 0);
+        bool isFlightOrInn = (npcflag & (UNIT_NPC_FLAG_FLIGHTMASTER | UNIT_NPC_FLAG_INNKEEPER)) != 0;
+        bool isBanker = (npcflag & UNIT_NPC_FLAG_BANKER) != 0;
+
+        if (!isNormal && !isFlightOrInn && !isBanker)
+        {
+            ++skipped;
+            continue;
+        }
+
+        // ---- 普通怪物（完全脱离地图 API） ----
+        if (isNormal)
+        {
+            // 快速过滤（短路径短路）
+            if (skipNpcEntries.count(entry))
+            {
+                ++skipped;
+                continue;
+            }
+            if (badFactions.count(ct->faction))
+            {
+                ++skipped;
+                continue;
+            }
+            if (ct->rank != 0)
+            {
+                ++skipped;
+                continue;
+            }
+            if ((ct->unit_flags & (256 | 4096)) != 0)
+            {
+                ++skipped;
+                continue;
+            }
+            if (creatureData.spawntimesecs >= 1000)
+            {
+                ++skipped;
+                continue;
+            }
+            if (ct->lootid == 0)
+            {
+                ++skipped;
+                continue;
+            }
+            if (ct->maxlevel - ct->minlevel >= 3)
+            {
+                ++skipped;
+                continue;
+            }
+
+            // 计算网格并插入
+            float x = creatureData.posX;
+            float y = creatureData.posY;
+            float z = creatureData.posZ;
+            int32 roundX = static_cast<int32>(std::lround(x / 50.0f));
+            int32 roundY = static_cast<int32>(std::lround(y / 50.0f));
+            int32 roundZ = static_cast<int32>(std::lround(z / 50.0f));
+
+            uint64 key = makeGridKey(mapId, roundX, roundY, roundZ);
+            auto& vec = tempLocsCache[key];
+            vec.reserve(vec.size() + 8);
+            vec.emplace_back(creatureData);
+            ++normalCount;
+            continue;  // 关键：跳过后续地图操作
+        }
+
+        // ---- 飞行管理员 / 旅店老板 / 银行家（数量极少，才需要 AreaId） ----
+        // 获取 Map*
+        auto mapIt = mapCache.find(mapId);
+        if (mapIt == mapCache.end())
+        {
+            ++skipped;
+            continue;
+        }
+        Map* map = mapIt->second;
+        if (!map)
+        {
+            ++skipped;
+            continue;
+        }
+
+        float x = creatureData.posX;
+        float y = creatureData.posY;
+        float z = creatureData.posZ;
+        float orient = creatureData.orientation;
+        uint32 templateEntry = creatureData.id1;
+
+        // 获取区域（仅在此处调用）
+        AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(PHASEMASK_NORMAL, x, y, z));
+        if (!area)
+        {
+            ++skipped;
+            continue;
+        }
+        uint32 areaId = area->zone ? area->zone : area->ID;
+
+        // ---- 飞行 / 旅店 ----
+        if (isFlightOrInn && entry != 3838 && entry != 29480)
+        {
+            FactionTemplateEntry const* factionEntry = sFactionTemplateStore.LookupEntry(ct->faction);
+            if (!factionEntry)
+            {
+                ++skipped;
+                continue;
+            }
+            bool forHorde = !(factionEntry->hostileMask & 4);
+            bool forAlliance = !(factionEntry->hostileMask & 2);
+
+            auto itBracket = zone2LevelBracket.find(areaId);
+            bool hasBracket = (itBracket != zone2LevelBracket.end());
+
+            bool isFlightMaster = (npcflag & UNIT_NPC_FLAG_FLIGHTMASTER) != 0;
+            bool isInnkeeper = (npcflag & UNIT_NPC_FLAG_INNKEEPER) != 0;
+
+            if (isFlightMaster)
+            {
+                WorldPosition pos(mapId, x, y, z, orient);
+                FlightMasterInfo info;
+                info.pos = pos;
+                info.zoneId = areaId;
+                info.templateEntry = templateEntry;
+                info.dbGuid = guid;
+
+                if (forHorde)
+                {
+                    info.taxiNodeId = sObjectMgr->GetNearestTaxiNode(x, y, z, mapId, TEAM_HORDE);
+                    hordeFlightMasterCache[guid] = info;
+                }
+                if (forAlliance)
+                {
+                    info.taxiNodeId = sObjectMgr->GetNearestTaxiNode(x, y, z, mapId, TEAM_ALLIANCE);
+                    allianceFlightMasterCache[guid] = info;
+                }
+                ++flightMastersCount;
+
+                static const std::unordered_set<uint32> zonesWithoutInnkeeper = {AREA_BLASTED_LANDS,
+                                                                                 AREA_AZSHARA,
+                                                                                 AREA_WESTERN_PLAGUELANDS,
+                                                                                 AREA_BURNING_STEPPES,
+                                                                                 AREA_SEARING_GORGE,
+                                                                                 361,
+                                                                                 490,
+                                                                                 AREA_CRYSTALSONG_FOREST,
+                                                                                 AREA_WINTERGRASP};
+                if (zonesWithoutInnkeeper.count(areaId) && hasBracket)
+                {
+                    LevelBracket bracket = itBracket->second;
+                    WorldPosition loc(mapId, x + cos(orient) * 5.0f, y + sin(orient) * 5.0f, z + 0.5f, orient + M_PI);
+                    for (int lv = bracket.low; lv <= bracket.high; ++lv)
+                    {
+                        if (forHorde)
+                            hordeHubsPerLevelCache[lv].emplace_back(loc);
+                        if (forAlliance)
+                            allianceHubsPerLevelCache[lv].emplace_back(loc);
+                    }
+                }
+                ++flightInnCount;
+            }
+            else if (isInnkeeper && hasBracket)
+            {
+                LevelBracket bracket = itBracket->second;
+                WorldPosition loc(mapId, x + cos(orient) * 5.0f, y + sin(orient) * 5.0f, z + 0.5f, orient + M_PI);
+                for (int lv = bracket.low; lv <= bracket.high; ++lv)
+                {
+                    if (forHorde)
+                        hordeHubsPerLevelCache[lv].emplace_back(loc);
+                    if (forAlliance)
+                        allianceHubsPerLevelCache[lv].emplace_back(loc);
+                }
+                ++innkeepersCount;
+                ++flightInnCount;
+            }
+            continue;
+        }
+
+        // ---- 银行家 ----
+        if (isBanker)
+        {
+            if (ct->npcflag != 135298 && ct->minlevel != 55 && ct->minlevel != 65 && ct->faction != 35 &&
+                ct->faction != 474 && ct->faction != 69 && ct->faction != 57 && entry != 30606 && entry != 30608 &&
+                entry != 29282)
+            {
+                BankerLocation bLoc;
+                bLoc.loc =
+                    WorldLocation(mapId, x + cos(orient) * 6.0f, y + sin(orient) * 6.0f, z + 2.0f, orient + M_PI);
+                bLoc.entry = templateEntry;
+
+                uint32 avgLevel = (ct->minlevel + ct->maxlevel + 1) / 2;
+                int startLevel = 1, endLevel = maxLevel;
+                if (avgLevel > 45)
+                {
+                    if (avgLevel >= 60 && avgLevel <= 70)
+                    {
+                        startLevel = 61;
+                        endLevel = 70;
+                    }
+                    else if (avgLevel == 75)
+                    {
+                        startLevel = 71;
+                        endLevel = maxLevel;
+                    }
+                    else
+                    {
+                        ++skipped;
+                        continue;
+                    }
+                }
+                if (startLevel > maxLevel)
+                {
+                    ++skipped;
+                    continue;
+                }
+                if (endLevel > maxLevel)
+                    endLevel = maxLevel;
+
+                for (int lv = startLevel; lv <= endLevel; ++lv)
+                    bankerLocsPerLevelCache[(uint8)lv].emplace_back(bLoc);
+                bankerEntryToLocation[bLoc.entry] = bLoc.loc;
+                ++bankerCount;
+            }
+            continue;
+        }
+    }
+
+    // ---- 主循环结束统计 ----
+    LOG_INFO(
+        "playerbots",
+        "Main loop finished in {} ms, processed {} creatures (normal: {}, flight/inn: {}, bankers: {}, skipped: {})",
+        getMSTime() - loopStart, processed, normalCount, flightInnCount, bankerCount, skipped);
+
+    LOG_INFO("playerbots", "tempLocsCache size: {}, bucket_count: {}, load_factor: {}", tempLocsCache.size(),
+             tempLocsCache.bucket_count(), tempLocsCache.load_factor());
+
+    // ---- 处理网格缓存 ----
+    uint32 tempStart = getMSTime();
+    for (auto const& [key, creatureDataList] : tempLocsCache)
+    {
+        if (creatureDataList.size() < 2)
+            continue;
+        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureDataList[0].id1);
+        if (!ct)
+            continue;
+        uint32 level = (ct->minlevel + ct->maxlevel + 1) / 2;
+        int low = static_cast<int>(level) - sPlayerbotAIConfig.randomBotTeleLowerLevel;
+        int high = static_cast<int>(level) + sPlayerbotAIConfig.randomBotTeleHigherLevel;
+        if (low < 1)
+            low = 1;
+        if (high > (int)maxLevel)
+            high = maxLevel;
+
+        uint16 mapId = (key >> 48) & 0xFFFF;
+        int32 rx = (key >> 32) & 0xFFFF;
+        int32 ry = (key >> 16) & 0xFFFF;
+        int32 rz = key & 0xFFFF;
+        WorldLocation loc(mapId, static_cast<float>(rx) * 50.0f, static_cast<float>(ry) * 50.0f,
+                          static_cast<float>(rz) * 50.0f);
+        for (int lv = low; lv <= high; ++lv)
+            locsPerLevelCache[(uint8)lv].emplace_back(loc);
+    }
+    LOG_INFO("playerbots", "tempLocsCache processed in {} ms, {} grid groups", getMSTime() - tempStart,
+             tempLocsCache.size());
+
+    // ---- 添加玩家出生点 ----
+    uint32 birthStart = getMSTime();
+    for (uint32 i = 1; i < sRaceMgr->GetMaxRaces(); i++)
+    {
+        for (uint32 j = 1; j < MAX_CLASSES; j++)
+        {
+            PlayerInfo const* info = sObjectMgr->GetPlayerInfo(i, j);
+            if (!info)
+                continue;
+            WorldPosition pos(info->mapId, info->positionX, info->positionY, info->positionZ, info->orientation);
+            for (int lv = 1; lv <= 5; ++lv)
+            {
+                if ((1 << (i - 1)) & sRaceMgr->GetAllianceRaceMask())
+                    allianceHubsPerLevelCache[(uint8)lv].emplace_back(pos);
+                else
+                    hordeHubsPerLevelCache[(uint8)lv].emplace_back(pos);
+            }
+            break;
+        }
+    }
+    LOG_INFO("playerbots", "Birth points added in {} ms", getMSTime() - birthStart);
+
+    LOG_INFO("playerbots", ">> {} flight masters, {} innkeepers, {} bankers collected in {} ms.", flightMastersCount,
+             innkeepersCount, bankerCount, getMSTime() - startAll);
+}
+#else
 void TravelMgr::PrepareDestinationCache()
 {
     uint32 maxLevel = sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL);
@@ -4872,3 +5274,4 @@ void TravelMgr::PrepareDestinationCache()
     }
     LOG_INFO("playerbots", ">> {} flight masters and {} innkeepers and {} banker locations for level collected.", flightMastersCount, innkeepersCount, bankerCount);
 }
+#endif
