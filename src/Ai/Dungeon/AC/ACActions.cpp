@@ -105,7 +105,6 @@ bool ShirrakRangedKeepDistanceAction::Execute(Event /*event*/)
     {
         float dX = targetX - bot->GetPositionX();
         float dY = targetY - bot->GetPositionY();
-
         float moveDist = std::min(2.0f, distToSpot);
         float moveX = bot->GetPositionX() + (dX / distToSpot) * moveDist;
         float moveY = bot->GetPositionY() + (dY / distToSpot) * moveDist;

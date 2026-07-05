@@ -4730,7 +4730,7 @@ void TravelMgr::PrepareDestinationCache()
         }
 
         // 获取模板
-        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureData.id1);
+        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureData.id);
         if (!ct)
         {
             ++skipped;
@@ -4834,7 +4834,7 @@ void TravelMgr::PrepareDestinationCache()
         float y = creatureData.posY;
         float z = creatureData.posZ;
         float orient = creatureData.orientation;
-        uint32 templateEntry = creatureData.id1;
+        uint32 templateEntry = creatureData.id;
 
         // 获取区域（仅在此处调用）
         AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(PHASEMASK_NORMAL, x, y, z));
@@ -4988,7 +4988,7 @@ void TravelMgr::PrepareDestinationCache()
     {
         if (creatureDataList.size() < 2)
             continue;
-        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureDataList[0].id1);
+        CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureDataList[0].id);
         if (!ct)
             continue;
         uint32 level = (ct->minlevel + ct->maxlevel + 1) / 2;

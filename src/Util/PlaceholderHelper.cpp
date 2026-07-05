@@ -24,20 +24,20 @@ void PlaceholderHelper::MapDungeon(PlaceholderMap& placeholders, DungeonSuggesti
 
 void PlaceholderHelper::MapRole(PlaceholderMap& placeholders, Player* bot)
 {
-    BotRoles const role = AiFactory::GetPlayerRoles(bot);
+    PBotRoles const role = AiFactory::GetPlayerRoles(bot);
     std::string roleText;
     switch (role)
     {
-        case BOT_ROLE_TANK:
+        case PBOT_ROLE_TANK:
             roleText = "Tank";
             break;
-        case BOT_ROLE_HEALER:
+        case PBOT_ROLE_HEALER:
             roleText = "Healer";
             break;
-        case BOT_ROLE_DPS:
+        case PBOT_ROLE_DPS:
             roleText = "DPS";
             break;
-        case BOT_ROLE_NONE:
+        case PBOT_ROLE_NONE:
         default:
             return;
     }

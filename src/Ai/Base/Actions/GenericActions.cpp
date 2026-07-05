@@ -128,10 +128,28 @@ bool PetAttackAction::Execute(Event /*event*/)
         return false;
 
     // Do not attack if the pet's stance is set to "passive".
-    if (pet->GetReactState() == REACT_PASSIVE)
-        return false;
 
     Unit* target = AI_VALUE(Unit*, "current target");
+
+    // 新增：如果 bot 没有当前目标，检查 master 的 NPCBots 目标
+    if (!target)
+    {
+        Player* master = botAI->GetMaster();
+        if (master && master->HaveBot())
+        {
+            for (auto const& [_, pbot] : *master->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (botVictim && botVictim->IsAlive() && botVictim->GetMapId() == bot->GetMapId() &&
+                    !botVictim->IsFriendlyTo(bot))
+                {
+                    target = botVictim;
+                    break;
+                }
+            }
+        }
+    }
+
     if (!target)
         return false;
 

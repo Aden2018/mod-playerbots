@@ -28,6 +28,7 @@ class AiObjectContext;
 class Creature;
 class Engine;
 class ExternalEventHelper;
+class Group;
 class Gameobject;
 class Item;
 class ObjectGuid;
@@ -38,6 +39,7 @@ class SpellInfo;
 class Unit;
 class WorldObject;
 class WorldPosition;
+
 
 struct CreatureData;
 struct GameObjectData;
@@ -264,12 +266,12 @@ enum ActivityType
     MAX_ACTIVITY_TYPE
 };
 
-enum BotRoles : uint8
+enum PBotRoles : uint8
 {
-    BOT_ROLE_NONE = 0x00,
-    BOT_ROLE_TANK = 0x01,
-    BOT_ROLE_HEALER = 0x02,
-    BOT_ROLE_DPS = 0x04
+    PBOT_ROLE_NONE = 0x00,
+    PBOT_ROLE_TANK = 0x01,
+    PBOT_ROLE_HEALER = 0x02,
+    PBOT_ROLE_DPS = 0x04
 };
 
 enum HUNTER_TABS
@@ -408,6 +410,7 @@ public:
     std::vector<std::string> GetStrategies(BotState type);
     Strategy* GetStrategy(std::string const name, BotState type);
     void ApplyInstanceStrategies(uint32 mapId, bool tellMaster = false);
+    bool HasTargetExclusions() const;
     void EvaluateHealerDpsStrategy();
     bool ContainsStrategy(StrategyType type);
     bool HasStrategy(std::string const name, BotState type);
@@ -424,9 +427,10 @@ public:
     static bool IsCaster(Player* player, bool bySpec = false);
     static bool IsRangedDps(Player* player, bool bySpec = false);
     static bool IsCombo(Player* player);
-    static bool IsBotMainTank(Player* player);
-    static bool IsMainTank(Player* player, bool ignoreMemberFlag = false);
+    static ObjectGuid GetMainTankGuid(Group* group);
+    static bool IsMainTank(Player* player);
     static bool IsExplicitMainTank(Player* player);
+    static bool IsBotMainTank(Player* player);
     static uint32 GetGroupTankNum(Player* player);
     static bool IsAssistTank(Player* player);
     static bool IsAssistTankOfIndex(Player* player, uint8 index, bool ignoreDeadPlayers = false);

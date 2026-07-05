@@ -25,6 +25,38 @@ GuidVector AttackersValue::Calculate()
     if (Group* group = bot->GetGroup())
         AddAttackersOf(group, targets);
 
+    // ============ 新增：收集当前Bot主人Master自身攻击目标 + Master的NPCBots攻击目标 ============
+    Player* master = botAI->GetMaster();
+    if (master)
+    {
+        // 1. 主人自身攻击目标
+        Unit* masterVictim = master->GetVictim();
+        if (masterVictim && masterVictim->IsAlive() && masterVictim->GetMapId() == bot->GetMapId() &&
+            !masterVictim->IsFriendlyTo(master))
+        {
+            targets.insert(masterVictim);
+        }
+
+        // 2. master 的 NPCBots 目标也加入攻击列表（你提供的逻辑+安全校验）
+        if (master->HaveBot())
+        {
+            for (auto const& [_, pbot] : *master->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (!botVictim)
+                    continue;
+                // 存活、同地图、敌对过滤
+                if (!botVictim->IsAlive() || botVictim->GetMapId() != master->GetMapId())
+                    continue;
+                if (botVictim->IsFriendlyTo(master))
+                    continue;
+
+                targets.insert(botVictim);
+            }
+        }
+    }
+    // ======================================================================================
+
     RemoveNonThreating(targets);
 
     // prioritized target
@@ -75,6 +107,45 @@ void AttackersValue::AddAttackersOf(Group* group, std::unordered_set<Unit*>& tar
             continue;
 
         AddAttackersOf(member, targets);
+
+        // ========== 新增：队员自身攻击目标 ==========
+        Unit* memberVictim = member->GetVictim();
+        if (memberVictim && memberVictim->IsAlive() && memberVictim->GetMapId() == bot->GetMapId() &&
+            !memberVictim->IsFriendlyTo(member))
+        {
+            targets.insert(memberVictim);
+        }
+
+        // ========== 新增：该队员名下所有NPCBots攻击目标 ==========
+        if (member->HaveBot())
+        {
+            for (auto const& [_, pbot] : *member->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (!botVictim)
+                    continue;
+                if (!botVictim->IsAlive() || botVictim->GetMapId() != member->GetMapId())
+                    continue;
+                if (botVictim->IsFriendlyTo(member))
+                    continue;
+
+                targets.insert(botVictim);
+            }
+        }
+        // ===========================================
+
+        // 原有收集队员Playerbots攻击者逻辑保留（用于支援挨打队友）
+        PlayerbotAI* memberBotAI = GET_PLAYERBOT_AI(member);
+        if (memberBotAI)
+        {
+            GuidVector memberAttackers = memberBotAI->GetAiObjectContext()->GetValue<GuidVector>("attackers")->Get();
+            for (ObjectGuid atkGuid : memberAttackers)
+            {
+                Unit* atkUnit = botAI->GetUnit(atkGuid);
+                if (atkUnit && IsValidTarget(atkUnit, bot))
+                    targets.insert(atkUnit);
+            }
+        }
     }
 }
 
@@ -101,6 +172,49 @@ void AttackersValue::AddAttackersOf(Player* player, std::unordered_set<Unit*>& t
         if (player->IsValidAttackTarget(attacker) &&
             player->GetDistance2d(attacker) < sPlayerbotAIConfig.sightDistance)
             targets.insert(attacker);
+    }
+
+    if (player->HaveBot())
+    {
+        for (auto const& [_, npcBot] : *player->GetBotMgr()->GetBotMap())
+
+        {
+            if (!npcBot || !npcBot->IsInWorld() || !npcBot->IsAlive() || npcBot->IsDuringRemoveFromWorld())
+
+                continue;
+
+            if (npcBot->GetMapId() != bot->GetMapId() ||
+
+                ServerFacade::instance().GetDistance2d(bot, npcBot) > sPlayerbotAIConfig.sightDistance)
+
+                continue;
+
+            for (auto const& [guid, ref] : npcBot->GetThreatMgr().GetThreatenedByMeList())
+
+            {
+                Unit* attacker = ref->GetOwner();
+
+                if (!attacker)
+
+                    continue;
+
+                if (bot->IsValidAttackTarget(attacker) &&
+
+                    bot->GetDistance2d(attacker) < sPlayerbotAIConfig.sightDistance)
+
+                    targets.insert(attacker);
+            }
+
+            if (Unit* botTarget = npcBot->GetVictim())
+
+            {
+                if (bot->IsValidAttackTarget(botTarget) &&
+
+                    bot->GetDistance2d(botTarget) < sPlayerbotAIConfig.sightDistance)
+
+                    targets.insert(botTarget);
+            }
+        }
     }
 }
 

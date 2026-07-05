@@ -30,8 +30,9 @@ bool ManaWarpStunCreatureBeforeWarpBreachAction::Execute(Event /*event*/)
 
     for (const char* spell : spells)
     {
-        if (botAI->CanCastSpell(spell, manaWarp))
-            return botAI->CastSpell(spell, manaWarp);
+        if (botAI->CanCastSpell(spell, manaWarp) &&
+            botAI->CastSpell(spell, manaWarp))
+            return true;
     }
 
     return false;
@@ -42,8 +43,8 @@ bool ManaWarpStunCreatureBeforeWarpBreachAction::Execute(Event /*event*/)
 // Prioritize Midnight until Attumen is mounted
 bool AttumenTheHuntsmanMarkTargetAction::Execute(Event /*event*/)
 {
-    Unit* attumenMounted = GetFirstAliveUnitByEntry(botAI, NPC_ATTUMEN_THE_HUNTSMAN_MOUNTED);
-    if (attumenMounted)
+    if (Unit* attumenMounted =
+        GetFirstAliveUnitByEntry(botAI, NPC_ATTUMEN_THE_HUNTSMAN_MOUNTED))
     {
         if (IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID, nullptr))
             MarkTargetWithStar(bot, attumenMounted);
@@ -90,10 +91,10 @@ bool AttumenTheHuntsmanSplitBossesAction::Execute(Event /*event*/)
 
     if (attumen->GetVictim() == bot && midnight->GetVictim() != bot)
     {
-        const float safeDistance = 6.0f;
+        constexpr float safeDistance = 8.0f;
         Unit* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistance);
         if (nearestPlayer && attumen->GetExactDist2d(nearestPlayer) < safeDistance)
-            return MoveFromGroup(safeDistance + 2.0f);
+            return MoveFromGroup(safeDistance);
     }
 
     return false;
@@ -132,15 +133,10 @@ bool AttumenTheHuntsmanManageDpsTimerAction::Execute(Event /*event*/)
     if (midnight && midnight->GetHealth() == midnight->GetMaxHealth())
         attumenDpsWaitTimer.erase(instanceId);
 
-    // Midnight is still present as a separate (invisible) unit after Attumen mounts
-    // So this block can be reached
-    Unit* attumenMounted = GetFirstAliveUnitByEntry(botAI, NPC_ATTUMEN_THE_HUNTSMAN_MOUNTED);
-    if (!attumenMounted)
-        return false;
-
     const time_t now = std::time(nullptr);
 
-    if (attumenMounted)
+    // Midnight is still present as a separate (invisible) unit after Attumen mounts
+    if (GetFirstAliveUnitByEntry(botAI, NPC_ATTUMEN_THE_HUNTSMAN_MOUNTED))
         attumenDpsWaitTimer.try_emplace(instanceId, now);
 
     return false;
@@ -172,9 +168,8 @@ bool MoroesMarkTargetAction::Execute(Event /*event*/)
     Unit* rafe = AI_VALUE2(Unit*, "find target", "baron rafe dreuger");
     Unit* robin = AI_VALUE2(Unit*, "find target", "lord robin daris");
     Unit* crispin = AI_VALUE2(Unit*, "find target", "lord crispin ference");
-    Unit* target = GetFirstAliveUnit({dorothea, catriona, keira, rafe, robin, crispin});
 
-    if (target)
+    if (Unit* target = GetFirstAliveUnit({dorothea, catriona, keira, rafe, robin, crispin}))
     {
         if (IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID, nullptr))
             MarkTargetWithSkull(bot, target);
@@ -225,7 +220,7 @@ bool MaidenOfVirtueMoveBossToHealerAction::Execute(Event /*event*/)
     }
 
     const Position& position = MAIDEN_OF_VIRTUE_BOSS_POSITION;
-    const float maxDistance = 2.0f;
+    constexpr float maxDistance = 2.0f;
     float distanceToPosition = maiden->GetExactDist2d(position);
     if (distanceToPosition > maxDistance)
     {
@@ -245,7 +240,7 @@ bool MaidenOfVirtueMoveBossToHealerAction::Execute(Event /*event*/)
 // Spread out ranged DPS between the pillars
 bool MaidenOfVirtuePositionRangedAction::Execute(Event /*event*/)
 {
-    const uint8 maxIndex = 7;
+    constexpr uint8 maxIndex = 7;
     uint8 index = 0;
 
     if (Group* group = bot->GetGroup())
@@ -348,7 +343,7 @@ bool RomuloAndJulianneMarkTargetAction::Execute(Event /*event*/)
         return false;
 
     Unit* target = nullptr;
-    const float maxPctDifference = 10.0f;
+    constexpr float maxPctDifference = 10.0f;
 
     if (julianne->GetHealthPct() + maxPctDifference < romulo->GetHealthPct() || julianne->GetHealthPct() < 1.0f)
         target = romulo;
@@ -374,9 +369,8 @@ bool WizardOfOzMarkTargetAction::Execute(Event /*event*/)
     Unit* strawman = AI_VALUE2(Unit*, "find target", "strawman");
     Unit* tinhead = AI_VALUE2(Unit*, "find target", "tinhead");
     Unit* crone = AI_VALUE2(Unit*, "find target", "the crone");
-    Unit* target = GetFirstAliveUnit({dorothee, tito, roar, strawman, tinhead, crone});
 
-    if (target)
+    if (Unit* target = GetFirstAliveUnit({dorothee, tito, roar, strawman, tinhead, crone}))
         MarkTargetWithSkull(bot, target);
 
     return false;
@@ -447,15 +441,9 @@ bool TheCuratorPositionBossAction::Execute(Event /*event*/)
 // Spread out ranged DPS to avoid Arcing Sear damage
 bool TheCuratorSpreadRangedAction::Execute(Event /*event*/)
 {
-    const float minDistance = 5.0f;
-    Unit* nearestPlayer = GetNearestPlayerInRadius(bot, minDistance);
-
-    if (nearestPlayer)
-    {
-        bot->AttackStop();
-        bot->InterruptNonMeleeSpells(true);
+    constexpr float minDistance = 5.0f;
+    if (Unit* nearestPlayer = GetNearestPlayerInRadius(bot, minDistance))
         return FleePosition(nearestPlayer->GetPosition(), minDistance);
-    }
 
     return false;
 }
@@ -469,8 +457,7 @@ bool TerestianIllhoofMarkTargetAction::Execute(Event /*event*/)
     Unit* kilrek = GetFirstAliveUnitByEntry(botAI, NPC_KILREK);
     Unit* illhoof = AI_VALUE2(Unit*, "find target", "terestian illhoof");
 
-    Unit* target = GetFirstAliveUnit({demonChains, kilrek, illhoof});
-    if (target)
+    if (Unit* target = GetFirstAliveUnit({demonChains, kilrek, illhoof}))
         MarkTargetWithSkull(bot, target);
 
     return false;
@@ -485,7 +472,7 @@ bool ShadeOfAranRunAwayFromArcaneExplosionAction::Execute(Event /*event*/)
     if (!aran)
         return false;
 
-    const float safeDistance = 20.0f;
+    constexpr float safeDistance = 20.0f;
     float distance = bot->GetDistance2d(aran);
     if (distance < safeDistance)
     {
@@ -515,9 +502,7 @@ bool ShadeOfAranStopMovingDuringFlameWreathAction::Execute(Event /*event*/)
 // Mark Conjured Elementals with skull so DPS can burn them down
 bool ShadeOfAranMarkConjuredElementalAction::Execute(Event /*event*/)
 {
-    Unit* elemental = GetFirstAliveUnitByEntry(botAI, NPC_CONJURED_ELEMENTAL);
-
-    if (elemental)
+    if (Unit* elemental = GetFirstAliveUnitByEntry(botAI, NPC_CONJURED_ELEMENTAL))
         MarkTargetWithSkull(bot, elemental);
 
     return false;
@@ -535,10 +520,10 @@ bool ShadeOfAranRangedMaintainDistanceAction::Execute(Event /*event*/)
     if (!group)
         return false;
 
-    const float minDist = 11.0f;
-    const float maxDist = 15.0f;
-    const float ringIncrement = M_PI / 8;
-    const float distIncrement = 0.5f;
+    constexpr float minDist = 11.0f;
+    constexpr float maxDist = 15.0f;
+    constexpr float ringIncrement = M_PI / 8;
+    constexpr float distIncrement = 0.5f;
 
     float bestX = 0, bestY = 0, bestMoveDist = std::numeric_limits<float>::max();
     bool found = false;
@@ -619,7 +604,7 @@ bool NetherspiteBlockRedBeamAction::Execute(Event /*event*/)
         }
         _wasBlockingRedBeam[botGuid] = true;
 
-        const uint8 intervalSecs = 5;
+        constexpr uint8 intervalSecs = 5;
         if (std::time(nullptr) - redBeamMoveTimer[botGuid] >= intervalSecs)
         {
             lastBeamMoveSideways[botGuid] = !lastBeamMoveSideways[botGuid];
@@ -898,10 +883,10 @@ bool NetherspiteAvoidBeamAndVoidZoneAction::Execute(Event /*event*/)
     if (!nearVoidZone && !nearBeam)
         return false;
 
-    const float minMoveDist = 2.0f;
+    constexpr float minMoveDist = 2.0f;
     const float minMoveDistSq = minMoveDist * minMoveDist;
     const float maxSearchDist = 30.0f, stepAngle = M_PI/18.0f, stepDist = 0.5f;
-    float netherspiteZ = netherspite->GetPositionZ();
+
     Position bestCandidate;
     float bestDistSq = std::numeric_limits<float>::max();
     bool found = false;
@@ -915,7 +900,7 @@ bool NetherspiteAvoidBeamAndVoidZoneAction::Execute(Event /*event*/)
         {
             float cx = botX + std::cos(angle) * dist;
             float cy = botY + std::sin(angle) * dist;
-            float cz = netherspiteZ;
+            float cz = netherspite->GetPositionZ();
 
             if (!IsSafePosition(cx, cy, voidZones, 4.0f) ||
                 !IsAwayFromBeams(cx, cy, beams, netherspite))
@@ -978,10 +963,11 @@ bool NetherspiteBanishPhaseAvoidVoidZoneAction::Execute(Event /*event*/)
 {
     std::vector<Unit*> voidZones = GetAllVoidZones(botAI, bot);
 
+    constexpr float safeDistance = 4.0f;
     for (Unit* vz : voidZones)
     {
-        if (vz->GetEntry() == NPC_VOID_ZONE && bot->GetExactDist2d(vz) < 4.0f)
-            return FleePosition(vz->GetPosition(), 4.0f);
+        if (vz->GetEntry() == NPC_VOID_ZONE && bot->GetExactDist2d(vz) < safeDistance)
+            return FleePosition(vz->GetPosition(), safeDistance);
     }
 
     return false;
@@ -1045,14 +1031,14 @@ bool PrinceMalchezaarEnfeebledAvoidHazardAction::Execute(Event /*event*/)
     if (!malchezaar)
         return false;
 
-    std::vector<Unit*> infernals = GetSpawnedInfernals(botAI);
+    std::vector<Unit*> infernals = GetSpawnedInfernals(bot);
 
-    const float minSafeBossDistance = 34.0f;
-    const float minSafeBossDistanceSq = minSafeBossDistance * minSafeBossDistance;
-    const float maxSafeBossDistance = 60.0f;
-    const float safeInfernalDistance = 23.0f;
-    const float distIncrement = 0.5f;
-    const uint8 numAngles = 64;
+    constexpr float minSafeBossDistance = 34.0f;
+    constexpr float minSafeBossDistanceSq = minSafeBossDistance * minSafeBossDistance;
+    constexpr float maxSafeBossDistance = 60.0f;
+    constexpr float safeInfernalDistance = 23.0f;
+    constexpr float distIncrement = 0.5f;
+    constexpr uint8 numAngles = 64;
 
     float bx = bot->GetPositionX();
     float by = bot->GetPositionY();
@@ -1121,11 +1107,11 @@ bool PrinceMalchezaarNonTankAvoidInfernalAction::Execute(Event /*event*/)
     if (!malchezaar)
         return false;
 
-    std::vector<Unit*> infernals = GetSpawnedInfernals(botAI);
+    std::vector<Unit*> infernals = GetSpawnedInfernals(bot);
 
-    const float safeInfernalDistance = 23.0f;
-    const float safeInfernalDistanceSq = safeInfernalDistance * safeInfernalDistance;
-    const float maxSafeBossDistance = 35.0f;
+    constexpr float safeInfernalDistance = 23.0f;
+    constexpr float safeInfernalDistanceSq = safeInfernalDistance * safeInfernalDistance;
+    constexpr float maxSafeBossDistance = 35.0f;
 
     float bx = bot->GetPositionX();
     float by = bot->GetPositionY();
@@ -1152,8 +1138,8 @@ bool PrinceMalchezaarNonTankAvoidInfernalAction::Execute(Event /*event*/)
 
     if (nearInfernal)
     {
-        const float distIncrement = 0.5f;
-        const uint8 numAngles = 64;
+        constexpr float distIncrement = 0.5f;
+        constexpr uint8 numAngles = 64;
 
         // 1. Try to find a safe position with a safe path
         found = TryFindSafePositionWithSafePath(bot, bx, by, bz, malchezaarX, malchezaarY, malchezaarZ,
@@ -1191,11 +1177,11 @@ bool PrinceMalchezaarMainTankMovementAction::Execute(Event /*event*/)
     if (AI_VALUE(Unit*, "current target") != malchezaar)
         return Attack(malchezaar);
 
-    std::vector<Unit*> infernals = GetSpawnedInfernals(botAI);
+    std::vector<Unit*> infernals = GetSpawnedInfernals(bot);
 
-    const float safeInfernalDistance = 30.0f;
-    const float safeInfernalDistanceSq = safeInfernalDistance * safeInfernalDistance;
-    const float maxSampleDist = 75.0f;
+    constexpr float safeInfernalDistance = 30.0f;
+    constexpr float safeInfernalDistanceSq = safeInfernalDistance * safeInfernalDistance;
+    constexpr float maxSampleDist = 75.0f;
 
     float bx = bot->GetPositionX();
     float by = bot->GetPositionY();
@@ -1219,8 +1205,8 @@ bool PrinceMalchezaarMainTankMovementAction::Execute(Event /*event*/)
 
     if (nearInfernal)
     {
-        const float distIncrement = 0.5f;
-        const uint8 numAngles = 64;
+        constexpr float distIncrement = 0.5f;
+        constexpr uint8 numAngles = 64;
 
         // 1. Try to find a safe position with a safe path
         found = TryFindSafePositionWithSafePath( bot, bx, by, bz, bx, by, bz,
@@ -1270,7 +1256,7 @@ bool NightbaneGroundPhasePositionBossAction::Execute(Event /*event*/)
             NIGHTBANE_FINAL_BOSS_POSITION
         };
         const Position& position = tankPositions[step];
-        const float maxDistance = 0.5f;
+        constexpr float maxDistance = 0.5f;
         float distanceToTarget = bot->GetExactDist2d(position);
 
         if ((distanceToTarget > maxDistance) && bot->IsWithinMeleeRange(nightbane))
@@ -1306,7 +1292,7 @@ bool NightbaneGroundPhaseRotateRangedPositionsAction::Execute(Event /*event*/)
         NIGHTBANE_RANGED_POSITION3
     };
     const Position& position = rangedPositions[index];
-    const float maxDistance = 2.0f;
+    constexpr float maxDistance = 2.0f;
     float distanceToTarget = bot->GetExactDist2d(position);
 
     if (distanceToTarget <= maxDistance &&
@@ -1340,20 +1326,7 @@ bool NightbaneGroundPhaseRotateRangedPositionsAction::Execute(Event /*event*/)
 // For countering Bellowing Roars during the ground phase
 bool NightbaneCastFearWardOnMainTankAction::Execute(Event /*event*/)
 {
-    Player* mainTank = nullptr;
-    if (Group* group = bot->GetGroup())
-    {
-        for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-        {
-            Player* member = ref->GetSource();
-            if (member && botAI->IsMainTank(member))
-            {
-                mainTank = member;
-                break;
-            }
-        }
-    }
-
+    Player* mainTank = GetGroupMainTank(botAI, bot);
     if (mainTank && botAI->CanCastSpell("fear ward", mainTank))
         return botAI->CastSpell("fear ward", mainTank);
 
