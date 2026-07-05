@@ -4643,6 +4643,37 @@ void TravelMgr::PrepareZone2LevelBracket()
 }
 
 #ifdef DIY_ADEN2008
+
+namespace
+{
+constexpr std::array<uint32, 4> skipNpcEntries = {32820, 24196, 30627, 30617};
+constexpr std::array<uint32, 6> badFactions = {11, 71, 79, 85, 188, 1575};
+
+constexpr std::array<uint32, 9> zonesWithoutInnkeeper = {AREA_BLASTED_LANDS,
+                                                         AREA_AZSHARA,
+                                                         AREA_WESTERN_PLAGUELANDS,
+                                                         AREA_BURNING_STEPPES,
+                                                         AREA_SEARING_GORGE,
+                                                         361,
+                                                         490,
+                                                         AREA_CRYSTALSONG_FOREST,
+                                                         AREA_WINTERGRASP};
+
+template <typename Arr, typename V>
+bool contains(const Arr& arr, const V& val)
+{
+    return std::find(arr.begin(), arr.end(), val) != arr.end();
+}
+
+int16 signExtend16(uint32 v)
+{
+    v &= 0xFFFFu;
+    if (v & 0x8000u)
+        v |= 0xFFFF0000u;
+    return static_cast<int16>(v);
+}
+}  // namespace
+
 void TravelMgr::PrepareDestinationCache()
 {
     uint32 startAll = getMSTime();
@@ -4656,6 +4687,7 @@ void TravelMgr::PrepareDestinationCache()
     hordeFlightMasterCache.clear();
     allianceFlightMasterCache.clear();
     bankerEntryToLocation.clear();
+    creatureSpawnsByTemplate.clear();
 
     LOG_INFO("playerbots", "Preparing destination caches for {} levels...", maxLevel);
 
@@ -4664,17 +4696,6 @@ void TravelMgr::PrepareDestinationCache()
     allowedMaps.reserve(sPlayerbotAIConfig.randomBotMaps.size());
     for (uint16 mapId : sPlayerbotAIConfig.randomBotMaps)
         allowedMaps.insert(mapId);
-
-    // ---- 预加载地图数据（仅为了让后续飞行/旅店/银行家快速获取 AreaId） ----
-    LOG_INFO("playerbots", "Preloading map data...");
-    uint32 preloadStart = getMSTime();
-    for (uint16 mapId : allowedMaps)
-    {
-        Map* map = sMapMgr->FindMap(mapId, 0);
-        if (map)
-            (void)map->GetAreaId(PHASEMASK_NORMAL, 0.0f, 0.0f, 0.0f);
-    }
-    LOG_INFO("playerbots", "Map preloading finished in {} ms", getMSTime() - preloadStart);
 
     // ---- 缓存 Map* ----
     std::unordered_map<uint16, Map*> mapCache;
@@ -4686,23 +4707,22 @@ void TravelMgr::PrepareDestinationCache()
             mapCache[mapId] = map;
     }
 
-    // ---- 黑名单（静态集合，避免重复构造） ----
-    static const std::unordered_set<uint32> skipNpcEntries = {32820, 24196, 30627, 30617};
-    static const std::unordered_set<uint32> badFactions = {11, 71, 79, 85, 188, 1575};
-
-    // ---- 网格键生成函数 ----
+    // ---- 网格键生成 ----
     auto makeGridKey = [](uint16 mapId, int32 rx, int32 ry, int32 rz) -> uint64
     {
         uint64 m = mapId;
-        uint64 ux = static_cast<uint32>(rx) & 0xFFFF;
-        uint64 uy = static_cast<uint32>(ry) & 0xFFFF;
-        uint64 uz = static_cast<uint32>(rz) & 0xFFFF;
+        uint64 ux = static_cast<uint16>(rx);
+        uint64 uy = static_cast<uint16>(ry);
+        uint64 uz = static_cast<uint16>(rz);
         return (m << 48) | (ux << 32) | (uy << 16) | uz;
     };
 
     // ---- 主缓存容器 ----
     std::unordered_map<uint64, std::vector<CreatureData>> tempLocsCache;
-    tempLocsCache.reserve(200000);  // 足够容纳 15 万生物
+    tempLocsCache.reserve(200000);
+
+    // 按 entry + areaId 聚合的刷怪点（补回 V2 的 creatureSpawnsByTemplate）
+    std::unordered_map<uint32, std::unordered_map<uint32, std::vector<WorldLocation>>> tempCreatureCache;
 
     // ---- 统计变量 ----
     uint32 flightMastersCount = 0;
@@ -4729,7 +4749,6 @@ void TravelMgr::PrepareDestinationCache()
                      getMSTime() - loopStart);
         }
 
-        // 获取模板
         CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureData.id);
         if (!ct)
         {
@@ -4740,35 +4759,36 @@ void TravelMgr::PrepareDestinationCache()
         uint32 entry = ct->Entry;
         uint16 mapId = creatureData.mapid;
 
-        // 过滤地图
         if (!allowedMaps.count(mapId))
         {
             ++skipped;
             continue;
         }
 
-        // ---- 快速分类 ----
         uint32 npcflag = ct->npcflag;
         bool isNormal = (npcflag == 0);
-        bool isFlightOrInn = (npcflag & (UNIT_NPC_FLAG_FLIGHTMASTER | UNIT_NPC_FLAG_INNKEEPER)) != 0;
+        bool isFlightInn = (npcflag & (UNIT_NPC_FLAG_FLIGHTMASTER | UNIT_NPC_FLAG_INNKEEPER)) != 0;
         bool isBanker = (npcflag & UNIT_NPC_FLAG_BANKER) != 0;
 
-        if (!isNormal && !isFlightOrInn && !isBanker)
+        if (!isNormal && !isFlightInn && !isBanker)
         {
             ++skipped;
             continue;
         }
 
-        // ---- 普通怪物（完全脱离地图 API） ----
+        float x = creatureData.posX;
+        float y = creatureData.posY;
+        float z = creatureData.posZ;
+
+        // ---- 普通怪物（不走地图 API） ----
         if (isNormal)
         {
-            // 快速过滤（短路径短路）
-            if (skipNpcEntries.count(entry))
+            if (contains(skipNpcEntries, entry))
             {
                 ++skipped;
                 continue;
             }
-            if (badFactions.count(ct->faction))
+            if (contains(badFactions, ct->faction))
             {
                 ++skipped;
                 continue;
@@ -4799,44 +4819,42 @@ void TravelMgr::PrepareDestinationCache()
                 continue;
             }
 
-            // 计算网格并插入
-            float x = creatureData.posX;
-            float y = creatureData.posY;
-            float z = creatureData.posZ;
             int32 roundX = static_cast<int32>(std::lround(x / 50.0f));
             int32 roundY = static_cast<int32>(std::lround(y / 50.0f));
             int32 roundZ = static_cast<int32>(std::lround(z / 50.0f));
 
             uint64 key = makeGridKey(mapId, roundX, roundY, roundZ);
-            auto& vec = tempLocsCache[key];
-            vec.reserve(vec.size() + 8);
-            vec.emplace_back(creatureData);
+            tempLocsCache[key].emplace_back(creatureData);
+
+            // --- 补回 tempCreatureCache（需要 AreaId，走 mapCache） ---
+            auto mapIt = mapCache.find(mapId);
+            if (mapIt != mapCache.end() && mapIt->second)
+            {
+                Map* map = mapIt->second;
+                AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(PHASEMASK_NORMAL, x, y, z));
+                if (area)
+                {
+                    uint32 areaId = area->zone ? area->zone : area->ID;
+                    tempCreatureCache[entry][areaId].emplace_back(mapId, x, y, z);
+                }
+            }
+
             ++normalCount;
-            continue;  // 关键：跳过后续地图操作
+            continue;
         }
 
-        // ---- 飞行管理员 / 旅店老板 / 银行家（数量极少，才需要 AreaId） ----
-        // 获取 Map*
+        // ---- 飞行 / 旅店 / 银行家：需要 AreaId ----
         auto mapIt = mapCache.find(mapId);
-        if (mapIt == mapCache.end())
+        if (mapIt == mapCache.end() || !mapIt->second)
         {
             ++skipped;
             continue;
         }
         Map* map = mapIt->second;
-        if (!map)
-        {
-            ++skipped;
-            continue;
-        }
 
-        float x = creatureData.posX;
-        float y = creatureData.posY;
-        float z = creatureData.posZ;
         float orient = creatureData.orientation;
         uint32 templateEntry = creatureData.id;
 
-        // 获取区域（仅在此处调用）
         AreaTableEntry const* area = sAreaTableStore.LookupEntry(map->GetAreaId(PHASEMASK_NORMAL, x, y, z));
         if (!area)
         {
@@ -4845,8 +4863,8 @@ void TravelMgr::PrepareDestinationCache()
         }
         uint32 areaId = area->zone ? area->zone : area->ID;
 
-        // ---- 飞行 / 旅店 ----
-        if (isFlightOrInn && entry != 3838 && entry != 29480)
+        // ---- 飞行管理员 / 旅店老板 ----
+        if (isFlightInn && entry != 3838 && entry != 29480)
         {
             FactionTemplateEntry const* factionEntry = sFactionTemplateStore.LookupEntry(ct->faction);
             if (!factionEntry)
@@ -4854,6 +4872,7 @@ void TravelMgr::PrepareDestinationCache()
                 ++skipped;
                 continue;
             }
+
             bool forHorde = !(factionEntry->hostileMask & 4);
             bool forAlliance = !(factionEntry->hostileMask & 2);
 
@@ -4884,16 +4903,7 @@ void TravelMgr::PrepareDestinationCache()
                 }
                 ++flightMastersCount;
 
-                static const std::unordered_set<uint32> zonesWithoutInnkeeper = {AREA_BLASTED_LANDS,
-                                                                                 AREA_AZSHARA,
-                                                                                 AREA_WESTERN_PLAGUELANDS,
-                                                                                 AREA_BURNING_STEPPES,
-                                                                                 AREA_SEARING_GORGE,
-                                                                                 361,
-                                                                                 490,
-                                                                                 AREA_CRYSTALSONG_FOREST,
-                                                                                 AREA_WINTERGRASP};
-                if (zonesWithoutInnkeeper.count(areaId) && hasBracket)
+                if (contains(zonesWithoutInnkeeper, areaId) && hasBracket)
                 {
                     LevelBracket bracket = itBracket->second;
                     WorldPosition loc(mapId, x + cos(orient) * 5.0f, y + sin(orient) * 5.0f, z + 0.5f, orient + M_PI);
@@ -4937,7 +4947,8 @@ void TravelMgr::PrepareDestinationCache()
                 bLoc.entry = templateEntry;
 
                 uint32 avgLevel = (ct->minlevel + ct->maxlevel + 1) / 2;
-                int startLevel = 1, endLevel = maxLevel;
+                int startLevel = 1, endLevel = static_cast<int>(maxLevel);
+
                 if (avgLevel > 45)
                 {
                     if (avgLevel >= 60 && avgLevel <= 70)
@@ -4948,7 +4959,6 @@ void TravelMgr::PrepareDestinationCache()
                     else if (avgLevel == 75)
                     {
                         startLevel = 71;
-                        endLevel = maxLevel;
                     }
                     else
                     {
@@ -4956,16 +4966,17 @@ void TravelMgr::PrepareDestinationCache()
                         continue;
                     }
                 }
-                if (startLevel > maxLevel)
+                if (startLevel > static_cast<int>(maxLevel))
                 {
                     ++skipped;
                     continue;
                 }
-                if (endLevel > maxLevel)
-                    endLevel = maxLevel;
+                if (endLevel > static_cast<int>(maxLevel))
+                    endLevel = static_cast<int>(maxLevel);
 
                 for (int lv = startLevel; lv <= endLevel; ++lv)
-                    bankerLocsPerLevelCache[(uint8)lv].emplace_back(bLoc);
+                    bankerLocsPerLevelCache[static_cast<uint8>(lv)].emplace_back(bLoc);
+
                 bankerEntryToLocation[bLoc.entry] = bLoc.loc;
                 ++bankerCount;
             }
@@ -4982,34 +4993,61 @@ void TravelMgr::PrepareDestinationCache()
     LOG_INFO("playerbots", "tempLocsCache size: {}, bucket_count: {}, load_factor: {}", tempLocsCache.size(),
              tempLocsCache.bucket_count(), tempLocsCache.load_factor());
 
-    // ---- 处理网格缓存 ----
+    // ---- 处理网格缓存（locsPerLevelCache） ----
     uint32 tempStart = getMSTime();
     for (auto const& [key, creatureDataList] : tempLocsCache)
     {
         if (creatureDataList.size() < 2)
             continue;
+
         CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(creatureDataList[0].id);
         if (!ct)
             continue;
+
         uint32 level = (ct->minlevel + ct->maxlevel + 1) / 2;
         int low = static_cast<int>(level) - sPlayerbotAIConfig.randomBotTeleLowerLevel;
         int high = static_cast<int>(level) + sPlayerbotAIConfig.randomBotTeleHigherLevel;
         if (low < 1)
             low = 1;
-        if (high > (int)maxLevel)
-            high = maxLevel;
+        if (high > static_cast<int>(maxLevel))
+            high = static_cast<int>(maxLevel);
 
-        uint16 mapId = (key >> 48) & 0xFFFF;
-        int32 rx = (key >> 32) & 0xFFFF;
-        int32 ry = (key >> 16) & 0xFFFF;
-        int32 rz = key & 0xFFFF;
+        uint16 mapId = static_cast<uint16>((key >> 48) & 0xFFFFu);
+        int32 rx = signExtend16((key >> 32) & 0xFFFFu);
+        int32 ry = signExtend16((key >> 16) & 0xFFFFu);
+        int32 rz = signExtend16(key & 0xFFFFu);
+
         WorldLocation loc(mapId, static_cast<float>(rx) * 50.0f, static_cast<float>(ry) * 50.0f,
                           static_cast<float>(rz) * 50.0f);
+
         for (int lv = low; lv <= high; ++lv)
-            locsPerLevelCache[(uint8)lv].emplace_back(loc);
+            locsPerLevelCache[static_cast<uint8>(lv)].emplace_back(loc);
     }
     LOG_INFO("playerbots", "tempLocsCache processed in {} ms, {} grid groups", getMSTime() - tempStart,
              tempLocsCache.size());
+
+    // ---- 处理 tempCreatureCache（补回 creatureSpawnsByTemplate） ----
+    uint32 spawnStart = getMSTime();
+    for (auto const& [entry, areaMap] : tempCreatureCache)
+    {
+        auto& outVec = creatureSpawnsByTemplate[entry];
+        for (auto const& [areaId, locList] : areaMap)
+        {
+            if (locList.size() > 3)
+                continue;
+
+            float totalX = 0, totalY = 0, totalZ = 0;
+            for (auto const& loc : locList)
+            {
+                totalX += loc.GetPositionX();
+                totalY += loc.GetPositionY();
+                totalZ += loc.GetPositionZ();
+            }
+            float n = static_cast<float>(locList.size());
+            outVec.emplace_back(locList[0].GetMapId(), totalX / n, totalY / n, totalZ / n, 0.0f);
+        }
+    }
+    LOG_INFO("playerbots", "creatureSpawnsByTemplate processed in {} ms", getMSTime() - spawnStart);
 
     // ---- 添加玩家出生点 ----
     uint32 birthStart = getMSTime();
@@ -5020,13 +5058,14 @@ void TravelMgr::PrepareDestinationCache()
             PlayerInfo const* info = sObjectMgr->GetPlayerInfo(i, j);
             if (!info)
                 continue;
+
             WorldPosition pos(info->mapId, info->positionX, info->positionY, info->positionZ, info->orientation);
             for (int lv = 1; lv <= 5; ++lv)
             {
-                if ((1 << (i - 1)) & sRaceMgr->GetAllianceRaceMask())
-                    allianceHubsPerLevelCache[(uint8)lv].emplace_back(pos);
+                if ((1u << (i - 1)) & sRaceMgr->GetAllianceRaceMask())
+                    allianceHubsPerLevelCache[static_cast<uint8>(lv)].emplace_back(pos);
                 else
-                    hordeHubsPerLevelCache[(uint8)lv].emplace_back(pos);
+                    hordeHubsPerLevelCache[static_cast<uint8>(lv)].emplace_back(pos);
             }
             break;
         }
