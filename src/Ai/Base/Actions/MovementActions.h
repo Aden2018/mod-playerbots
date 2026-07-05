@@ -3,8 +3,8 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
-#ifndef _PLAYERBOT_MOVEMENTACTIONS_H
-#define _PLAYERBOT_MOVEMENTACTIONS_H
+#ifndef PLAYERBOTS_MOVEMENTACTIONS_H
+#define PLAYERBOTS_MOVEMENTACTIONS_H
 
 #include <cmath>
 
@@ -275,7 +275,7 @@ public:
         this->intervals = intervals;
         this->clockwise = clockwise;
         this->call_counters = 0;
-        for (int i = 0; i < intervals; i++)
+        for (uint32 i = 0; i < intervals; i++)
         {
             float angle = start_angle + 2 * M_PI * i / intervals;
             waypoints.push_back(std::make_pair(center_x + cos(angle) * radius, center_y + sin(angle) * radius));

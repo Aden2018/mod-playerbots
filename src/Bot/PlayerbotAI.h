@@ -3,8 +3,8 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
-#ifndef _PLAYERBOT_PLAYERBOTAI_H
-#define _PLAYERBOT_PLAYERBOTAI_H
+#ifndef PLAYERBOTS_PLAYERBOTAI_H
+#define PLAYERBOTS_PLAYERBOTAI_H
 
 #include <stack>
 
@@ -426,6 +426,7 @@ public:
     static bool IsCombo(Player* player);
     static bool IsBotMainTank(Player* player);
     static bool IsMainTank(Player* player, bool ignoreMemberFlag = false);
+    static bool IsExplicitMainTank(Player* player);
     static uint32 GetGroupTankNum(Player* player);
     static bool IsAssistTank(Player* player);
     static bool IsAssistTankOfIndex(Player* player, uint8 index, bool ignoreDeadPlayers = false);

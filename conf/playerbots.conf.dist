@@ -495,6 +495,15 @@ AiPlayerbot.AutoGreaterBlessings = 1
 # Default: 2 (all groups)
 AiPlayerbot.AutoPartyBuffs = 2
 
+# Bots tell the group when they attempt to use a reagent-based greater blessing or group buff
+# but have to fall back to the single-target version because they are out of reagents.
+# Default: 1 (enabled)
+AiPlayerbot.TellWhenMissingBuffReagents = 1
+
+# Cooldown for the missing buff reagent message, in seconds.
+# Default: 300 (5 minutes)
+AiPlayerbot.MissingBuffReagentMessageCooldown = 300
+
 # Bots can flee from enemies
 AiPlayerbot.FleeingEnabled = 1
 
@@ -980,8 +989,8 @@ AiPlayerbot.RandomBotQuestItems = "5175,5176,5177,5178,6948,11000,12382,13704,16
 #
 
 # Randombots automatically learn class quest reward spells on levelup
-# Default: 0 (disabled)
-AiPlayerbot.AutoLearnQuestSpells = 0
+# Default: 1 (enabled)
+AiPlayerbot.AutoLearnQuestSpells = 1
 
 # Randombots automatically learn trainable spells on levelup
 # Default: 1 (enabled)
