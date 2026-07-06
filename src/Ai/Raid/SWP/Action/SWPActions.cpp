@@ -54,11 +54,8 @@ bool SunwellPlateauEraseTimersAndTrackersAction::Execute(Event /*event*/)
         if (isMechanicTracker && brutallusRangedAssignments.erase(instanceId) > 0)
             erased = true;
 
-        if (isMechanicTracker &&
-            brutallusRangedBurnPadAssignments.erase(instanceId) > 0)
-        {
+        if (isMechanicTracker && brutallusRangedBurnPadAssignments.erase(instanceId) > 0)
             erased = true;
-        }
     }
 
     if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "felmyst"))
@@ -84,6 +81,9 @@ bool SunwellPlateauEraseTimersAndTrackersAction::Execute(Event /*event*/)
         if (felmystDemonicVaporFirstRegionIndices.erase(instanceId) > 0)
             erased = true;
 
+        if (felmystDemonicVaporUsedRegionMasks.erase(instanceId) > 0)
+            erased = true;
+
         if (felmystLandingDpsWaitTimer.erase(instanceId) > 0)
             erased = true;
 
@@ -91,22 +91,13 @@ bool SunwellPlateauEraseTimersAndTrackersAction::Execute(Event /*event*/)
             erased = true;
     }
 
-    if (!AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
+    if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
     {
-        if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_FLAME_TOUCHED)))
-        {
-            bot->RemoveAura(static_cast<uint32>(SunwellSpells::SPELL_FLAME_TOUCHED));
+        if (eredarTwinsIncomingConflagrationStates.erase(instanceId) > 0)
             erased = true;
-        }
 
-        if (isMechanicTracker)
-        {
-            if (eredarTwinsIncomingConflagrationStates.erase(instanceId) > 0)
-                erased = true;
-
-            if (eredarTwinsDpsHoldTimer.erase(instanceId) > 0)
-                erased = true;
-        }
+        if (eredarTwinsDpsHoldTimer.erase(instanceId) > 0)
+            erased = true;
     }
 
     if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "m'uru") &&
@@ -124,11 +115,8 @@ bool SunwellPlateauEraseTimersAndTrackersAction::Execute(Event /*event*/)
         if (kiljaedenArmageddons.erase(instanceId) > 0)
             erased = true;
 
-        if (botAI->IsRanged(bot) &&
-            kiljaedenRangedArmageddonAssignments.erase(instanceId) > 0)
-        {
+        if (kiljaedenRangedArmageddonAssignments.erase(instanceId) > 0)
             erased = true;
-        }
     }
 
     if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "hand of the deceiver") &&

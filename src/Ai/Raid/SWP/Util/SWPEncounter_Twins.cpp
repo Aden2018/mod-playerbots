@@ -43,8 +43,11 @@ Position GetAlythessAdjustedPosition(Unit* alythess, const Position& basePositio
     const float offsetY = alythess->GetPositionY() - ALYTHESS_START_POSITION.GetPositionY();
     const float offsetZ = alythess->GetPositionZ() - ALYTHESS_START_POSITION.GetPositionZ();
 
-    return { basePosition.GetPositionX() + offsetX, basePosition.GetPositionY() + offsetY,
-             basePosition.GetPositionZ() + offsetZ };
+    return {
+        basePosition.GetPositionX() + offsetX,
+        basePosition.GetPositionY() + offsetY,
+        basePosition.GetPositionZ() + offsetZ,
+    };
 }
 
 bool ShouldHoldTwinThreat(
@@ -218,30 +221,37 @@ void RecordEredarTwinsIncomingConflagrationTarget(Player* target, uint32 duratio
     state.expireMs = now + durationMs;
 }
 
-bool IsEredarTwinsConflagrationTarget(Player* bot)
+Player* GetEredarTwinsConflagrationTarget(Player* bot)
 {
     auto const incomingItr = eredarTwinsIncomingConflagrationStates.find(bot->GetInstanceId());
 
     if (incomingItr == eredarTwinsIncomingConflagrationStates.end())
-        return false;
+        return nullptr;
 
     EredarTwinsIncomingConflagrationState const& state = incomingItr->second;
     const uint32 now = getMSTime();
-    if (state.targetGuid != bot->GetGUID())
-    {
-        if (state.expireMs <= now)
-            eredarTwinsIncomingConflagrationStates.erase(incomingItr);
-
-        return false;
-    }
 
     if (state.expireMs <= now)
     {
         eredarTwinsIncomingConflagrationStates.erase(incomingItr);
-        return false;
+        return nullptr;
     }
 
-    return state.delayMs <= now;
+    if (state.delayMs > now)
+        return nullptr;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (member && member->GetGUID() == state.targetGuid)
+            return member;
+    }
+
+    return nullptr;
 }
 
 }

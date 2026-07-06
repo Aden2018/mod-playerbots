@@ -226,6 +226,14 @@ public:
     bool IsActive() override;
 };
 
+class FelmystPlayerIsCharmedByFogTrigger : public Trigger
+{
+public:
+    FelmystPlayerIsCharmedByFogTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst player is charmed by fog") {}
+    bool IsActive() override;
+};
+
 // Eredar Twins
 
 class EredarTwinsMeleeIsAtBalconyTrigger : public Trigger
@@ -297,6 +305,14 @@ class EredarTwinsBotHasConflagrationTrigger : public Trigger
 public:
     EredarTwinsBotHasConflagrationTrigger(
         PlayerbotAI* botAI) : Trigger(botAI, "eredar twins bot has conflagration") {}
+    bool IsActive() override;
+};
+
+class EredarTwinsSacrolashVictimHasConflagrationTrigger : public Trigger
+{
+public:
+    EredarTwinsSacrolashVictimHasConflagrationTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "eredar twins sacrolash victim has conflagration") {}
     bool IsActive() override;
 };
 

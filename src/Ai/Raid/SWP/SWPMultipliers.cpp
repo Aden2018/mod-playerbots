@@ -469,6 +469,20 @@ float FelmystPrioritizeDemonicVaporKiteMultiplier::GetValue(Action* action)
     return 1.0f;
 }
 
+float FelmystFocusAttacksOnCharmedPlayerMultiplier::GetValue(Action* action)
+{
+    if (!botAI->IsDps(bot) || !AI_VALUE2(Unit*, "find target", "felmyst"))
+        return 1.0f;
+
+    if (!GetFelmystCharmedTarget(botAI, bot))
+        return 1.0f;
+
+    if (dynamic_cast<DpsAssistAction*>(action))
+        return 0.0f;
+
+    return 1.0f;
+}
+
 float FelmystDelayCooldownsMultiplier::GetValue(Action* action)
 {
     Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
@@ -628,7 +642,27 @@ float EredarTwinsControlMovementMultiplier::GetValue(Action* action)
         return 0.0f;
     }
 
-    if (IsEredarTwinsConflagrationTarget(bot) &&
+    if ((botAI->IsRanged(bot) || IsAlythessTank(botAI, bot)) &&
+        (dynamic_cast<CastReachTargetSpellAction*>(action) ||
+         dynamic_cast<ReachTargetAction*>(action)))
+    {
+        return 0.0f;
+    }
+
+    return 1.0f;
+}
+
+float EredarTwinsNoMovingIntoConflagrationMultiplier::GetValue(Action* action)
+{
+    Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    if (!sacrolash && !AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
+        return 1.0f;
+
+    Player* conflagTarget = GetEredarTwinsConflagrationTarget(bot);
+    if (!conflagTarget)
+        return 1.0f;
+
+    if (conflagTarget == bot &&
         (dynamic_cast<CastReachTargetSpellAction*>(action) ||
          (dynamic_cast<MovementAction*>(action) &&
           !dynamic_cast<EredarTwinsConflagratedBotMoveFromGroupAction*>(action))))
@@ -636,9 +670,11 @@ float EredarTwinsControlMovementMultiplier::GetValue(Action* action)
         return 0.0f;
     }
 
-    if ((botAI->IsRanged(bot) || IsAlythessTank(botAI, bot)) &&
+    Unit* victim = sacrolash->GetVictim();
+    if (victim && victim != bot && conflagTarget == victim &&
         (dynamic_cast<CastReachTargetSpellAction*>(action) ||
-         dynamic_cast<ReachTargetAction*>(action)))
+         (dynamic_cast<MovementAction*>(action) &&
+          !dynamic_cast<EredarTwinsMoveFromConflagSacrolashVictimAction*>(action))))
     {
         return 0.0f;
     }
