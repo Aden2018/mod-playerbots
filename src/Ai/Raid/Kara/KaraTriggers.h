@@ -1,7 +1,29 @@
+/*
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
+ */
+
 #ifndef PLAYERBOTS_KARATRIGGERS_H
 #define PLAYERBOTS_KARATRIGGERS_H
 
 #include "Trigger.h"
+
+class KarazhanBotIsNotInCombatTrigger : public Trigger
+{
+public:
+    KarazhanBotIsNotInCombatTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "karazhan bot is not in combat") {}
+    bool IsActive() override;
+};
+
+class KarazhanEnemiesCastFearTrigger : public Trigger
+{
+public:
+    KarazhanEnemiesCastFearTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "karazhan enemies cast fear") {}
+    bool IsActive() override;
+};
 
 class ManaWarpIsAboutToExplodeTrigger : public Trigger
 {
@@ -11,27 +33,19 @@ public:
     bool IsActive() override;
 };
 
-class AttumenTheHuntsmanNeedTargetPriorityTrigger : public Trigger
+class AttumenTheHuntsmanPhaseOneActiveTrigger : public Trigger
 {
 public:
-    AttumenTheHuntsmanNeedTargetPriorityTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "attumen the huntsman need target priority") {}
+    AttumenTheHuntsmanPhaseOneActiveTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "attumen the huntsman phase one active") {}
     bool IsActive() override;
 };
 
-class AttumenTheHuntsmanAttumenSpawnedTrigger : public Trigger
+class AttumenTheHuntsmanPhaseTwoActiveTrigger : public Trigger
 {
 public:
-    AttumenTheHuntsmanAttumenSpawnedTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "attumen the huntsman attumen spawned") {}
-    bool IsActive() override;
-};
-
-class AttumenTheHuntsmanAttumenIsMountedTrigger : public Trigger
-{
-public:
-    AttumenTheHuntsmanAttumenIsMountedTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "attumen the huntsman attumen is mounted") {}
+    AttumenTheHuntsmanPhaseTwoActiveTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "attumen the huntsman phase two active") {}
     bool IsActive() override;
 };
 
@@ -51,19 +65,19 @@ public:
     bool IsActive() override;
 };
 
-class MoroesNeedTargetPriorityTrigger : public Trigger
+class MoroesDpsShouldPrioritizeAddsTrigger : public Trigger
 {
 public:
-    MoroesNeedTargetPriorityTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "moroes need target priority") {}
+    MoroesDpsShouldPrioritizeAddsTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "moroes dps should prioritize adds") {}
     bool IsActive() override;
 };
 
-class MaidenOfVirtueHealersAreStunnedByRepentanceTrigger : public Trigger
+class MaidenOfVirtueBossEngagedByTanksTrigger : public Trigger
 {
 public:
-    MaidenOfVirtueHealersAreStunnedByRepentanceTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "maiden of virtue healers are stunned by repentance") {}
+    MaidenOfVirtueBossEngagedByTanksTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "maiden of virtue boss engaged by tanks") {}
     bool IsActive() override;
 };
 
@@ -72,6 +86,14 @@ class MaidenOfVirtueHolyWrathDealsChainDamageTrigger : public Trigger
 public:
     MaidenOfVirtueHolyWrathDealsChainDamageTrigger(
         PlayerbotAI* botAI) : Trigger(botAI, "maiden of virtue holy wrath deals chain damage") {}
+    bool IsActive() override;
+};
+
+class MaidenOfVirtueGroundingTotemConsumesHolyFireTrigger : public Trigger
+{
+public:
+    MaidenOfVirtueGroundingTotemConsumesHolyFireTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "maiden of virtue grounding totem consumes holy fire") {}
     bool IsActive() override;
 };
 
@@ -130,19 +152,19 @@ public:
     bool IsActive() override;
 };
 
-class TheCuratorBossAstralFlaresCastArcingSearTrigger : public Trigger
+class TheCuratorBossEngagedByRangedTrigger : public Trigger
 {
 public:
-    TheCuratorBossAstralFlaresCastArcingSearTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "the curator astral flares cast arcing sear") {}
+    TheCuratorBossEngagedByRangedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "the curator boss engaged by ranged") {}
     bool IsActive() override;
 };
 
-class TerestianIllhoofNeedTargetPriorityTrigger : public Trigger
+class TerestianIllhoofShouldPrioritizeChainsTrigger : public Trigger
 {
 public:
-    TerestianIllhoofNeedTargetPriorityTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "terestian illhoof need target priority") {}
+    TerestianIllhoofShouldPrioritizeChainsTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "terestian illhoof should prioritize chains") {}
     bool IsActive() override;
 };
 
@@ -170,11 +192,11 @@ public:
     bool IsActive() override;
 };
 
-class ShadeOfAranBossUsesCounterspellAndBlizzardTrigger : public Trigger
+class ShadeOfAranBossCastsCounterspellNearbyTrigger : public Trigger
 {
 public:
-    ShadeOfAranBossUsesCounterspellAndBlizzardTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "shade of aran boss uses counterspell and blizzard") {}
+    ShadeOfAranBossCastsCounterspellNearbyTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "shade of aran boss casts counterspell nearby") {}
     bool IsActive() override;
 };
 
@@ -218,11 +240,11 @@ public:
     bool IsActive() override;
 };
 
-class NetherspiteNeedToManageTimersAndTrackersTrigger : public Trigger
+class NetherspiteShouldManageTimersAndTrackersTrigger : public Trigger
 {
 public:
-    NetherspiteNeedToManageTimersAndTrackersTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "netherspite need to manage timers and trackers") {}
+    NetherspiteShouldManageTimersAndTrackersTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "netherspite should manage timers and trackers") {}
     bool IsActive() override;
 };
 
@@ -234,43 +256,35 @@ public:
     bool IsActive() override;
 };
 
-class PrinceMalchezaarInfernalsAreSpawnedTrigger : public Trigger
+class PrinceMalchezaarEngagedByNonTanksTrigger : public Trigger
 {
 public:
-    PrinceMalchezaarInfernalsAreSpawnedTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "prince malchezaar infernals are spawned") {}
+    PrinceMalchezaarEngagedByNonTanksTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "prince malchezaar engaged by non-tanks") {}
     bool IsActive() override;
 };
 
-class PrinceMalchezaarBossEngagedByMainTankTrigger : public Trigger
+class PrinceMalchezaarBossEngagedByTanksTrigger : public Trigger
 {
 public:
-    PrinceMalchezaarBossEngagedByMainTankTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "prince malchezaar boss engaged by main tank") {}
+    PrinceMalchezaarBossEngagedByTanksTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "prince malchezaar boss engaged by tanks") {}
     bool IsActive() override;
 };
 
-class NightbaneBossEngagedByMainTankTrigger : public Trigger
+class NightbaneBossEngagedByTanksTrigger : public Trigger
 {
 public:
-    NightbaneBossEngagedByMainTankTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "nightbane boss engaged by main tank") {}
+    NightbaneBossEngagedByTanksTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "nightbane boss engaged by tanks") {}
     bool IsActive() override;
 };
 
-class NightbaneRangedBotsAreInCharredEarthTrigger : public Trigger
+class NightbaneGroundPhaseEngagedByRangedTrigger : public Trigger
 {
 public:
-    NightbaneRangedBotsAreInCharredEarthTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "nightbane ranged bots are in charred earth") {}
-    bool IsActive() override;
-};
-
-class NightbaneMainTankIsSusceptibleToFearTrigger : public Trigger
-{
-public:
-    NightbaneMainTankIsSusceptibleToFearTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "nightbane main tank is susceptible to fear") {}
+    NightbaneGroundPhaseEngagedByRangedTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "nightbane ground phase engaged by ranged") {}
     bool IsActive() override;
 };
 
@@ -290,11 +304,19 @@ public:
     bool IsActive() override;
 };
 
-class NightbaneNeedToManageTimersAndTrackersTrigger : public Trigger
+class NightbaneBotWentOutOfBoundsTrigger : public Trigger
 {
 public:
-    NightbaneNeedToManageTimersAndTrackersTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "nightbane need to manage timers and trackers") {}
+    NightbaneBotWentOutOfBoundsTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "nightbane bot went out of bounds") {}
+    bool IsActive() override;
+};
+
+class NightbaneShouldManageTimersAndTrackersTrigger : public Trigger
+{
+public:
+    NightbaneShouldManageTimersAndTrackersTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "nightbane should manage timers and trackers") {}
     bool IsActive() override;
 };
 

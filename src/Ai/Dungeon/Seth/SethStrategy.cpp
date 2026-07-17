@@ -3,9 +3,9 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
-#include "SethTriggers.h"
 #include "SethStrategy.h"
 #include "SethMultipliers.h"
+#include "SethTriggers.h"
 
 void TbcDungeonSethekkHallsStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
@@ -13,7 +13,7 @@ void TbcDungeonSethekkHallsStrategy::InitTriggers(std::vector<TriggerNode*>& tri
         NextAction("time-lost controller mark charming totem with skull", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("sethekk prophet casts fear", {
-        NextAction("sethekk prophet drop tremor totem", ACTION_RAID) }));
+        NextAction("sethekk prophet set tremor totem", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("darkweaver syth boss summons elementals", {
         NextAction("darkweaver syth mark elementals with skull", ACTION_RAID) }));
@@ -39,7 +39,7 @@ void TbcDungeonSethekkHallsStrategy::InitTriggers(std::vector<TriggerNode*>& tri
 
 void TbcDungeonSethekkHallsStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
 {
-    multipliers.push_back(new SethekkProphetUseTremorTotemMultiplier(botAI));
+    multipliers.push_back(new SethekkProphetSetTremorTotemMultiplier(botAI));
     multipliers.push_back(new AnzuControlSpellCastingWithSpellBombMultiplier(botAI));
     multipliers.push_back(new TalonKingIkissDelayBloodlustAndHeroismMultiplier(botAI));
     multipliers.push_back(new TalonKingIkissControlMovementMultiplier(botAI));

@@ -70,10 +70,10 @@ bool KalecgosBossEngagedByTankTrigger::IsActive()
     if (!kalecgos || kalecgos->IsFriendlyTo(bot))
         return false;
 
-    if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_SPECTRAL_REALM)))
+    if (IsInSpectralRealm(bot))
         return false;
 
-    return GetKalecgosCurrentTank(botAI, bot) == bot;
+    return GetKalecgosCurrentTank(bot) == bot;
 }
 
 bool KalecgosSpectralRiftIsOpenTrigger::IsActive()
@@ -82,7 +82,7 @@ bool KalecgosSpectralRiftIsOpenTrigger::IsActive()
     if (!kalecgos || kalecgos->IsFriendlyTo(bot))
         return false;
 
-    if (!ShouldEnterKalecgosSpectralRift(botAI, bot))
+    if (!ShouldEnterKalecgosSpectralRift(bot))
         return false;
 
     constexpr float searchRadius = 75.0f;
@@ -99,7 +99,7 @@ bool KalecgosBotsTakeSplashDamageTrigger::IsActive()
     if (!kalecgos || kalecgos->IsFriendlyTo(bot) || kalecgos->GetVictim() == bot)
         return false;
 
-    return !ShouldEnterKalecgosSpectralRift(botAI, bot);
+    return !ShouldEnterKalecgosSpectralRift(bot);
 }
 
 bool KalecgosBotHasTooManyArcaneBuffetStacksTrigger::IsActive()
@@ -283,9 +283,9 @@ bool FelmystBotNearEncapsulatedPlayerTrigger::IsActive()
         return false;
 
     FelmystGroundStack const botStack =
-        GetClosestFelmystGroundStack(botAI, bot, felmyst, bot);
+        GetClosestFelmystGroundStack(bot, felmyst, bot);
     FelmystGroundStack const targetStack =
-        GetClosestFelmystGroundStack(botAI, bot, felmyst, encapsulateTarget);
+        GetClosestFelmystGroundStack(bot, felmyst, encapsulateTarget);
 
     return botStack != FelmystGroundStack::None && botStack == targetStack;
 }
@@ -360,7 +360,7 @@ bool FelmystPlayerIsCharmedByFogTrigger::IsActive()
         return false;
 
     Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
-    return felmyst && GetFelmystCharmedTarget(botAI, bot, felmyst);
+    return felmyst && GetFelmystCharmedTarget(bot, felmyst);
 }
 
 // Eredar Twins
@@ -394,7 +394,7 @@ bool EredarTwinsSacrolashEngagedByTwoTanksTrigger::IsActive()
         return false;
 
     return AI_VALUE2(Unit*, "find target", "lady sacrolash") &&
-        IsAnySacrolashTank(botAI, bot);
+        IsAnySacrolashTank(bot);
 }
 
 bool EredarTwinsAlythessEngagedByFirstAssistTankTrigger::IsActive()
@@ -406,7 +406,7 @@ bool EredarTwinsAlythessEngagedByFirstAssistTankTrigger::IsActive()
         return false;
 
     return AI_VALUE2(Unit*, "find target", "grand warlock alythess") &&
-        IsAlythessTank(botAI, bot);
+        IsAlythessTank(bot);
 }
 
 bool EredarTwinsBossesEngagedByRangedTrigger::IsActive()
@@ -434,7 +434,7 @@ bool EredarTwinsOnlyOneBossRemainsTrigger::IsActive()
     if (GetEredarTwinsConflagrationTarget(bot) == bot)
         return false;
 
-    return !IsAlythessTank(botAI, bot);
+    return !IsAlythessTank(bot);
 }
 
 bool EredarTwinsBotHasTooManyFlameTouchedStacksTrigger::IsActive()
@@ -463,7 +463,7 @@ bool EredarTwinsDeterminingDpsPriorityTrigger::IsActive()
     if (!AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
         return false;
 
-    return !IsAnySacrolashTank(botAI, bot) && !IsAlythessTank(botAI, bot);
+    return !IsAnySacrolashTank(bot) && !IsAlythessTank(bot);
 }
 
 bool EredarTwinsBotHasConflagrationTrigger::IsActive()
@@ -640,7 +640,7 @@ bool MuruVoidSpawnAvailableForEnslaveTrigger::IsActive()
     if (!muru)
         return false;
 
-    return FindAvailableVoidSpawnForEnslave(botAI, bot);
+    return FindAvailableVoidSpawnForEnslave(bot);
 }
 
 bool MuruWarlockHasEnslavedVoidSpawnTrigger::IsActive()
@@ -689,16 +689,6 @@ bool KiljaedenBossEngagedByTanksTrigger::IsActive()
     if (botAI->IsMainTank(bot))
         return true;
 
-    // Remainder is to try to release assist tanks to pick up Sinister Reflections
-    // Marker for havinig just transitioned phases
-    if (kiljaeden->GetHealthPct() > 80.0f ||
-        (kiljaeden->GetHealthPct() < 55.0f && kiljaeden->GetHealthPct() > 50.0f) ||
-        (kiljaeden->GetHealthPct() < 25.0f && kiljaeden->GetHealthPct() > 20.0f))
-    {
-        return false;
-    }
-
-    // Actually found a Sinister Reflection
     constexpr float searchRadius = 100.0f;
     if (AI_VALUE2(Unit*, "find target", "sinister reflection") ||
         bot->FindNearestCreature(

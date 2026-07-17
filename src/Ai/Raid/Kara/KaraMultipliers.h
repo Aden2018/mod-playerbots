@@ -1,13 +1,27 @@
+/*
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
+ */
+
 #ifndef PLAYERBOTS_KARAMULTIPLIERS_H
 #define PLAYERBOTS_KARAMULTIPLIERS_H
 
 #include "Multiplier.h"
 
-class AttumenTheHuntsmanDisableTankAssistMultiplier : public Multiplier
+class KarazhanSetTremorTotemMultiplier : public Multiplier
 {
 public:
-    AttumenTheHuntsmanDisableTankAssistMultiplier(
-        PlayerbotAI* botAI) : Multiplier(botAI, "attumen the huntsman disable tank assist multiplier") {}
+    KarazhanSetTremorTotemMultiplier(
+        PlayerbotAI* botAI) : Multiplier(botAI, "karazhan set tremor totem") {}
+    virtual float GetValue(Action* action);
+};
+
+class AttumenTheHuntsmanDisableAutomaticTargetingMultiplier : public Multiplier
+{
+public:
+    AttumenTheHuntsmanDisableAutomaticTargetingMultiplier(
+        PlayerbotAI* botAI) : Multiplier(botAI, "attumen the huntsman disable automatic targeting multiplier") {}
     virtual float GetValue(Action* action);
 };
 
@@ -35,6 +49,14 @@ public:
     virtual float GetValue(Action* action);
 };
 
+class MaidenOfVirtueSetGroundingTotemMultiplier : public Multiplier
+{
+public:
+    MaidenOfVirtueSetGroundingTotemMultiplier(
+        PlayerbotAI* botAI) : Multiplier(botAI, "maiden of virtue set grounding totem multiplier") {}
+    virtual float GetValue(Action* action);
+};
+
 class TheCuratorDisableTankAssistMultiplier : public Multiplier
 {
 public:
@@ -59,11 +81,19 @@ public:
     virtual float GetValue(Action* action);
 };
 
-class ShadeOfAranArcaneExplosionDisableChargeMultiplier : public Multiplier
+class TerestianIllhoofDontDotFiendishImpsMultiplier : public Multiplier
 {
 public:
-    ShadeOfAranArcaneExplosionDisableChargeMultiplier(
-        PlayerbotAI* botAI) : Multiplier(botAI, "shade of aran arcane explosion disable charge multiplier") {}
+    TerestianIllhoofDontDotFiendishImpsMultiplier(
+        PlayerbotAI* botAI) : Multiplier(botAI, "terestian illhoof don't dot fiendish imps multiplier") {}
+    virtual float GetValue(Action* action);
+};
+
+class ShadeOfAranArcaneExplosionRunAwayMultiplier : public Multiplier
+{
+public:
+    ShadeOfAranArcaneExplosionRunAwayMultiplier(
+        PlayerbotAI* botAI) : Multiplier(botAI, "shade of aran arcane explosion run away multiplier") {}
     virtual float GetValue(Action* action);
 };
 
@@ -88,14 +118,6 @@ class NetherspiteWaitForDpsMultiplier : public Multiplier
 public:
     NetherspiteWaitForDpsMultiplier(
         PlayerbotAI* botAI) : Multiplier(botAI, "netherspite wait for dps multiplier") {}
-    virtual float GetValue(Action* action);
-};
-
-class PrinceMalchezaarDisableAvoidAoeMultiplier : public Multiplier
-{
-public:
-    PrinceMalchezaarDisableAvoidAoeMultiplier(
-        PlayerbotAI* botAI) : Multiplier(botAI, "prince malchezaar disable avoid aoe multiplier") {}
     virtual float GetValue(Action* action);
 };
 

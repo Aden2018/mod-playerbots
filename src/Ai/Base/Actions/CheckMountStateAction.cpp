@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "CheckMountStateAction.h"
@@ -151,6 +152,11 @@ bool CheckMountStateAction::isUseful()
     // Not useful when:
     if (botAI->IsInVehicle() || bot->isDead() || bot->HasUnitState(UNIT_STATE_IN_FLIGHT) ||
         !bot->IsOutdoors() || bot->InArena())
+        return false;
+
+    // Selfbots don't auto-mount.
+    // If they are already mounted (manually), allow dismount logic to proceed.
+    if (botAI->IsRealPlayer() && !bot->IsMounted())
         return false;
 
     master = GetMaster();

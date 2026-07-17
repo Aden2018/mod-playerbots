@@ -150,13 +150,13 @@ float KalecgosRestrictTauntMultiplier::GetValue(Action* action)
     if (!botAI->IsTank(bot))
         return 1.0f;
 
-    if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_SPECTRAL_REALM)))
+    if (IsInSpectralRealm(bot))
         return 1.0f;
 
     if (!AI_VALUE2(Unit*, "find target", "kalecgos"))
         return 1.0f;
 
-    if (GetKalecgosCurrentTank(botAI, bot) == bot)
+    if (GetKalecgosCurrentTank(bot) == bot)
         return 1.0f;
 
     if (dynamic_cast<CastTauntAction*>(action) ||
@@ -199,7 +199,7 @@ float KalecgosSuppressAssistTankPullThreatMultiplier::GetValue(Action* action)
 
 float KalecgosDelayCooldownsForSathrovarrMultiplier::GetValue(Action* action)
 {
-    if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_SPECTRAL_REALM)))
+    if (IsInSpectralRealm(bot))
         return 1.0f;
 
     Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
@@ -495,7 +495,7 @@ float FelmystFocusAttacksOnCharmedPlayerMultiplier::GetValue(Action* action)
     if (!felmyst)
         return 1.0f;
 
-    Player* charmedTarget = GetFelmystCharmedTarget(botAI, bot, felmyst);
+    Player* charmedTarget = GetFelmystCharmedTarget(bot, felmyst);
     if (!charmedTarget)
         return 1.0f;
 
@@ -538,11 +538,12 @@ float EredarTwinsDisableAutomaticTargetingMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
         return 1.0f;
 
-    if (dynamic_cast<DpsAssistAction*>(action))
-        return 0.0f;
+    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
+        return 1.0f;
 
-    if (botAI->GetState() == BOT_STATE_COMBAT &&
-        dynamic_cast<TankAssistAction*>(action))
+    if (dynamic_cast<DpsAssistAction*>(action) ||
+        dynamic_cast<TankAssistAction*>(action) ||
+        dynamic_cast<CastDebuffSpellOnAttackerAction*>(action))
     {
         return 0.0f;
     }
@@ -558,8 +559,8 @@ float EredarTwinsControlMisdirectionMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
         return 1.0f;
 
-     if (dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
-         return 0.0f;
+    if (dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
+        return 0.0f;
 
     return 1.0f;
 }
@@ -605,9 +606,9 @@ float EredarTwinsControlThreatMultiplier::GetValue(Action* action)
     constexpr float sacrolashThreatRatio = 0.8f;
 
     bool const shouldHoldSacrolashThreat = sacrolash &&
-        ShouldHoldTwinThreat(botAI, bot, sacrolash, sacrolashThreatRatio, IsAnySacrolashTank);
+        ShouldHoldTwinThreat(bot, sacrolash, sacrolashThreatRatio, IsAnySacrolashTank);
     bool const shouldHoldAlythessThreat = alythess &&
-        ShouldHoldTwinThreat(botAI, bot, alythess, alythessThreatRatio, IsAlythessTank);
+        ShouldHoldTwinThreat(bot, alythess, alythessThreatRatio, IsAlythessTank);
 
     if (!shouldHoldSacrolashThreat && !shouldHoldAlythessThreat)
         return 1.0f;
@@ -650,7 +651,7 @@ float EredarTwinsControlMovementMultiplier::GetValue(Action* action)
     if (botAI->IsTank(bot) && dynamic_cast<AvoidAoeAction*>(action))
         return 0.0f;
 
-    if (!botAI->IsRanged(bot) && !IsAlythessTank(botAI, bot))
+    if (!botAI->IsRanged(bot) && !IsAlythessTank(bot))
         return 1.0f;
 
     if (dynamic_cast<CastReachTargetSpellAction*>(action) ||
@@ -909,8 +910,12 @@ float KiljaedenTanksFocusAssignedHandOnlyMultiplier::GetValue(Action* action)
     Player* mainTank = GetGroupMainTank(botAI, bot);
     Player* firstAssistTank = GetGroupAssistTank(botAI, bot, 0);
     Player* secondAssistTank = GetGroupAssistTank(botAI, bot, 1);
-    if (!mainTank || !firstAssistTank || !secondAssistTank)
+    if (!mainTank || !GET_PLAYERBOT_AI(mainTank) ||
+        !firstAssistTank || !GET_PLAYERBOT_AI(firstAssistTank) ||
+        !secondAssistTank || !GET_PLAYERBOT_AI(secondAssistTank))
+    {
         return 1.0f;
+    }
 
     if (botAI->IsDps(bot) && dynamic_cast<DpsAssistAction*>(action))
         return 0.0f;

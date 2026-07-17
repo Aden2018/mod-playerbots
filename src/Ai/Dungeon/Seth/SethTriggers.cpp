@@ -10,7 +10,7 @@
 namespace
 {
 constexpr uint32 SETHEKK_HALLS_MAP_ID = 556;
-constexpr uint32 SPELL_ARCANE_BUBBLE = 9438;
+constexpr uint32 SPELL_ARCANE_BUBBLE  = 9438;
 }
 
 bool TimeLostControllerDropsCharmingTotemTrigger::IsActive()
@@ -70,7 +70,7 @@ bool TalonKingIkissBossCastingArcaneExplosionTrigger::IsActive()
 {
     // Arcane Bubble is put up 1s before casting Arcane Explosion
     Unit* ikiss = AI_VALUE2(Unit*, "find target", "talon king ikiss");
-    return ikiss && ikiss->HasAura(SPELL_ARCANE_BUBBLE) && bot->IsWithinLOSInMap(ikiss);
+    return ikiss && ikiss->HasAura(SPELL_ARCANE_BUBBLE) /*&& bot->IsWithinLOSInMap(ikiss)*/;
 }
 
 bool TalonKingIkissBossOutOfLosTrigger::IsActive()
