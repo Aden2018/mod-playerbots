@@ -15,11 +15,11 @@
 
 // General
 
-class SunwellPlateauEraseTimersAndTrackersAction : public Action
+class SunwellPlateauEraseEncounterStatesAction : public Action
 {
 public:
-    SunwellPlateauEraseTimersAndTrackersAction(
-        PlayerbotAI* botAI) : Action(botAI, "sunwell plateau erase timers and trackers") {}
+    SunwellPlateauEraseEncounterStatesAction(
+        PlayerbotAI* botAI) : Action(botAI, "sunwell plateau erase encounter states") {}
     bool Execute(Event event) override;
 };
 
@@ -205,11 +205,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class FelmystCastMassDispelOnGasNovaAction : public Action
+class FelmystMassDispelGasNovaAction : public Action
 {
 public:
-    FelmystCastMassDispelOnGasNovaAction(
-        PlayerbotAI* botAI) : Action(botAI, "felmyst cast mass dispel on gas nova") {}
+    FelmystMassDispelGasNovaAction(
+        PlayerbotAI* botAI) : Action(botAI, "felmyst mass dispel gas nova") {}
     bool Execute(Event event) override;
 };
 
@@ -229,11 +229,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class FelmystAvoidFogOfCorruptionAction : public MovementAction
+class FelmystMoveToSafeFogLaneAction : public MovementAction
 {
 public:
-    FelmystAvoidFogOfCorruptionAction(
-        PlayerbotAI* botAI) : MovementAction(botAI, "felmyst avoid fog of corruption") {}
+    FelmystMoveToSafeFogLaneAction(
+        PlayerbotAI* botAI) : MovementAction(botAI, "felmyst move to safe fog lane") {}
     bool Execute(Event event) override;
 
 private:
@@ -303,11 +303,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class EredarTwinsStackInRoomCenterAction : public AttackAction
+class EredarTwinsStackInRoomCenterAction : public MovementAction
 {
 public:
     EredarTwinsStackInRoomCenterAction(
-        PlayerbotAI* botAI) : AttackAction(botAI, "eredar twins stack in room center") {}
+        PlayerbotAI* botAI) : MovementAction(botAI, "eredar twins stack in room center") {}
     bool Execute(Event event) override;
 };
 
@@ -381,8 +381,7 @@ public:
     bool Execute(Event event) override;
 
 private:
-    Unit* ResolveMuruDpsTarget(
-        Unit* muru, Unit* entropius, Unit*& currentTarget);
+    Unit* ResolveMuruDpsTarget(Unit*& currentTarget);
     Unit* SelectMuruEncounterTarget(
         Unit* currentTarget, uint32 entry,
         std::vector<Unit*> const& candidates) const;
@@ -412,7 +411,7 @@ public:
     bool Execute(Event event) override;
 
 private:
-    const Position* GetAssignedVoidSentinelTankPosition(Unit* voidSentinel) const;
+    Position const* GetAssignedVoidSentinelTankPosition(Unit* voidSentinel) const;
 };
 
 class MuruSecondAssistTankGuardRangedAction : public MovementAction
@@ -481,7 +480,7 @@ public:
 protected:
     Unit* GetControlledVoidSpawn() const;
     bool CommandControlledCreatureToAttack(Unit* controlled, Unit* target) const;
-    Unit* GetVoidSpawnVolleyPriorityTarget(Unit* muru, Unit* entropius) const;
+    Unit* GetVoidSpawnVolleyPriorityTarget() const;
 };
 
 class MuruEnslavedVoidSpawnCastShadowBoltVolleyAction : public MuruEnslavedVoidSpawnAttackAction
@@ -503,28 +502,28 @@ public:
     bool Execute(Event event) override;
 };
 
-class KiljaedenMoveAwayFromFelfirePortalAction : public MovementAction
+class KiljaedenMarkAndPrioritizeHandsOfTheDeceiverAction : public AttackAction
 {
 public:
-    KiljaedenMoveAwayFromFelfirePortalAction(
-        PlayerbotAI* botAI) : MovementAction(botAI, "kil'jaeden move away from felfire portal") {}
+    KiljaedenMarkAndPrioritizeHandsOfTheDeceiverAction(
+        PlayerbotAI* botAI) : AttackAction(botAI, "kil'jaeden mark and prioritize hands of the deceiver") {}
     bool Execute(Event event) override;
+
+private:
+    void AssignHandsToTanks(std::vector<Unit*> const& hands, size_t myIndex);
+    bool DpsAttackPriorityTargets();
 };
 
-class KiljaedenAvoidArmageddonsAction : public MovementAction
+class KiljaedenStunHandsOfTheDeceiverAction : public Action
 {
 public:
-    KiljaedenAvoidArmageddonsAction(
-        PlayerbotAI* botAI) : MovementAction(botAI, "kil'jaeden avoid armageddons") {}
+    KiljaedenStunHandsOfTheDeceiverAction(
+        PlayerbotAI* botAI) : Action(botAI, "kil'jaeden stun hands of the deceiver") {}
     bool Execute(Event event) override;
-};
 
-class KiljaedenStackForShieldOfTheBlueAction : public MovementAction
-{
-public:
-    KiljaedenStackForShieldOfTheBlueAction(
-        PlayerbotAI* botAI) : MovementAction(botAI, "kil'jaeden stack for shield of the blue") {}
-    bool Execute(Event event) override;
+private:
+    bool CastStunOnHand(Unit* hand);
+    bool CastSilenceOnHand(Unit* hand);
 };
 
 class KiljaedenPositionTanksAction : public AttackAction
@@ -541,6 +540,10 @@ public:
     KiljaedenPositionMeleeAction(
         PlayerbotAI* botAI) : MovementAction(botAI, "kil'jaeden position melee") {}
     bool Execute(Event event) override;
+
+private:
+    bool TryGetPosition(Position& position) const;
+    bool TryAdjustForArmageddon(Position& position);
 };
 
 class KiljaedenPositionRangedAction : public MovementAction
@@ -551,7 +554,8 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool TryGetRangedPosition(Position& position) const;
+    bool TryGetPosition(Position& position) const;
+    bool TryAdjustForArmageddon(Position& position);
 };
 
 class KiljaedenRemoveFireBloomAction : public Action
@@ -559,6 +563,14 @@ class KiljaedenRemoveFireBloomAction : public Action
 public:
     KiljaedenRemoveFireBloomAction(
         PlayerbotAI* botAI) : Action(botAI, "kil'jaeden remove fire bloom") {}
+    bool Execute(Event event) override;
+};
+
+class KiljaedenStackForShieldOfTheBlueAction : public MovementAction
+{
+public:
+    KiljaedenStackForShieldOfTheBlueAction(
+        PlayerbotAI* botAI) : MovementAction(botAI, "kil'jaeden stack for shield of the blue") {}
     bool Execute(Event event) override;
 };
 
@@ -586,12 +598,8 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool _inDarkness = false;
-    bool _shieldCastThisDarkness = false;
-    uint32 _darknessStartMs = 0;
-    uint32 _lastDarknessCastMsLeft = 0;
-    bool ExecuteDuringDarknessOfAThousandSouls(Unit* kiljaeden);
-    bool ExecuteOutsideDarknessOfAThousandSouls();
+    bool ExecuteDuringDarknessOfAThousandSouls(Unit* kiljaeden, Unit* dragon);
+    bool ExecuteOutsideDarknessOfAThousandSouls(Unit* dragon);
 };
 
 #endif

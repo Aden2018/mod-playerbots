@@ -15,11 +15,11 @@ using namespace SunwellHelpers;
 bool EredarTwinsMeleeJumpDownFromBalconyAction::Execute(Event /*event*/)
 {
     Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
-    const Position& jumpPos = EREDAR_TWINS_P1_RANGED_POSITION;
-    const Position landingPos = GetEredarTwinsP2MeleeStackPosition(alythess);
+    Position const jumpPos = EREDAR_TWINS_P1_RANGED_POSITION;
+    Position const landingPos = GetEredarTwinsP2MeleeStackPosition(alythess);
 
     constexpr float arrivalDistance = 2.0f;
-    const float distanceToJumpPos = bot->GetExactDist2d(
+    float const distanceToJumpPos = bot->GetExactDist2d(
         jumpPos.GetPositionX(), jumpPos.GetPositionY());
 
     if (distanceToJumpPos > arrivalDistance)
@@ -108,25 +108,22 @@ bool EredarTwinsMainAndSecondAssistTanksPositionSacrolashAction::Execute(Event /
     if (!sacrolash)
         return false;
 
-    MarkTargetWithStar(bot, sacrolash);
-    SetRtiTarget(botAI, "star", sacrolash);
-
     if (AI_VALUE(Unit*, "current target") != sacrolash)
         return Attack(sacrolash);
 
     if (sacrolash->GetVictim() == bot && bot->IsWithinMeleeRange(sacrolash))
     {
-        const Position& position = SACROLASH_TANK_POSITION;
-        const float distToPosition = bot->GetExactDist2d(
+        Position const position = SACROLASH_TANK_POSITION;
+        float const distToPosition = bot->GetExactDist2d(
             position.GetPositionX(), position.GetPositionY());
 
         if (distToPosition > 2.0f)
         {
-            const float dX = position.GetPositionX() - bot->GetPositionX();
-            const float dY = position.GetPositionY() - bot->GetPositionY();
-            const float moveDist = std::min(2.25f, distToPosition);
-            const float moveX = bot->GetPositionX() + (dX / distToPosition) * moveDist;
-            const float moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
+            float const dX = position.GetPositionX() - bot->GetPositionX();
+            float const dY = position.GetPositionY() - bot->GetPositionY();
+            float const moveDist = std::min(2.25f, distToPosition);
+            float const moveX = bot->GetPositionX() + (dX / distToPosition) * moveDist;
+            float const moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
 
             return MoveTo(
                 SUNWELL_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
@@ -147,19 +144,16 @@ bool EredarTwinsFirstAssistTankMoveOutOfBlazeAction::Execute(Event /*event*/)
     if (index >= ALYTHESS_TANK_POSITION_COUNT || bot->GetPositionZ() > EREDAR_TWINS_BALCONY_Z)
         index = 0;
 
-    MarkTargetWithCircle(bot, alythess);
-    SetRtiTarget(botAI, "circle", alythess);
-
     if (AI_VALUE(Unit*, "current target") != alythess)
         return Attack(alythess);
 
     auto const findSafeAlythessTankIndex =
         [&](uint8 startIndex, bool includeStart, uint8& safeIndex)
     {
-        const size_t offsetStart = includeStart ? 0 : 1;
+        size_t const offsetStart = includeStart ? 0 : 1;
         for (size_t offset = offsetStart; offset < ALYTHESS_TANK_POSITION_COUNT; ++offset)
         {
-            const uint8 candidateIndex =
+            uint8 const candidateIndex =
                 static_cast<uint8>((startIndex + offset) % ALYTHESS_TANK_POSITION_COUNT);
 
             if (IsAlythessTankPositionSafe(bot, GetAlythessTankPosition(alythess, candidateIndex)))
@@ -182,10 +176,10 @@ bool EredarTwinsFirstAssistTankMoveOutOfBlazeAction::Execute(Event /*event*/)
         _alythessTankStep = index;
     }
 
-    const Position position = GetAlythessTankPosition(alythess, index);
+    Position const position = GetAlythessTankPosition(alythess, index);
 
     constexpr float maxDistance = 1.0f;
-    const float distToPosition = bot->GetExactDist2d(position);
+    float const distToPosition = bot->GetExactDist2d(position);
 
     if (alythess->GetVictim() == bot)
     {
@@ -197,16 +191,16 @@ bool EredarTwinsFirstAssistTankMoveOutOfBlazeAction::Execute(Event /*event*/)
 
             index = safeIndex;
             _alythessTankStep = index;
-            const Position newPosition = GetAlythessTankPosition(alythess, index);
-            const float newDistToPosition = bot->GetExactDist2d(newPosition);
+            Position const newPosition = GetAlythessTankPosition(alythess, index);
+            float const newDistToPosition = bot->GetExactDist2d(newPosition);
 
             if (newDistToPosition > maxDistance)
             {
-                const float dX = newPosition.GetPositionX() - bot->GetPositionX();
-                const float dY = newPosition.GetPositionY() - bot->GetPositionY();
-                const float moveDist = std::min(3.5f, newDistToPosition);
-                const float moveX = bot->GetPositionX() + (dX / newDistToPosition) * moveDist;
-                const float moveY = bot->GetPositionY() + (dY / newDistToPosition) * moveDist;
+                float const dX = newPosition.GetPositionX() - bot->GetPositionX();
+                float const dY = newPosition.GetPositionY() - bot->GetPositionY();
+                float const moveDist = std::min(3.5f, newDistToPosition);
+                float const moveX = bot->GetPositionX() + (dX / newDistToPosition) * moveDist;
+                float const moveY = bot->GetPositionY() + (dY / newDistToPosition) * moveDist;
 
                 return MoveTo(
                     SUNWELL_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
@@ -215,11 +209,11 @@ bool EredarTwinsFirstAssistTankMoveOutOfBlazeAction::Execute(Event /*event*/)
         }
         else if (distToPosition > maxDistance)
         {
-            const float dX = position.GetPositionX() - bot->GetPositionX();
-            const float dY = position.GetPositionY() - bot->GetPositionY();
-            const float moveDist = std::min(3.5f, distToPosition);
-            const float moveX = bot->GetPositionX() + (dX / distToPosition) * moveDist;
-            const float moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
+            float const dX = position.GetPositionX() - bot->GetPositionX();
+            float const dY = position.GetPositionY() - bot->GetPositionY();
+            float const moveDist = std::min(3.5f, distToPosition);
+            float const moveX = bot->GetPositionX() + (dX / distToPosition) * moveDist;
+            float const moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
 
             return MoveTo(
                 SUNWELL_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
@@ -235,7 +229,7 @@ bool EredarTwinsPositionRangedAction::Execute(Event /*event*/)
     Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
     if (sacrolash && sacrolash->GetVictim() != bot)
     {
-        const Position& position = EREDAR_TWINS_P1_RANGED_POSITION;
+        Position const position = EREDAR_TWINS_P1_RANGED_POSITION;
 
         if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 1.0f)
         {
@@ -251,11 +245,11 @@ bool EredarTwinsPositionRangedAction::Execute(Event /*event*/)
     else if (bot->GetPositionZ() > EREDAR_TWINS_BALCONY_Z)
     {
         Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
-        const Position& jumpPos = EREDAR_TWINS_P1_RANGED_POSITION;
-        const Position landingPos = GetEredarTwinsP2RangedStackPosition(alythess);
+        Position const jumpPos = EREDAR_TWINS_P1_RANGED_POSITION;
+        Position const landingPos = GetEredarTwinsP2RangedStackPosition(alythess);
 
         constexpr float arrivalDistance = 2.0f;
-        const float distanceToJumpPos = bot->GetExactDist2d(
+        float const distanceToJumpPos = bot->GetExactDist2d(
             jumpPos.GetPositionX(), jumpPos.GetPositionY());
 
         if (distanceToJumpPos > arrivalDistance)
@@ -279,7 +273,10 @@ bool EredarTwinsPositionRangedAction::Execute(Event /*event*/)
 bool EredarTwinsStackInRoomCenterAction::Execute(Event /*event*/)
 {
     Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
-    const Position position = botAI->IsRanged(bot) ?
+    if (!alythess)
+        return false;
+
+    Position const position = botAI->IsRanged(bot) ?
         GetEredarTwinsP2RangedStackPosition(alythess) :
         GetEredarTwinsP2MeleeStackPosition(alythess);
 
@@ -290,9 +287,6 @@ bool EredarTwinsStackInRoomCenterAction::Execute(Event /*event*/)
             position.GetPositionZ(), false, false, false, false,
             MovementPriority::MOVEMENT_FORCED, true, false);
     }
-
-    if (alythess && botAI->IsTank(bot) && AI_VALUE(Unit*, "current target") != alythess)
-        return Attack(alythess);
 
     return false;
 }
@@ -320,51 +314,38 @@ bool EredarTwinsRemoveFlameSearAction::Execute(Event /*event*/)
 
 bool EredarTwinsDpsPrioritizeLadySacrolashAction::Execute(Event /*event*/)
 {
-    Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
     if (Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash"))
     {
-        if (ShouldHoldSacrolashThreat(botAI, bot, alythess, sacrolash))
+        constexpr float threatRatio = 0.8f;
+        if (ShouldHoldTwinThreat(botAI, bot, sacrolash, threatRatio, IsAnySacrolashTank))
         {
-            if (AI_VALUE(Unit*, "current target") == sacrolash)
-            {
-                bot->AttackStop();
-                bot->InterruptNonMeleeSpells(true);
-                bot->SetTarget(ObjectGuid::Empty);
-                bot->SetSelection(ObjectGuid());
-                return true;
-            }
-
-            return false;
+            bot->AttackStop();
+            bot->InterruptNonMeleeSpells(true);
+            bot->SetTarget(ObjectGuid::Empty);
+            bot->SetSelection(ObjectGuid());
+            return true;
         }
-        else
+        else if (AI_VALUE(Unit*, "current target") != sacrolash)
         {
-            SetRtiTarget(botAI, "star", sacrolash);
-
-            if (AI_VALUE(Unit*, "current target") != sacrolash)
-                return Attack(sacrolash);
+            return Attack(sacrolash);
         }
+
+        return false;
     }
-    else if (alythess)
+    else if (Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
     {
-        if (ShouldHoldAlythessThreat(botAI, bot, alythess))
+        constexpr float threatRatio = 0.9f;
+        if (ShouldHoldTwinThreat(botAI, bot, alythess, threatRatio, IsAlythessTank))
         {
-            if (AI_VALUE(Unit*, "current target") == alythess)
-            {
-                bot->AttackStop();
-                bot->InterruptNonMeleeSpells(true);
-                bot->SetTarget(ObjectGuid::Empty);
-                bot->SetSelection(ObjectGuid());
-                return true;
-            }
-
-            return false;
+            bot->AttackStop();
+            bot->InterruptNonMeleeSpells(true);
+            bot->SetTarget(ObjectGuid::Empty);
+            bot->SetSelection(ObjectGuid());
+            return true;
         }
-        else
+        else if (AI_VALUE(Unit*, "current target") != alythess)
         {
-            SetRtiTarget(botAI, "circle", alythess);
-
-            if (AI_VALUE(Unit*, "current target") != alythess)
-                return Attack(alythess);
+            return Attack(alythess);
         }
     }
 
@@ -381,7 +362,7 @@ bool EredarTwinsConflagratedBotMoveFromGroupAction::Execute(Event /*event*/)
 
     if (AI_VALUE2(Unit*, "find target", "lady sacrolash"))
     {
-        const Position& position = botAI->IsRanged(bot) ?
+        Position const position = botAI->IsRanged(bot) ?
             EREDAR_TWINS_RANGED_CONFLAG_POSITION : EREDAR_TWINS_MELEE_CONFLAG_POSITION;
 
         if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 1.0f)
@@ -397,7 +378,7 @@ bool EredarTwinsConflagratedBotMoveFromGroupAction::Execute(Event /*event*/)
         constexpr float safeDistance = 10.0f;
         if (Unit* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistance))
         {
-            const float distanceToPlayer = bot->GetExactDist2d(nearestPlayer);
+            float const distanceToPlayer = bot->GetExactDist2d(nearestPlayer);
             if (distanceToPlayer < safeDistance)
             {
                 botAI->InterruptSpell();

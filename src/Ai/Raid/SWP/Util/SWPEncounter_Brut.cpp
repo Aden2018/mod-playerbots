@@ -14,7 +14,9 @@
 namespace SunwellHelpers
 {
 
-const Position BRUTALLUS_MAIN_TANK_POSITION = { 1483.528f, 595.346f, 23.552f };
+// Note: Brutallus's CombatReach is 18.0f
+
+Position const BRUTALLUS_MAIN_TANK_POSITION = { 1483.528f, 595.346f, 23.552f };
 
 std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>> brutallusRangedAssignments;
 
@@ -118,8 +120,8 @@ Position GetBrutallusPositionAtAngle(Player* bot, Unit* brutallus, float angle, 
     if (!brutallus)
         return { 0.0f, 0.0f, 0.0f };
 
-    const float x = brutallus->GetPositionX() + std::cos(angle) * radius;
-    const float y = brutallus->GetPositionY() + std::sin(angle) * radius;
+    float const x = brutallus->GetPositionX() + std::cos(angle) * radius;
+    float const y = brutallus->GetPositionY() + std::sin(angle) * radius;
     return { x, y, bot->GetPositionZ() };
 }
 
@@ -128,7 +130,7 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
     if (slotCount <= 1)
         return 0.0f;
 
-    const float angleStep = arcWidth / static_cast<float>(slotCount - 1);
+    float const angleStep = arcWidth / static_cast<float>(slotCount - 1);
     if (slotCount % 2 == 1)
     {
         if (slotIndex == 0)
@@ -142,8 +144,8 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
         return angleOffset;
     }
 
-    const float halfStep = angleStep / 2.0f;
-    const uint8 pairIndex = slotIndex / 2;
+    float const halfStep = angleStep / 2.0f;
+    uint8 const pairIndex = slotIndex / 2;
     float angleOffset = halfStep + angleStep * pairIndex;
     if (slotIndex % 2 == 1)
         angleOffset = -angleOffset;
@@ -195,114 +197,6 @@ bool TryGetBrutallusAssignedPositionIndex(
     }
 
     return false;
-}
-
-bool TryGetBrutallusRangedPosition(
-    Player* bot, Unit* brutallus, Player* mainTank, Player* assistTank,
-    uint8 rangedIndex, float radius, Position& position)
-{
-    if (!brutallus || rangedIndex >= BRUTALLUS_TOTAL_RANGED_POSITIONS)
-        return false;
-
-    const BrutallusRangedSlotInfo slotInfo = {
-        rangedIndex % 2 == 0,
-        static_cast<uint8>((rangedIndex / 2) % BRUTALLUS_RANGED_POSITIONS_PER_GROUP)
-    };
-
-    const float mainTankAngle =
-        GetBrutallusTankAngle(brutallus, mainTank, GetBrutallusMainTankAngle(brutallus));
-    const float assistTankAngle = GetBrutallusTankAngle(
-        brutallus, assistTank,
-        Position::NormalizeOrientation(mainTankAngle + BRUTALLUS_ASSIST_TANK_ANGLE_OFFSET));
-
-    const float tankAngle = slotInfo.isMainTankGroup ? mainTankAngle : assistTankAngle;
-    const float angleOffset = GetCenteredArcSlotAngleOffset(
-        slotInfo.arcPositionIndex, BRUTALLUS_RANGED_POSITIONS_PER_GROUP,
-        BRUTALLUS_RANGED_GROUP_ARC_WIDTH);
-
-    const float angle = Position::NormalizeOrientation(tankAngle + angleOffset);
-
-    position = GetBrutallusPositionAtAngle(bot, brutallus, angle, radius);
-    return true;
-}
-
-bool TryGetBrutallusBurnPadPosition(
-    Player* bot, Unit* brutallus, Player* mainTank,
-    uint8 rangedIndex, float radius, Position& position)
-{
-    if (!brutallus || rangedIndex >= BRUTALLUS_TOTAL_RANGED_POSITIONS)
-        return false;
-
-    uint8 padIndex = 0;
-    if (!TryGetBrutallusBurnPadIndex(bot, rangedIndex, padIndex))
-        return false;
-
-    static constexpr float degreeToRadian = M_PI / 180.0f;
-    static constexpr std::array<float, BRUTALLUS_TOTAL_BURN_PADS>
-        burnPadAngleOffsets = {
-            70.0f * degreeToRadian,
-            83.3f * degreeToRadian,
-            96.7f * degreeToRadian,
-            110.0f * degreeToRadian,
-            130.0f * degreeToRadian,
-            143.3f * degreeToRadian,
-            156.7f * degreeToRadian,
-            170.0f * degreeToRadian
-        };
-
-    const float mainTankAngle =
-        GetBrutallusTankAngle(brutallus, mainTank, GetBrutallusMainTankAngle(brutallus));
-    const float angle =
-        Position::NormalizeOrientation(mainTankAngle + burnPadAngleOffsets[padIndex]);
-
-    position = GetBrutallusPositionAtAngle(bot, brutallus, angle, radius);
-    return true;
-}
-
-bool TryGetBrutallusLaneTraversalPosition(
-    Player* bot, Unit* brutallus, float targetX, float targetY, float radius,
-    float currentX, float currentY, Position& position)
-{
-    if (!brutallus)
-        return false;
-
-    const float targetAngle = Position::NormalizeOrientation(std::atan2(
-        targetY - brutallus->GetPositionY(), targetX - brutallus->GetPositionX()));
-
-    const float currentAngle = Position::NormalizeOrientation(
-        std::atan2(currentY - brutallus->GetPositionY(), currentX - brutallus->GetPositionX()));
-
-    float remainingAngle = Position::NormalizeOrientation(targetAngle - currentAngle);
-    if (remainingAngle > static_cast<float>(M_PI))
-        remainingAngle -= 2.0f * static_cast<float>(M_PI);
-
-    constexpr float stepDistance = 3.0f;
-    const float stepRatio = stepDistance / (2.0f * radius);
-    const float clampedStepRatio = std::clamp(stepRatio, 0.0f, 1.0f);
-    const float stepAngle = 2.0f * std::asin(clampedStepRatio);
-    float nextAngle = targetAngle;
-
-    if (std::fabs(remainingAngle) > stepAngle)
-    {
-        nextAngle = Position::NormalizeOrientation(
-            currentAngle + std::copysign(stepAngle, remainingAngle));
-    }
-
-    position = GetBrutallusPositionAtAngle(bot, brutallus, nextAngle, radius);
-    return true;
-}
-
-bool ReleaseBrutallusBurnPad(Player* bot)
-{
-    auto instanceItr = brutallusRangedBurnPadAssignments.find(bot->GetInstanceId());
-    if (instanceItr == brutallusRangedBurnPadAssignments.end())
-        return false;
-
-    const bool erased = instanceItr->second.erase(bot->GetGUID()) > 0;
-    if (instanceItr->second.empty())
-        brutallusRangedBurnPadAssignments.erase(instanceItr);
-
-    return erased;
 }
 
 void EnsureBrutallusRangedAssignments(PlayerbotAI* botAI, Player* bot)
@@ -367,6 +261,114 @@ void EnsureBrutallusRangedAssignments(PlayerbotAI* botAI, Player* bot)
         if (!assignNextOpenSlot(member))
             return;
     }
+}
+
+bool TryGetBrutallusRangedPosition(
+    Player* bot, Unit* brutallus, Player* mainTank, Player* assistTank,
+    uint8 rangedIndex, float radius, Position& position)
+{
+    if (!brutallus || rangedIndex >= BRUTALLUS_TOTAL_RANGED_POSITIONS)
+        return false;
+
+    const BrutallusRangedSlotInfo slotInfo = {
+        rangedIndex % 2 == 0,
+        static_cast<uint8>((rangedIndex / 2) % BRUTALLUS_RANGED_POSITIONS_PER_GROUP)
+    };
+
+    float const mainTankAngle =
+        GetBrutallusTankAngle(brutallus, mainTank, GetBrutallusMainTankAngle(brutallus));
+    float const assistTankAngle = GetBrutallusTankAngle(
+        brutallus, assistTank,
+        Position::NormalizeOrientation(mainTankAngle + BRUTALLUS_ASSIST_TANK_ANGLE_OFFSET));
+
+    float const tankAngle = slotInfo.isMainTankGroup ? mainTankAngle : assistTankAngle;
+    float const angleOffset = GetCenteredArcSlotAngleOffset(
+        slotInfo.arcPositionIndex, BRUTALLUS_RANGED_POSITIONS_PER_GROUP,
+        BRUTALLUS_RANGED_GROUP_ARC_WIDTH);
+
+    float const angle = Position::NormalizeOrientation(tankAngle + angleOffset);
+
+    position = GetBrutallusPositionAtAngle(bot, brutallus, angle, radius);
+    return true;
+}
+
+bool TryGetBrutallusBurnPadPosition(
+    Player* bot, Unit* brutallus, Player* mainTank,
+    uint8 rangedIndex, float radius, Position& position)
+{
+    if (!brutallus || rangedIndex >= BRUTALLUS_TOTAL_RANGED_POSITIONS)
+        return false;
+
+    uint8 padIndex = 0;
+    if (!TryGetBrutallusBurnPadIndex(bot, rangedIndex, padIndex))
+        return false;
+
+    static constexpr float degreeToRadian = M_PI / 180.0f;
+    static constexpr std::array<float, BRUTALLUS_TOTAL_BURN_PADS>
+        burnPadAngleOffsets = {
+            70.0f * degreeToRadian,
+            83.3f * degreeToRadian,
+            96.7f * degreeToRadian,
+            110.0f * degreeToRadian,
+            130.0f * degreeToRadian,
+            143.3f * degreeToRadian,
+            156.7f * degreeToRadian,
+            170.0f * degreeToRadian
+        };
+
+    float const mainTankAngle =
+        GetBrutallusTankAngle(brutallus, mainTank, GetBrutallusMainTankAngle(brutallus));
+    float const angle =
+        Position::NormalizeOrientation(mainTankAngle + burnPadAngleOffsets[padIndex]);
+
+    position = GetBrutallusPositionAtAngle(bot, brutallus, angle, radius);
+    return true;
+}
+
+bool TryGetBrutallusLaneTraversalPosition(
+    Player* bot, Unit* brutallus, float targetX, float targetY, float radius,
+    float currentX, float currentY, Position& position)
+{
+    if (!brutallus)
+        return false;
+
+    float const targetAngle = Position::NormalizeOrientation(std::atan2(
+        targetY - brutallus->GetPositionY(), targetX - brutallus->GetPositionX()));
+
+    float const currentAngle = Position::NormalizeOrientation(
+        std::atan2(currentY - brutallus->GetPositionY(), currentX - brutallus->GetPositionX()));
+
+    float remainingAngle = Position::NormalizeOrientation(targetAngle - currentAngle);
+    if (remainingAngle > static_cast<float>(M_PI))
+        remainingAngle -= 2.0f * static_cast<float>(M_PI);
+
+    constexpr float stepDistance = 3.0f;
+    float const stepRatio = stepDistance / (2.0f * radius);
+    float const clampedStepRatio = std::clamp(stepRatio, 0.0f, 1.0f);
+    float const stepAngle = 2.0f * std::asin(clampedStepRatio);
+    float nextAngle = targetAngle;
+
+    if (std::fabs(remainingAngle) > stepAngle)
+    {
+        nextAngle = Position::NormalizeOrientation(
+            currentAngle + std::copysign(stepAngle, remainingAngle));
+    }
+
+    position = GetBrutallusPositionAtAngle(bot, brutallus, nextAngle, radius);
+    return true;
+}
+
+bool ReleaseBrutallusBurnPad(Player* bot)
+{
+    auto instanceItr = brutallusRangedBurnPadAssignments.find(bot->GetInstanceId());
+    if (instanceItr == brutallusRangedBurnPadAssignments.end())
+        return false;
+
+    bool const erased = instanceItr->second.erase(bot->GetGUID()) > 0;
+    if (instanceItr->second.empty())
+        brutallusRangedBurnPadAssignments.erase(instanceItr);
+
+    return erased;
 }
 
 }

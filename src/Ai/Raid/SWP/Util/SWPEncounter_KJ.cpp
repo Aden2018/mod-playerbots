@@ -16,6 +16,8 @@
 namespace SunwellHelpers
 {
 
+// Note: Kil'jaeden's CombatReach is 15.0f
+
 namespace
 {
 
@@ -24,13 +26,13 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
     if (slotCount <= 1)
         return 0.0f;
 
-    const float angleStep = arcWidth / static_cast<float>(slotCount - 1);
+    float const angleStep = arcWidth / static_cast<float>(slotCount - 1);
     if (slotCount % 2 == 1)
     {
         if (slotIndex == 0)
             return 0.0f;
 
-        const uint8 stepIndex = (slotIndex + 1) / 2;
+        uint8 const stepIndex = (slotIndex + 1) / 2;
         float angleOffset = angleStep * stepIndex;
         if (slotIndex % 2 == 0)
             angleOffset = -angleOffset;
@@ -38,8 +40,8 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
         return angleOffset;
     }
 
-    const float halfStep = angleStep / 2.0f;
-    const uint8 pairIndex = slotIndex / 2;
+    float const halfStep = angleStep / 2.0f;
+    uint8 const pairIndex = slotIndex / 2;
     float angleOffset = halfStep + angleStep * pairIndex;
     if (slotIndex % 2 == 1)
         angleOffset = -angleOffset;
@@ -133,11 +135,11 @@ float GetKiljaedenNearestArmageddonDistance(
 
 } // end anonymous namespace
 
-const Position KILJAEDEN_TANK_POSITION =     { 1704.729f, 634.891f, 27.787f };
-const Position KILJAEDEN_S_MELEE_POSITION =  { 1689.487f, 632.119f, 27.823f };
-const Position KILJAEDEN_E_MELEE_POSITION =  { 1700.542f, 619.589f, 27.786f };
-const Position KILJAEDEN_DARKNESS_POSITION = { 1709.768f, 642.241f, 27.706f };
-const Position KILJAEDEN_CENTER_POSITION =   { 1698.450f, 628.030f, 28.199f };
+Position const KILJAEDEN_TANK_POSITION =     { 1704.729f, 634.891f, 27.787f };
+Position const KILJAEDEN_S_MELEE_POSITION =  { 1689.487f, 632.119f, 27.823f };
+Position const KILJAEDEN_E_MELEE_POSITION =  { 1700.542f, 619.589f, 27.786f };
+Position const KILJAEDEN_DARKNESS_POSITION = { 1709.768f, 642.241f, 27.706f };
+Position const KILJAEDEN_CENTER_POSITION =   { 1698.450f, 628.030f, 28.199f };
 
 uint32 const KILJAEDEN_DRAGON_ORB_ENTRIES[4] =
 {
@@ -149,33 +151,11 @@ uint32 const KILJAEDEN_DRAGON_ORB_ENTRIES[4] =
 
 std::unordered_set<ObjectGuid> kiljaedenTrackedArmageddonTargets;
 
-std::unordered_map<uint32, std::vector<KiljaedenArmageddon>> kiljaedenArmageddons;
+std::unordered_map<uint32, KiljaedenEncounterState> kiljaedenEncounterStates;
 
-std::unordered_map<uint32, uint32> kiljaedenDragonOrbAnnouncementTimes;
+std::unordered_map<uint32, std::array<ObjectGuid, 3>> kiljaedenHandTankAssignments;
 
 std::unordered_map<ObjectGuid::LowType, uint32> kiljaedenDragonOrbUseTimes;
-
-std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>> kiljaedenRangedAssignments;
-
-std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>>
-    kiljaedenRangedArmageddonAssignments;
-
-void PruneExpiredKiljaedenArmageddons(uint32 instanceId)
-{
-    auto const instanceItr = kiljaedenArmageddons.find(instanceId);
-    if (instanceItr == kiljaedenArmageddons.end())
-        return;
-
-    const uint32 now = getMSTime();
-    std::vector<KiljaedenArmageddon>& armageddons = instanceItr->second;
-    armageddons.erase(std::remove_if(armageddons.begin(), armageddons.end(),
-        [now](KiljaedenArmageddon const& armageddon) {
-            return !armageddon.expireMs || armageddon.expireMs <= now;
-        }), armageddons.end());
-
-    if (armageddons.empty())
-        kiljaedenArmageddons.erase(instanceItr);
-}
 
 void AddKiljaedenArmageddon(
     uint32 instanceId, Position const& destination, uint32 durationMs, float safeDistance)
@@ -183,29 +163,29 @@ void AddKiljaedenArmageddon(
     if (!durationMs || safeDistance <= 0.0f)
         return;
 
-    const uint32 now = getMSTime();
+    uint32 const now = getMSTime();
     PruneExpiredKiljaedenArmageddons(instanceId);
 
     KiljaedenArmageddon armageddon;
     armageddon.destination = destination;
     armageddon.expireMs = now + durationMs;
     armageddon.safeDistance = safeDistance;
-    kiljaedenArmageddons[instanceId].push_back(armageddon);
+    kiljaedenEncounterStates[instanceId].armageddons.push_back(armageddon);
 }
 
 bool TryGetKiljaedenNearestArmageddon(Player* bot, KiljaedenArmageddon& armageddon)
 {
     PruneExpiredKiljaedenArmageddons(bot->GetInstanceId());
-    auto const instanceItr = kiljaedenArmageddons.find(bot->GetInstanceId());
-    if (instanceItr == kiljaedenArmageddons.end())
+    auto const stateItr = kiljaedenEncounterStates.find(bot->GetInstanceId());
+    if (stateItr == kiljaedenEncounterStates.end())
         return false;
 
     bool foundArmageddon = false;
     float bestDistance = 0.0f;
 
-    for (KiljaedenArmageddon const& candidate : instanceItr->second)
+    for (KiljaedenArmageddon const& candidate : stateItr->second.armageddons)
     {
-        const float distance = bot->GetExactDist2d(
+        float const distance = bot->GetExactDist2d(
             candidate.destination.GetPositionX(), candidate.destination.GetPositionY());
         if (distance >= candidate.safeDistance)
             continue;
@@ -221,11 +201,18 @@ bool TryGetKiljaedenNearestArmageddon(Player* bot, KiljaedenArmageddon& armagedd
     return foundArmageddon;
 }
 
-bool IsKiljaedenCastingDarknessOfAThousandSouls(Unit* kiljaeden)
+void PruneExpiredKiljaedenArmageddons(uint32 instanceId)
 {
-    return kiljaeden && kiljaeden->HasUnitState(UNIT_STATE_CASTING) &&
-        kiljaeden->FindCurrentSpellBySpellId(
-            static_cast<uint32>(SunwellSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
+    auto const stateItr = kiljaedenEncounterStates.find(instanceId);
+    if (stateItr == kiljaedenEncounterStates.end())
+        return;
+
+    uint32 const now = getMSTime();
+    std::vector<KiljaedenArmageddon>& armageddons = stateItr->second.armageddons;
+    armageddons.erase(std::remove_if(armageddons.begin(), armageddons.end(),
+        [now](KiljaedenArmageddon const& armageddon) {
+            return !armageddon.expireMs || armageddon.expireMs <= now;
+        }), armageddons.end());
 }
 
 bool TryGetKiljaedenRangedSlotPosition(uint8 slotIndex, Position& position)
@@ -247,11 +234,11 @@ bool TryGetKiljaedenRangedSlotPosition(uint8 slotIndex, Position& position)
         localSlotIndex -= KILJAEDEN_INNER_RANGED_SLOT_COUNT;
     }
 
-    const float angleOffset = GetCenteredArcSlotAngleOffset(localSlotIndex, slotCount, M_PI);
-    const float angle =
+    float const angleOffset = GetCenteredArcSlotAngleOffset(localSlotIndex, slotCount, M_PI);
+    float const angle =
         Position::NormalizeOrientation(KILJAEDEN_RANGED_ARC_ORIENTATION + angleOffset);
-    const float positionX = KILJAEDEN_CENTER_POSITION.GetPositionX() + std::cos(angle) * radius;
-    const float positionY = KILJAEDEN_CENTER_POSITION.GetPositionY() + std::sin(angle) * radius;
+    float const positionX = KILJAEDEN_CENTER_POSITION.GetPositionX() + std::cos(angle) * radius;
+    float const positionY = KILJAEDEN_CENTER_POSITION.GetPositionY() + std::sin(angle) * radius;
 
     position = Position{ positionX, positionY, KILJAEDEN_CENTER_POSITION.GetPositionZ() };
     return true;
@@ -263,7 +250,7 @@ void EnsureKiljaedenRangedAssignments(PlayerbotAI* botAI, Player* bot)
     if (!group || bot->GetMapId() != SUNWELL_MAP_ID)
         return;
 
-    auto& assignments = kiljaedenRangedAssignments[bot->GetInstanceId()];
+    auto& assignments = kiljaedenEncounterStates[bot->GetInstanceId()].rangedAssignments;
 
     std::vector<ObjectGuid> invalidAssignments;
     for (auto const& assignment : assignments)
@@ -275,8 +262,8 @@ void EnsureKiljaedenRangedAssignments(PlayerbotAI* botAI, Player* bot)
             if (!member || member->GetGUID() != assignment.first)
                 continue;
 
-            found = member->GetMapId() == SUNWELL_MAP_ID && GET_PLAYERBOT_AI(member) &&
-                botAI->IsRanged(member);
+            found = member->GetMapId() == SUNWELL_MAP_ID &&
+                GET_PLAYERBOT_AI(member) && botAI->IsRanged(member);
 
             break;
         }
@@ -285,7 +272,7 @@ void EnsureKiljaedenRangedAssignments(PlayerbotAI* botAI, Player* bot)
             invalidAssignments.push_back(assignment.first);
     }
 
-    for (const ObjectGuid& guid : invalidAssignments)
+    for (ObjectGuid const& guid : invalidAssignments)
         assignments.erase(guid);
 
     std::array<bool, KILJAEDEN_TOTAL_RANGED_SLOT_COUNT> usedSlots = {};
@@ -315,8 +302,8 @@ void EnsureKiljaedenRangedAssignments(PlayerbotAI* botAI, Player* bot)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || member->GetMapId() != SUNWELL_MAP_ID ||
-            !GET_PLAYERBOT_AI(member) || !botAI->IsRanged(member))
+        if (!member || member->GetMapId() != SUNWELL_MAP_ID || !botAI->IsRanged(member) ||
+            !GET_PLAYERBOT_AI(member))
         {
             continue;
         }
@@ -357,33 +344,33 @@ void EnsureKiljaedenRangedArmageddonAssignments(PlayerbotAI* botAI, Player* bot)
         float armageddonDistance = 0.0f;
     };
 
-    const uint32 instanceId = bot->GetInstanceId();
+    uint32 const instanceId = bot->GetInstanceId();
     PruneExpiredKiljaedenArmageddons(instanceId);
 
-    auto const armageddonItr = kiljaedenArmageddons.find(instanceId);
-    if (armageddonItr == kiljaedenArmageddons.end() || armageddonItr->second.empty())
+    auto const armageddonItr = kiljaedenEncounterStates.find(instanceId);
+    if (armageddonItr == kiljaedenEncounterStates.end() ||
+        armageddonItr->second.armageddons.empty())
     {
-        kiljaedenRangedArmageddonAssignments.erase(instanceId);
+        kiljaedenEncounterStates[instanceId].rangedArmageddonAssignments.clear();
         return;
     }
 
     Group* group = bot->GetGroup();
-    if (!group || !botAI->IsRanged(bot))
+    if (!group)
     {
-        kiljaedenRangedArmageddonAssignments.erase(instanceId);
+        kiljaedenEncounterStates[instanceId].rangedArmageddonAssignments.clear();
         return;
     }
 
-    EnsureKiljaedenRangedAssignments(botAI, bot);
-    auto const canonicalItr = kiljaedenRangedAssignments.find(instanceId);
-    if (canonicalItr == kiljaedenRangedAssignments.end())
+    auto const canonicalItr = kiljaedenEncounterStates.find(instanceId);
+    if (canonicalItr == kiljaedenEncounterStates.end())
     {
-        kiljaedenRangedArmageddonAssignments.erase(instanceId);
+        kiljaedenEncounterStates[instanceId].rangedArmageddonAssignments.clear();
         return;
     }
 
-    auto const& armageddons = armageddonItr->second;
-    auto const& canonicalAssignments = canonicalItr->second;
+    auto const& armageddons = armageddonItr->second.armageddons;
+    auto const& canonicalAssignments = canonicalItr->second.rangedAssignments;
 
     std::vector<KiljaedenRangedBotAssignment> rangedBots;
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
@@ -431,7 +418,7 @@ void EnsureKiljaedenRangedArmageddonAssignments(PlayerbotAI* botAI, Player* bot)
     }
 
     std::array<uint8, KILJAEDEN_TOTAL_RANGED_SLOT_COUNT> plannedOccupancy = {};
-    auto& tempAssignments = kiljaedenRangedArmageddonAssignments[instanceId];
+    auto& tempAssignments = kiljaedenEncounterStates[instanceId].rangedArmageddonAssignments;
     tempAssignments.clear();
 
     auto const getCandidateScore =
@@ -514,7 +501,14 @@ void EnsureKiljaedenRangedArmageddonAssignments(PlayerbotAI* botAI, Player* bot)
     }
 
     if (tempAssignments.empty())
-        kiljaedenRangedArmageddonAssignments.erase(instanceId);
+        kiljaedenEncounterStates[instanceId].rangedArmageddonAssignments.clear();
+}
+
+bool IsKiljaedenCastingDarknessOfAThousandSouls(Unit* kiljaeden)
+{
+    return kiljaeden && kiljaeden->HasUnitState(UNIT_STATE_CASTING) &&
+        kiljaeden->FindCurrentSpellBySpellId(
+            static_cast<uint32>(SunwellSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
 }
 
 Player* GetKiljaedenDragonOrbUser(Player* bot)
@@ -541,15 +535,18 @@ Player* GetKiljaedenDragonOrbUser(Player* bot)
 
 bool ResetKiljaedenDragonOrbUserAnnouncement(uint32 instanceId)
 {
-    auto const announcementTime = kiljaedenDragonOrbAnnouncementTimes.find(instanceId);
-    if (announcementTime == kiljaedenDragonOrbAnnouncementTimes.end())
+    auto const stateItr = kiljaedenEncounterStates.find(instanceId);
+    if (stateItr == kiljaedenEncounterStates.end() || !stateItr->second.dragonOrbAnnouncementMs)
         return false;
 
     constexpr uint32 announcementResetDelayMs = 10000;
-    if (getMSTimeDiff(announcementTime->second, getMSTime()) < announcementResetDelayMs)
+    if (getMSTimeDiff(stateItr->second.dragonOrbAnnouncementMs, getMSTime()) <
+        announcementResetDelayMs)
+    {
         return false;
+    }
 
-    kiljaedenDragonOrbAnnouncementTimes.erase(announcementTime);
+    stateItr->second.dragonOrbAnnouncementMs = 0;
     return true;
 }
 
@@ -570,8 +567,11 @@ bool HasKiljaedenDragonAura(Player* bot)
 Unit* GetKiljaedenControlledDragon(Player* bot)
 {
     Unit* dragon = bot->GetCharm();
-    if (!dragon || !dragon->IsAlive() || dragon->GetCharmerGUID() != bot->GetGUID())
+    if (!dragon || !dragon->IsAlive() ||
+        dragon->GetEntry() != static_cast<uint32>(SunwellNpcs::NPC_POWER_OF_THE_BLUE_FLIGHT))
+    {
         return nullptr;
+    }
 
     return dragon;
 }
@@ -633,13 +633,22 @@ Player* FindBestKiljaedenDragonClusterTarget(
         if (clusterSize < minClusterSize)
             continue;
 
-        const float distanceToDragon = dragon->GetExactDist2d(candidate);
-        if (!bestTarget || clusterSize > bestClusterSize ||
-            (clusterSize == bestClusterSize && totalClusterSize > bestTotalClusterSize) ||
-            (clusterSize == bestClusterSize && totalClusterSize == bestTotalClusterSize &&
-             distanceToDragon < bestDistanceToDragon) ||
-            (clusterSize == bestClusterSize && totalClusterSize == bestTotalClusterSize &&
-             distanceToDragon == bestDistanceToDragon && candidate->GetGUID() < bestTarget->GetGUID()))
+        float const distanceToDragon = dragon->GetExactDist2d(candidate);
+
+        auto const isBetter = [&]() -> bool
+        {
+            if (!bestTarget)
+                return true;
+            if (clusterSize != bestClusterSize)
+                return clusterSize > bestClusterSize;
+            if (totalClusterSize != bestTotalClusterSize)
+                return totalClusterSize > bestTotalClusterSize;
+            if (distanceToDragon != bestDistanceToDragon)
+                return distanceToDragon < bestDistanceToDragon;
+            return candidate->GetGUID() < bestTarget->GetGUID();
+        };
+
+        if (isBetter())
         {
             bestTarget = candidate;
             bestClusterSize = clusterSize;
@@ -673,7 +682,7 @@ Player* FindClosestKiljaedenDragonTarget(Player* bot, Unit* dragon, uint32 spell
             continue;
         }
 
-        const float distance = dragon->GetExactDist2d(member);
+        float const distance = dragon->GetExactDist2d(member);
         if (!closestTarget || distance < closestDistance)
         {
             closestTarget = member;
