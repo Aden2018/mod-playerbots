@@ -488,7 +488,7 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         return true;
 
     uint32 max = proto->MaxCount;
-    if (max > 0 && botAI->GetBot()->HasItemCount(itemid, max, true))
+    if (max > 0 && botAI->GetBot()->HasItemCount(itemid, max, false))
         return false;
 
     if (proto->StartQuest)
@@ -496,26 +496,30 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         return true;
     }
 
-    for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+    Player* bot = botAI->GetBot();
+    bool botNeedsQuestItem = bot->HasQuestForItem(itemid);
+
+    // Quest items have highest loot priority for bot (unless a real player in group also needs it)
+    if (botNeedsQuestItem)
     {
-        uint32 entry = botAI->GetBot()->GetQuestSlotQuestId(slot);
-        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
-        if (!quest)
-            continue;
+        Group* group = bot->GetGroup();
 
-        for (uint8 i = 0; i < 4; i++)
+        // If sync quest with player is enabled, check if any real player in group also needs this item
+        if (group && !botAI->IsRealPlayer() && sPlayerbotAIConfig.syncQuestWithPlayer)
         {
-            if (quest->RequiredItemId[i] == itemid)
+            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
             {
-                // if (AI_VALUE2(uint32, "item count", proto->Name1) < quest->RequiredItemCount[i])
-                // {
-                //     if (botAI->GetMaster() && sPlayerbotAIConfig.syncQuestWithPlayer)
-                //         return false; //Quest is autocomplete for the bot so no item needed.
-                // }
-
-                return true;
+                Player* member = ref->GetSource();
+                if (member && member != bot && !GET_PLAYERBOT_AI(member) && member->HasQuestForItem(itemid))
+                {
+                    // Real player needs this quest item, bot defers looting
+                    return false;
+                }
             }
         }
+
+        // Bot needs this quest item and no real player is competing, loot it
+        return true;
     }
 
     // if (proto->Bonding == BIND_QUEST_ITEM ||  //Still testing if it works ok without these lines.
