@@ -5,9 +5,6 @@
  */
 
 #include "KaraHelpers.h"
-#include "CellImpl.h"
-#include "GridNotifiers.h"
-#include "GridNotifiersImpl.h"
 #include "Playerbots.h"
 
 namespace KarazhanHelpers
@@ -83,9 +80,8 @@ std::vector<Player*> GetRedBlockers(Player* bot)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || !botAI->IsTank(member) ||
-            !GET_PLAYERBOT_AI(member) || member->HasAura(
-                static_cast<uint32>(KarazhanSpells::SPELL_NETHER_EXHAUSTION_RED)))
+        if (!member || !member->IsAlive() || !botAI->IsTank(member) || !GET_PLAYERBOT_AI(member) ||
+            member->HasAura(static_cast<uint32>(KarazhanSpells::SPELL_NETHER_EXHAUSTION_RED)))
         {
             continue;
         }
@@ -388,7 +384,6 @@ bool TryFindSafePositionWithSafePath(
     float const originX = origin.GetPositionX();
     float const originY = origin.GetPositionY();
 
-    // Try with safe-path requirement first, fall back to position-only
     for (bool requireSafePath : { true, false })
     {
         float bestMoveDist = std::numeric_limits<float>::max();
@@ -444,28 +439,5 @@ bool TryFindSafePositionWithSafePath(
 
 std::unordered_map<uint32, time_t> nightbaneDpsWaitTimer;
 std::unordered_map<uint32, time_t> nightbaneFlightPhaseStartTimer;
-
-std::vector<Position> GetCharredEarthPositions(Player* bot)
-{
-    constexpr float searchRadius = 40.0f;
-    std::list<WorldObject*> objs;
-    Acore::AllWorldObjectsInRange check(bot, searchRadius);
-    Acore::WorldObjectListSearcher<Acore::AllWorldObjectsInRange> searcher(
-        bot, objs, check, GRID_MAP_TYPE_MASK_DYNAMICOBJECT);
-    Cell::VisitObjects(bot, searcher, searchRadius);
-
-    std::vector<Position> charredEarths;
-    for (WorldObject* obj : objs)
-    {
-        if (obj->GetTypeId() != TYPEID_DYNAMICOBJECT)
-            continue;
-        DynamicObject* dynObj = static_cast<DynamicObject*>(obj);
-        if (dynObj->GetSpellId() == static_cast<uint32>(KarazhanSpells::SPELL_CHARRED_EARTH))
-            charredEarths.emplace_back(
-                dynObj->GetPositionX(), dynObj->GetPositionY(), dynObj->GetPositionZ());
-    }
-
-    return charredEarths;
-}
 
 }

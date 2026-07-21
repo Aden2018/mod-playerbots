@@ -3,15 +3,13 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
-#include <array>
-#include <map>
-#include <vector>
-
 #include "SWPActions.h"
 #include "SWPEncounter_KJ.h"
 #include "Playerbots.h"
 #include "PlayerbotTextMgr.h"
 #include "RaidBossHelpers.h"
+#include <map>
+#include <vector>
 
 using namespace SunwellHelpers;
 
@@ -29,9 +27,7 @@ bool KiljaedenAnnounceDragonOrbUserAction::Execute(Event /*event*/)
 
         if (orbUser)
         {
-            std::map<std::string, std::string> placeholders = {
-                { "%bot", orbUser->GetName() }
-            };
+            std::map<std::string, std::string> placeholders = {{"%bot", orbUser->GetName()}};
             text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
                 "kiljaeden_designated_dragon_orb_user",
                 "%bot is the first assistant and the designated dragon orb user!",
@@ -271,15 +267,13 @@ bool KiljaedenStunHandsOfTheDeceiverAction::CastSilenceOnHand(Unit* hand)
 bool KiljaedenPositionTanksAction::Execute(Event /*event*/)
 {
     Position const position = KILJAEDEN_TANK_POSITION;
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 2.0f)
-    {
-        return MoveTo(
-            SUNWELL_MAP_ID, position.GetPositionX(), position.GetPositionY(),
-            position.GetPositionZ(), false, false, false, false,
-            MovementPriority::MOVEMENT_COMBAT, true, false);
-    }
+    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) <= 2.0f)
+        return false;
 
-    return false;
+    return MoveTo(
+        SUNWELL_MAP_ID, position.GetPositionX(), position.GetPositionY(),
+        position.GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KiljaedenPositionMeleeAction::Execute(Event /*event*/)
@@ -464,15 +458,14 @@ bool KiljaedenRemoveFireBloomAction::Execute(Event /*event*/)
 bool KiljaedenStackForShieldOfTheBlueAction::Execute(Event /*event*/)
 {
     Position const position = KILJAEDEN_DARKNESS_POSITION;
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 2.0f)
-    {
-        return MoveTo(
-            SUNWELL_MAP_ID, position.GetPositionX(), position.GetPositionY(),
-            position.GetPositionZ(), false, false, false, false,
-            MovementPriority::MOVEMENT_FORCED, true, false);
-    }
+    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) <= 2.0f)
+        return false;
 
-    return false;
+    botAI->InterruptSpell();
+    return MoveTo(
+        SUNWELL_MAP_ID, position.GetPositionX(), position.GetPositionY(),
+        position.GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
 bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
@@ -628,15 +621,18 @@ bool KiljaedenControlDragonAction::ExecuteDuringDarknessOfAThousandSouls(
         return false;
     }
 
-    if (darknessSpell->GetCastTimeRemaining() < 4000) // Cast Shield of the Blue at 4s remaining
+    if (darknessSpell->GetCastTimeRemaining() < 4500)
     {
         return CastKiljaedenDragonSpell(
             dragon, static_cast<uint32>(SunwellSpells::SPELL_SHIELD_OF_THE_BLUE));
     }
     else if (CastKiljaedenDragonSpell(
-                 dragon, static_cast<uint32>(SunwellSpells::SPELL_DRAGON_BREATH_HASTE)) ||
-             CastKiljaedenDragonSpell(
-                 dragon, static_cast<uint32>(SunwellSpells::SPELL_DRAGON_BREATH_REVITALIZE)))
+        dragon, static_cast<uint32>(SunwellSpells::SPELL_DRAGON_BREATH_HASTE)))
+    {
+        return true;
+    }
+    else if (CastKiljaedenDragonSpell(
+        dragon, static_cast<uint32>(SunwellSpells::SPELL_DRAGON_BREATH_REVITALIZE)))
     {
         return true;
     }

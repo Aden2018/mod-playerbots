@@ -3,13 +3,12 @@
  * and/or modify it under version 3 of the License, or (at your option), any later version.
  */
 
-#include <algorithm>
-
 #include "SWPActions.h"
 #include "SWPEncounter_Kalec.h"
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
 #include "TargetValue.h"
+#include <algorithm>
 
 using namespace SunwellHelpers;
 
@@ -102,10 +101,6 @@ bool KalecgosEnterSpectralRiftAction::Execute(Event /*event*/)
 
 bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
 {
-    Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
-    if (kalecgos && kalecgos->GetHealthPct() > 99.0f)
-        _initialRangedPositionReached = false;
-
     if (!_initialRangedPositionReached)
     {
         Position const initialPos = KALECGOS_INITIAL_RANGED_POSITION;
@@ -123,7 +118,7 @@ bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
             initialPos.GetPositionZ(), initialRangedRadius, MovementPriority::MOVEMENT_COMBAT);
     }
 
-    if (kalecgos)
+    if (Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos"))
     {
         constexpr float safeDistFromDragon = 20.0f;
         constexpr uint32 minInterval = 0;
