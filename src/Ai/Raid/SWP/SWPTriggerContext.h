@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPTRIGGERCONTEXT_H
@@ -29,6 +30,9 @@ public:
             &RaidSunwellTriggerContext::apocalypse_guard_protected_by_infernal_defense;
 
         // Kalecgos
+        creators["kalecgos should communicate boss health"] =
+            &RaidSunwellTriggerContext::kalecgos_should_communicate_boss_health;
+
         creators["kalecgos boss engaged by tank"] =
             &RaidSunwellTriggerContext::kalecgos_boss_engaged_by_tank;
 
@@ -85,8 +89,8 @@ public:
         creators["felmyst player has gas nova"] =
             &RaidSunwellTriggerContext::felmyst_player_has_gas_nova;
 
-        creators["felmyst demonic vapor trails are active"] =
-            &RaidSunwellTriggerContext::felmyst_demonic_vapor_trails_are_active;
+        creators["felmyst should avoid demonic vapor trails"] =
+            &RaidSunwellTriggerContext::felmyst_should_avoid_demonic_vapor_trails;
 
         creators["felmyst bot is demonic vapor target"] =
             &RaidSunwellTriggerContext::felmyst_bot_is_demonic_vapor_target;
@@ -99,6 +103,9 @@ public:
 
         creators["felmyst player is charmed by fog"] =
             &RaidSunwellTriggerContext::felmyst_player_is_charmed_by_fog;
+
+        creators["felmyst should hold dps while landing"] =
+            &RaidSunwellTriggerContext::felmyst_should_hold_dps_while_landing;
 
         // Eredar Twins
         creators["eredar twins melee is at balcony"] =
@@ -227,6 +234,9 @@ private:
     }
 
     // Kalecgos
+    static Trigger* kalecgos_should_communicate_boss_health(PlayerbotAI* botAI) {
+        return new KalecgosShouldCommunicateBossHealthTrigger(botAI);
+    }
     static Trigger* kalecgos_boss_engaged_by_tank(PlayerbotAI* botAI) {
         return new KalecgosBossEngagedByTankTrigger(botAI);
     }
@@ -285,8 +295,8 @@ private:
     static Trigger* felmyst_player_has_gas_nova(PlayerbotAI* botAI) {
         return new FelmystPlayerHasGasNovaTrigger(botAI);
     }
-    static Trigger* felmyst_demonic_vapor_trails_are_active(PlayerbotAI* botAI) {
-        return new FelmystDemonicVaporTrailsAreActiveTrigger(botAI);
+    static Trigger* felmyst_should_avoid_demonic_vapor_trails(PlayerbotAI* botAI) {
+        return new FelmystShouldAvoidDemonicVaporTrailsTrigger(botAI);
     }
     static Trigger* felmyst_bot_is_demonic_vapor_target(PlayerbotAI* botAI) {
         return new FelmystBotIsDemonicVaporTargetTrigger(botAI);
@@ -299,6 +309,9 @@ private:
     }
     static Trigger* felmyst_player_is_charmed_by_fog(PlayerbotAI* botAI) {
         return new FelmystPlayerIsCharmedByFogTrigger(botAI);
+    }
+    static Trigger* felmyst_should_hold_dps_while_landing(PlayerbotAI* botAI) {
+        return new FelmystShouldHoldDpsWhileLandingTrigger(botAI);
     }
 
     // Eredar Twins

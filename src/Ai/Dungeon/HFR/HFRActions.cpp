@@ -1,18 +1,14 @@
 /*
 * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
-* information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
-* or (at your option) any later version.
+* information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License, or (at your option) any later version.
 */
 
 #include "Playerbots.h"
-#include "PlayerbotAI.h"
-#include "AiFactory.h"
-#include "HRTriggers.h"
-#include "HRActions.h"
-#include "MovementActions.h"
+#include "HFRTriggers.h"
+#include "HFRActions.h"
 #include "RaidBossHelpers.h"
 
-constexpr uint32 HR_MAP_ID = 543;
+constexpr uint32 HFR_MAP_ID = 543;
 
 // Watchkeeper Gargolmar
 
@@ -24,11 +20,8 @@ bool GargolmarMarkHellfireWatchersAction::Execute(Event /*event*/)
     if (!watcher)
         return false;
 
-    if (IsMechanicTrackerBot(botAI, bot, HR_MAP_ID) &&
-        MarkTargetWithSkull(bot, watcher))
+    if (IsMechanicTrackerBot(bot, HFR_MAP_ID) && MarkTargetWithSkull(bot, watcher))
         return true;
-
-    SetRtiTarget(botAI, "skull", watcher);
 
     return false;
 }
@@ -51,15 +44,10 @@ bool OmorTreacheryAuraFleeFromPlayersAction::Execute(Event /*event*/)
 // ranged spread out 15 yards from each other
 bool OmorRangedSpreadAction::Execute(Event /*event*/)
 {
-    const float minDistance = 15.0f;
-    Unit* nearestPlayer = GetNearestPlayerInRadius(bot, minDistance);
+    constexpr float minDistance = 15.0f;
 
-    if (nearestPlayer)
-    {
-        bot->AttackStop();
-        bot->InterruptNonMeleeSpells(true);
+    if (Player* nearestPlayer = GetNearestPlayerInRadius(bot, minDistance))
         return FleePosition(nearestPlayer->GetPosition(), minDistance);
-    }
 
     return false;
 }
@@ -71,11 +59,8 @@ bool OmorMarkFiendishHoundAction::Execute(Event /*event*/)
     if (!hound)
         return false;
 
-    if (IsMechanicTrackerBot(botAI, bot, HR_MAP_ID) &&
-        MarkTargetWithSkull(bot, hound))
+    if (IsMechanicTrackerBot(bot, HFR_MAP_ID) && MarkTargetWithSkull(bot, hound))
         return true;
-
-    SetRtiTarget(botAI, "skull", hound);
 
     return false;
 }
@@ -88,9 +73,9 @@ bool OmorTreacheryAuraFleeFromTankAction::Execute(Event /*event*/)
         return false;
 
     constexpr float safeDistance = 15.0f;
-    constexpr float buffer = 3.0f;
+    constexpr float buffer = 1.0f;
 
-    if (bot->GetExactDist2d(tank) < safeDistance)
+    if (bot->GetDistance2d(tank) < safeDistance)
     {
         botAI->Reset();
         return MoveAway(tank, safeDistance + buffer);
@@ -110,11 +95,11 @@ bool VazrudenTankPositionBossAction::Execute(Event /*event*/)
     if (!vazruden)
         return false;
 
-    if (bot->GetVictim() != vazruden)
+    if (AI_VALUE(Unit*, "current target") != vazruden)
         return Attack(vazruden);
 
     if (vazruden->GetVictim() == bot && bot->IsWithinMeleeRange(vazruden) &&
-        bot->GetHealthPct()>30.0f)
+        bot->GetHealthPct() > 30.0f)
     {
         const Position& position = VAZRUDEN_TANK_POSITION;
         float distToPosition = bot->GetExactDist2d(position.GetPositionX(),
@@ -127,10 +112,22 @@ bool VazrudenTankPositionBossAction::Execute(Event /*event*/)
             float moveX = bot->GetPositionX() + (dX / distToPosition) * moveDist;
             float moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
 
-            return MoveTo(bot->GetMapId(), moveX, moveY, bot->GetPositionZ(), false, false,
+            return MoveTo(HFR_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
                    false, false, MovementPriority::MOVEMENT_COMBAT, true, true);
         }
     }
+
+    return false;
+}
+
+bool VazrudenMarkBossAction::Execute(Event /*event*/)
+{
+    Unit* vaz = AI_VALUE2(Unit*, "find target", "vazruden");
+    if (!vaz)
+        return false;
+
+    if (IsMechanicTrackerBot(bot, HFR_MAP_ID) && MarkTargetWithSkull(bot, vaz))
+        return true;
 
     return false;
 }

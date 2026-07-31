@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPACTIONS_H
@@ -14,11 +15,11 @@
 
 // General
 
-class SunwellPlateauEraseEncounterStatesAction : public Action
+class SunwellPlateauResetEncounterStatesAction : public Action
 {
 public:
-    SunwellPlateauEraseEncounterStatesAction(
-        PlayerbotAI* botAI) : Action(botAI, "sunwell plateau erase encounter states") {}
+    SunwellPlateauResetEncounterStatesAction(
+        PlayerbotAI* botAI) : Action(botAI, "sunwell plateau reset encounter states") {}
     bool Execute(Event event) override;
 };
 
@@ -50,6 +51,14 @@ public:
 
 // Kalecgos
 
+class KalecgosAnnounceBossHealthAction : public Action
+{
+public:
+    KalecgosAnnounceBossHealthAction(
+        PlayerbotAI* botAI) : Action(botAI, "kalecgos announce boss health") {}
+    bool Execute(Event event) override;
+};
+
 class KalecgosTankPositionBossAction : public AttackAction
 {
 public:
@@ -64,6 +73,9 @@ public:
     KalecgosEnterSpectralRiftAction(
         PlayerbotAI* botAI) : MovementAction(botAI, "kalecgos enter spectral rift") {}
     bool Execute(Event event) override;
+
+private:
+    bool ShouldTankEnter();
 };
 
 class KalecgosDisperseRangedAction : public MovementAction
@@ -165,7 +177,7 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool RemoveBurnWithCooldown(Player* bot);
+    bool RemoveBurnWithCooldown();
 };
 
 // Felmyst
@@ -232,6 +244,10 @@ public:
     FelmystAvoidDemonicVaporAction(
         PlayerbotAI* botAI) : MovementAction(botAI, "felmyst avoid demonic vapor") {}
     bool Execute(Event event) override;
+
+private:
+    bool MoveAwayFromVapor();
+    bool MoveToFlightLeader(Player* leader);
 };
 
 class FelmystKiteDemonicVaporAction : public MovementAction
@@ -271,6 +287,15 @@ public:
         PlayerbotAI* botAI) : AttackAction(botAI, "felmyst kill charmed player") {}
     bool Execute(Event event) override;
 };
+
+class FelmystManageLandingDpsTimerAction : public Action
+{
+public:
+    FelmystManageLandingDpsTimerAction(
+        PlayerbotAI* botAI) : Action(botAI, "felmyst manage landing dps timer") {}
+    bool Execute(Event event) override;
+};
+
 // Eredar Twins
 
 class EredarTwinsMeleeJumpDownFromBalconyAction : public MovementAction
@@ -403,8 +428,7 @@ public:
 private:
     Unit* ResolveMuruDpsTarget(Unit*& currentTarget);
     Unit* SelectMuruEncounterTarget(
-        Unit* currentTarget, uint32 entry,
-        std::vector<Unit*> const& candidates) const;
+        Unit* currentTarget, uint32 entry, std::vector<Unit*> const& candidates) const;
 };
 
 class MuruKillDarkFiendsWithDispelAction : public Action
@@ -528,6 +552,11 @@ public:
     KiljaedenMarkAndPrioritizeHandsOfTheDeceiverAction(
         PlayerbotAI* botAI) : AttackAction(botAI, "kil'jaeden mark and prioritize hands of the deceiver") {}
     bool Execute(Event event) override;
+
+private:
+    bool ExecuteTankHandAssignment(
+        std::vector<Unit*> const& hands,
+        Player* mainTank, Player* firstAssistTank, Player* secondAssistTank);
 };
 
 class KiljaedenStunHandsOfTheDeceiverAction : public Action

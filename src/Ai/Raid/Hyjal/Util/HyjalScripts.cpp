@@ -4,18 +4,18 @@
  * or (at your option) any later version.
  */
 
-#include "HyjalHelpers.h"
 #include "AllCreatureScript.h"
+#include "DynamicObjectScript.h"
+#include "HyjalHelpers.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
-#include "RaidBossHelpers.h"
-#include "DynamicObjectScript.h"
 #include "Playerbots.h"
+#include "RaidBossHelpers.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
 #include "Timer.h"
 
-using namespace HyjalSummitHelpers;
+using namespace HyjalHelpers;
 
 static Player* GetFirstPlayerSpellTarget(Spell* spell, Unit* caster)
 {
@@ -35,19 +35,21 @@ static Player* GetFirstPlayerSpellTarget(Spell* spell, Unit* caster)
     return nullptr;
 }
 
-static bool ShouldInterruptForArchimondeAirBurst(PlayerbotAI* botAI, Player* bot, Player* target)
+static bool ShouldInterruptForArchimondeAirBurst(PlayerbotAI* botAI, Player* target)
 {
     if (!target)
         return false;
 
+    Player* bot = botAI->GetBot();
     Player* mainTank = GetGroupMainTank(botAI, bot);
     if (!mainTank || bot == mainTank)
         return false;
 
-    float distanceToMainTank = bot->GetExactDist2d(mainTank);
+    if (target != mainTank && target != bot)
+        return false;
 
-    return (target == mainTank || target == bot) &&
-           distanceToMainTank < AIR_BURST_SAFE_DISTANCE;
+    float const distanceToMainTank = bot->GetDistance2d(mainTank);
+    return distanceToMainTank < AIR_BURST_SAFE_DISTANCE;
 }
 
 // Records the active Rain of Fire dynamic object so that melee bots can avoid it by running
@@ -60,7 +62,7 @@ public:
 
     void OnUpdate(DynamicObject* dynobj, uint32 /*diff*/) override
     {
-        if (dynobj->GetSpellId() != static_cast<uint32>(HyjalSummitSpells::SPELL_RAIN_OF_FIRE))
+        if (dynobj->GetSpellId() != static_cast<uint32>(HyjalSpells::SPELL_RAIN_OF_FIRE))
             return;
 
         uint32 instanceId = dynobj->GetMap()->GetInstanceId();
@@ -108,7 +110,7 @@ public:
 
     void OnAllCreatureUpdate(Creature* creature, uint32 /*diff*/) override
     {
-        if (creature->GetEntry() != static_cast<uint32>(HyjalSummitNpcs::NPC_DOOMFIRE))
+        if (creature->GetEntry() != static_cast<uint32>(HyjalNpcs::NPC_DOOMFIRE))
             return;
 
         uint32 now = getMSTime();
@@ -156,7 +158,7 @@ public:
 
     void OnCreatureRemoveWorld(Creature* creature) override
     {
-        if (creature->GetEntry() != static_cast<uint32>(HyjalSummitNpcs::NPC_DOOMFIRE))
+        if (creature->GetEntry() != static_cast<uint32>(HyjalNpcs::NPC_DOOMFIRE))
             return;
 
         doomfireLastSampleTime.erase(creature->GetGUID());
@@ -172,10 +174,7 @@ public:
     void OnSpellCast(
         Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
-        if (!spell || !caster || !spellInfo)
-            return;
-
-        if (spellInfo->Id != static_cast<uint32>(HyjalSummitSpells::SPELL_AIR_BURST))
+        if (spellInfo->Id != static_cast<uint32>(HyjalSpells::SPELL_AIR_BURST))
             return;
 
         Player* target = GetFirstPlayerSpellTarget(spell, caster);
@@ -194,7 +193,7 @@ public:
 
             PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
             if (!botAI || !botAI->HasStrategy("hyjal", BOT_STATE_COMBAT) ||
-                !ShouldInterruptForArchimondeAirBurst(botAI, player, target))
+                !ShouldInterruptForArchimondeAirBurst(botAI, target))
             {
                 continue;
             }

@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPENCOUNTERFELMYST_H
@@ -13,16 +14,17 @@
 #include <ctime>
 #include <limits>
 #include <unordered_map>
+#include <vector>
 
 class Creature;
 class Player;
 class PlayerbotAI;
 class Unit;
 
-namespace SunwellHelpers
+namespace SwpHelpers
 {
 
-enum class FelmystFogLane : uint8
+enum class FogLane : uint8
 {
     None = std::numeric_limits<uint8>::max(),
     Top = 0,
@@ -30,7 +32,7 @@ enum class FelmystFogLane : uint8
     Bottom = 2,
 };
 
-enum class FelmystFogPhase : uint8
+enum class FogPhase : uint8
 {
     None,
     Windup,
@@ -38,7 +40,7 @@ enum class FelmystFogPhase : uint8
     Recovery,
 };
 
-enum class FelmystFogLocation : uint8
+enum class FogLocation : uint8
 {
     None,
     LeftSide,
@@ -59,23 +61,23 @@ enum class FelmystGroundStack : uint8
     Right = 2,
 };
 
-struct FelmystFogOfCorruptionState
+struct FogOfCorruptionState
 {
-    FelmystFogLane lane = FelmystFogLane::None;
-    FelmystFogPhase phase = FelmystFogPhase::None;
+    FogLane lane = FogLane::None;
+    FogPhase phase = FogPhase::None;
     uint32 expireMs = 0;
 };
 
-struct FelmystFogPassState
+struct FogPassState
 {
-    FelmystFogLocation lastDestinationLocation = FelmystFogLocation::None;
-    FelmystFogLane lastCompletedLane = FelmystFogLane::None;
-    FelmystFogLane armedSweepLane = FelmystFogLane::None;
+    FogLocation lastDestinationLocation = FogLocation::None;
+    FogLane lastCompletedLane = FogLane::None;
+    FogLane armedSweepLane = FogLane::None;
     uint8 completedPassCount = 0;
     uint32 thirdPassWindowExpireMs = 0;
 };
 
-struct FelmystIncomingEncapsulateState
+struct IncomingEncapsulateState
 {
     ObjectGuid targetGuid = ObjectGuid::Empty;
     uint32 delayMs = 0;
@@ -83,35 +85,29 @@ struct FelmystIncomingEncapsulateState
     bool auraObserved = false;
 };
 
-struct FelmystFogCrateStuckState
-{
-    Position destination;
-    float nearestDestinationDistance = std::numeric_limits<float>::max();
-    uint32 sampleMs = 0;
-};
-
 struct FelmystEncounterState
 {
     std::unordered_map<ObjectGuid, uint8> rangedAssignments;
-    FelmystIncomingEncapsulateState incomingEncapsulate;
+    IncomingEncapsulateState incomingEncapsulate;
     bool encapsulateOccurredThisGroundPhase = false;
     std::unordered_map<ObjectGuid, uint8> demonicVaporRegionIndices;
     uint8 demonicVaporUsedRegionMask = 0;
     uint8 demonicVaporFirstRegionIndex = 0;
-    FelmystFogOfCorruptionState fogOfCorruption;
-    FelmystFogPassState fogPass;
+    FogOfCorruptionState fogOfCorruption;
+    FogPassState fogPass;
     time_t landingDpsWaitTimer = 0;
     time_t landingTouchdownTimer = 0;
+    ObjectGuid flightLeaderGuid = ObjectGuid::Empty;
 };
 
-constexpr float FELMYST_ENCAPSULATE_SAFE_DISTANCE = 20.0f;
-constexpr float FELMYST_FOG_SAFE_SPOT_ARRIVAL_DISTANCE = 8.0f;
-constexpr float FELMYST_FOG_CURRENT_POINT_MATCH_DISTANCE = 3.0f;
-constexpr float FELMYST_FOG_DESTINATION_MATCH_DISTANCE = 1.0f;
-constexpr float FELMYST_MELEE_DISTANCE = 12.5f;
+struct FogSafeThreshold
+{
+    Position a, b;
+    bool safeSideIsNorth;  // true = safe side has higher X (north), false = lower X (south)
+};
+
 constexpr float FELMYST_RANGED_GROUP_RADIUS = 0.5f;
-constexpr float FELMYST_RANGED_SIDE_DISTANCE = 24.0f;
-constexpr uint32 FELMYST_INCOMING_ENCAPSULATE_DELAY_MS = 500;
+constexpr float FELMYST_FOG_LOCATION_MATCH_DISTANCE = 2.0f;
 
 extern std::unordered_map<uint32, FelmystEncounterState> felmystEncounterStates;
 
@@ -124,22 +120,23 @@ void EnsureFelmystRangedAssignments(Player* bot);
 bool TryGetFelmystRangedPosition(Player* bot, Unit* felmyst, Position& position);
 Creature* GetFelmystDemonicVaporSummonedByBot(Player* bot);
 bool IsFelmystDemonicVaporHeadNearBot(Player* bot);
+std::vector<Creature*> GetDemonicVaporHazards(Player* bot);
 void ClearFelmystDemonicVaporKiteState(Player* bot);
 bool TryGetFelmystDemonicVaporKiteDestination(Player* bot, Position& destination);
-bool TryGetFelmystFogSafeDestinations(
-    Player* bot, FelmystFogLane dangerLane, std::array<Position, 3>& destinations,
-    uint8& destinationCount);
-bool TryGetFelmystLandingDestination(Unit* felmyst, Position& destination);
+bool TryGetFelmystFogSafeDestination(
+    Player* bot, FogLane dangerLane, Position& destination,
+    Position const* referencePoint = nullptr);
+bool IsFelmystLanding(Unit* felmyst);
 bool IsFelmystAirPhaseTargetSuppressed(Unit* felmyst);
-bool TryGetFelmystPostThirdPassWindow(Unit* felmyst, FelmystFogLane& lane);
-bool TryGetFelmystFogOfCorruptionStageState(Unit* felmyst, FelmystFogOfCorruptionState& state);
-bool TryGetActiveFelmystFogOfCorruptionState(
-    Player* bot, Unit* felmyst, FelmystFogOfCorruptionState& state);
+bool TryGetFelmystPostThirdPassWindow(Unit* felmyst, FogLane& lane);
+bool TryGetFelmystFogOfCorruptionStageState(Unit* felmyst, FogOfCorruptionState& state);
+bool TryGetActiveFogOfCorruptionState(Player* bot, Unit* felmyst, FogOfCorruptionState& state);
 void RecordFelmystIncomingEncapsulateTarget(Player* target, uint32 durationMs = 3000);
 Player* GetFelmystEncapsulateTarget(Player* bot);
-bool DidFelmystEncapsulateOccurThisGroundPhase(Player* bot);
+bool DidEncapsulateOccurThisGroundPhase(Player* bot);
 Player* GetFelmystGasNovaDispelTarget(Player* bot);
 Player* GetFelmystCharmedTarget(Player* bot, Unit* felmyst);
+Player* GetFelmystFlightLeader(Player* player);
 
 }
 

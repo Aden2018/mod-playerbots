@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "SWPEncounter_Brut.h"
@@ -10,7 +11,7 @@
 #include <cmath>
 #include <vector>
 
-namespace SunwellHelpers
+namespace SwpHelpers
 {
 
 // Note: Brutallus's CombatReach is 18.0f
@@ -36,19 +37,19 @@ float GetBrutallusTankAngle(Unit* brutallus, Player* tank, float fallbackAngle)
         tank->GetPositionX() - brutallus->GetPositionX()));
 }
 
-bool IsBrutallusBurnPadActive(ObjectGuid ownerGuid)
+bool IsBurnPadActive(ObjectGuid ownerGuid)
 {
     auto const burnStateItr = brutallusRangedBurnStates.find(ownerGuid);
     return burnStateItr != brutallusRangedBurnStates.end() &&
         burnStateItr->second != BrutallusRangedBurnState::None;
 }
 
-bool TryGetBrutallusBurnPadIndex(Player* bot, uint8 rangedIndex, uint8& padIndex)
+bool TryGetBurnPadIndex(Player* bot, uint8 rangedIndex, uint8& padIndex)
 {
     auto& assignments = brutallusRangedBurnPadAssignments[bot->GetInstanceId()];
     for (auto itr = assignments.begin(); itr != assignments.end();)
     {
-        if (itr->first != bot->GetGUID() && !IsBrutallusBurnPadActive(itr->first))
+        if (itr->first != bot->GetGUID() && !IsBurnPadActive(itr->first))
         {
             itr = assignments.erase(itr);
             continue;
@@ -154,7 +155,6 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
 
 bool TryGetBrutallusAssignedPositionIndex(Player* bot, bool wantRanged, uint8& positionIndex)
 {
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     Group* group = bot->GetGroup();
     if (!group)
         return false;
@@ -180,11 +180,11 @@ bool TryGetBrutallusAssignedPositionIndex(Player* bot, bool wantRanged, uint8& p
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || member->GetMapId() != SUNWELL_MAP_ID)
+        if (!member || member->GetMapId() != SWP_MAP_ID)
             continue;
 
-        if (!botAI->IsMelee(member) ||
-            botAI->IsMainTank(member) || botAI->IsAssistTankOfIndex(member, 0, true))
+        if (!PlayerbotAI::IsMelee(member) || PlayerbotAI::IsMainTank(member) ||
+            PlayerbotAI::IsAssistTankOfIndex(member, 0, true))
         {
             continue;
         }
@@ -200,9 +200,8 @@ bool TryGetBrutallusAssignedPositionIndex(Player* bot, bool wantRanged, uint8& p
 
 void EnsureBrutallusRangedAssignments(Player* bot)
 {
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     Group* group = bot->GetGroup();
-    if (!group || bot->GetMapId() != SUNWELL_MAP_ID)
+    if (!group || bot->GetMapId() != SWP_MAP_ID)
         return;
 
     auto& assignments = brutallusRangedAssignments[bot->GetInstanceId()];
@@ -232,19 +231,20 @@ void EnsureBrutallusRangedAssignments(Player* bot)
         return true;
     };
 
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     std::vector<Player*> healers;
     std::vector<Player*> rangedDamage;
 
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || member->GetMapId() != SUNWELL_MAP_ID || !botAI->IsRanged(member))
+        if (!member || member->GetMapId() != SWP_MAP_ID || !PlayerbotAI::IsRanged(member))
             continue;
 
         if (assignments.find(member->GetGUID()) != assignments.end())
             continue;
 
-        if (botAI->IsHeal(member))
+        if (PlayerbotAI::IsHeal(member))
             healers.push_back(member);
         else
             rangedDamage.push_back(member);
@@ -301,7 +301,7 @@ bool TryGetBrutallusBurnPadPosition(
         return false;
 
     uint8 padIndex = 0;
-    if (!TryGetBrutallusBurnPadIndex(bot, rangedIndex, padIndex))
+    if (!TryGetBurnPadIndex(bot, rangedIndex, padIndex))
         return false;
 
     static constexpr float degreeToRadian = M_PI / 180.0f;

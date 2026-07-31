@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "SethTriggers.h"
@@ -12,7 +13,7 @@ using namespace SethData;
 
 bool TimeLostControllerDropsCharmingTotemTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, SETHEKK_HALLS_MAP_ID) &&
+    return IsMechanicTrackerBot(bot, SETHEKK_HALLS_MAP_ID) &&
         AI_VALUE2(Unit*, "find target", "time-lost controller");
 }
 
@@ -27,7 +28,7 @@ bool SethekkProphetCastsFearTrigger::IsActive()
 
 bool DarkweaverSythBossSummonsElementalsTrigger::IsActive()
 {
-    if (!IsMechanicTrackerBot(botAI, bot, SETHEKK_HALLS_MAP_ID))
+    if (!IsMechanicTrackerBot(bot, SETHEKK_HALLS_MAP_ID))
         return false;
 
     Unit* syth = AI_VALUE2(Unit*, "find target", "darkweaver syth");
@@ -41,13 +42,13 @@ bool AnzuEncounterHasTwoPhasesTrigger::IsActive()
 
 bool AnzuBirdSpiritsProvideBuffsTrigger::IsActive()
 {
-    return bot->getClass() == CLASS_DRUID && botAI->IsHeal(bot) &&
+    return bot->getClass() == CLASS_DRUID && PlayerbotAI::IsHeal(bot) &&
         AI_VALUE2(Unit*, "find target", "anzu");
 }
 
 bool TalonKingIkissBossEngagedByTankTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot))
+    if (!PlayerbotAI::IsTank(bot))
         return false;
 
     Unit* ikiss = AI_VALUE2(Unit*, "find target", "talon king ikiss");
@@ -56,7 +57,7 @@ bool TalonKingIkissBossEngagedByTankTrigger::IsActive()
 
 bool TalonKingIkissRangedPrepareForArcaneExplosionTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot))
+    if (!PlayerbotAI::IsRanged(bot))
         return false;
 
     Unit* ikiss = AI_VALUE2(Unit*, "find target", "talon king ikiss");

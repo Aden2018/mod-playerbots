@@ -1,20 +1,27 @@
-#include "TKHelpers.h"
+/*
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
+ */
+
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
 #include "Timer.h"
+#include "TKHelpers.h"
 
-using namespace TempestKeepHelpers;
+using namespace TkHelpers;
 
-class BossListenerScript : public AllSpellScript
+class VoidReaverSpellListenerScript : public AllSpellScript
 {
 public:
-    BossListenerScript() : AllSpellScript("BossListenerScript") { }
+    VoidReaverSpellListenerScript() : AllSpellScript("VoidReaverSpellListenerScript") { }
 
-    void OnSpellCast(Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
+    void OnSpellCast(
+        Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
-        if (spellInfo->Id != SPELL_ARCANE_ORB)
+        if (spellInfo->Id != static_cast<uint32>(TkSpells::SPELL_ARCANE_ORB))
             return;
 
         std::list<TargetInfo> const& targets = *spell->GetUniqueTargetInfo();
@@ -26,22 +33,22 @@ public:
             return;
 
         auto& orbs = voidReaverArcaneOrbs[caster->GetMap()->GetInstanceId()];
-        uint32 currentTime = getMSTime();
+        uint32 const now = getMSTime();
 
         ArcaneOrbData orbData;
         orbData.destination = target->GetPosition();
-        orbData.castTime = currentTime;
+        orbData.castTime = now;
 
         orbs.push_back(orbData);
 
         orbs.erase(std::remove_if(orbs.begin(), orbs.end(),
-            [currentTime](const ArcaneOrbData& orb) {
-                return getMSTimeDiff(orb.castTime, currentTime) > 5000;
+            [now](ArcaneOrbData const& orb) {
+                return getMSTimeDiff(orb.castTime, now) > 5000;
             }), orbs.end());
     }
 };
 
 void AddSC_TempestKeepBotScripts()
 {
-    new BossListenerScript();
+    new VoidReaverSpellListenerScript();
 }

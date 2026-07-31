@@ -1,16 +1,66 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "SWPActions.h"
 #include "SWPEncounter_Kalec.h"
 #include "Playerbots.h"
+#include "PlayerbotTextMgr.h"
 #include "RaidBossHelpers.h"
 #include "TargetValue.h"
 #include <algorithm>
+#include <map>
 
-using namespace SunwellHelpers;
+using namespace SwpHelpers;
+
+bool KalecgosAnnounceBossHealthAction::Execute(Event /*event*/)
+{
+    Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
+    if (!kalecgos)
+        return false;
+
+    auto const stateItr = kalecgosEncounterStates.find(bot->GetInstanceId());
+    if (stateItr == kalecgosEncounterStates.end())
+        return false;
+
+    KalecgosEncounterState& state = stateItr->second;
+    std::string text;
+
+    if (!IsInSpectralRealm(bot))
+    {
+        if (state.surfaceHealthAnnounced)
+            return false;
+
+        state.surfaceHealthAnnounced = true;
+
+        text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
+            "kalecgos_below_twenty_percent_health",
+            "Kalecgos's health is at 20%!",
+            {});
+    }
+    else
+    {
+        if (state.spectralHealthAnnounced)
+            return false;
+
+        Unit* sathrovarr = AI_VALUE2(Unit*, "find target", "sathrovarr the corruptor");
+        if (!sathrovarr)
+            return false;
+
+        state.spectralHealthAnnounced = true;
+
+        text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
+            "sathrovarr_health_when_kalecgos_below_twenty_percent_health",
+            "Sathrovarr's health is at %sathrovarrHealth%! "
+            "Don't forget that we need to defeat them at about the same time!",
+            std::map<std::string, std::string>{
+                {"%sathrovarrHealth", std::to_string(static_cast<uint32>(sathrovarr->GetHealthPct()))}});
+    }
+
+    return botAI->SayToRaid(text);
+}
 
 bool KalecgosTankPositionBossAction::Execute(Event event)
 {
@@ -21,15 +71,11 @@ bool KalecgosTankPositionBossAction::Execute(Event event)
     if (AI_VALUE(Unit*, "current target") != kalecgos)
         return Attack(kalecgos);
 
-    // If the fight just started, taunt (if needed) before moving
-    if (kalecgos->GetVictim() != bot && kalecgos->GetHealthPct() > 90.0f)
-        return botAI->DoSpecificAction("taunt spell", event, true);
-
-    Position const position = KALECGOS_TANK_POSITION;
+    Position const& position = KALECGOS_TANK_POSITION;
     float const distToPosition = bot->GetExactDist2d(
         position.GetPositionX(), position.GetPositionY());
 
-    if (distToPosition > 3.0f)
+    if (distToPosition > 3.0f && bot->IsWithinMeleeRange(kalecgos))
     {
         float maxMoveDist = kalecgos->GetVictim() == bot ? 2.25f : 3.5f;
         float const moveDist = std::min(maxMoveDist, distToPosition);
@@ -41,13 +87,11 @@ bool KalecgosTankPositionBossAction::Execute(Event event)
         float const moveY = bot->GetPositionY() + (dY / distToPosition) * moveDist;
 
         return MoveTo(
-            SUNWELL_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
+            SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
             false, false, MovementPriority::MOVEMENT_COMBAT, true, backwards);
     }
 
-    // Once the fight is in progress, move to the tank position before taunting
-    // during tank swaps to avoid turning the boss
-    if (kalecgos->GetVictim() != bot)
+    if (GetKalecgosDesignatedTank(bot) == bot && kalecgos->GetVictim() != bot)
         return botAI->DoSpecificAction("taunt spell", event, true);
 
     return false;
@@ -55,31 +99,13 @@ bool KalecgosTankPositionBossAction::Execute(Event event)
 
 bool KalecgosEnterSpectralRiftAction::Execute(Event /*event*/)
 {
-    if (Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
-        kalecgos && botAI->IsTank(bot))
-    {
-        Player* surfaceTank = GetKalecgosCurrentTank(bot);
-        if (!surfaceTank)
-            return false;
-
-        if (surfaceTank == bot)
-        {
-            surfaceTank = GetKalecgosReplacementTank(bot);
-            if (!surfaceTank)
-                return false;
-        }
-
-        Position const position = KALECGOS_TANK_POSITION;
-        if (surfaceTank->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 3.0f ||
-            kalecgos->GetVictim() != surfaceTank)
-        {
-            return false;
-        }
-    }
+    // Special conditions for tanks only
+    if (PlayerbotAI::IsTank(bot) && !ShouldTankEnter())
+        return false;
 
     constexpr float searchRadius = 75.0f;
     GameObject* rift = bot->FindNearestGameObject(
-        static_cast<uint32>(SunwellObjects::GO_SPECTRAL_RIFT), searchRadius, true);
+        static_cast<uint32>(SwpObjects::GO_SPECTRAL_RIFT), searchRadius, true);
     if (!rift)
         return false;
 
@@ -95,15 +121,47 @@ bool KalecgosEnterSpectralRiftAction::Execute(Event /*event*/)
     float const destY = rift->GetPositionY() + std::sin(angle) * targetDist;
 
     return MoveTo(
-        SUNWELL_MAP_ID, destX, destY, rift->GetPositionZ(),
-        false, false, false, false, MovementPriority::MOVEMENT_FORCED, true, false);
+        SWP_MAP_ID, destX, destY, rift->GetPositionZ(), false, false,
+        false, false, MovementPriority::MOVEMENT_FORCED, true, false);
+}
+
+bool KalecgosEnterSpectralRiftAction::ShouldTankEnter()
+{
+    Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
+    if (!kalecgos)
+        return false;
+
+    Player* surfaceTank = GetKalecgosDesignatedTank(bot);
+    if (!surfaceTank)
+        return false;
+
+    if (surfaceTank == bot)
+    {
+        KalecgosEncounterState& state = kalecgosEncounterStates[kalecgos->GetInstanceId()];
+        surfaceTank = GetNextSurfaceTankInOrder(
+            bot->GetGroup(), state.tankAssignmentGuids,
+            state.currentTankGuid, ObjectGuid::Empty, true);
+
+        if (!surfaceTank)
+            return false;
+    }
+
+    // The current tank cannot enter a portal until the next tank takes over
+    Position const& position = KALECGOS_TANK_POSITION;
+    if (surfaceTank->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 3.0f ||
+        kalecgos->GetVictim() != surfaceTank)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
 {
     if (!_initialRangedPositionReached)
     {
-        Position const initialPos = KALECGOS_INITIAL_RANGED_POSITION;
+        Position const& initialPos = KALECGOS_INITIAL_RANGED_POSITION;
         constexpr float initialRangedRadius = 10.0f;
 
         if (bot->GetExactDist2d(initialPos.GetPositionX(), initialPos.GetPositionY()) <=
@@ -114,7 +172,7 @@ bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
         }
 
         return MoveInside(
-            SUNWELL_MAP_ID, initialPos.GetPositionX(), initialPos.GetPositionY(),
+            SWP_MAP_ID, initialPos.GetPositionX(), initialPos.GetPositionY(),
             initialPos.GetPositionZ(), initialRangedRadius, MovementPriority::MOVEMENT_COMBAT);
     }
 
@@ -127,7 +185,7 @@ bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
     }
 
     constexpr float safeDistFromPlayer = 6.0f;
-    if (Unit* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistFromPlayer))
+    if (Player* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistFromPlayer))
     {
         constexpr uint32 minInterval = 1000;
         return FleePosition(nearestPlayer->GetPosition(), safeDistFromPlayer, minInterval);
@@ -165,26 +223,23 @@ bool KalecgosSathrovarrTankStandWithKalecAction::Execute(Event /*event*/)
 
     constexpr float searchRadius = 20.0f;
     Unit* kalec = bot->FindNearestCreature(
-        static_cast<uint32>(SunwellNpcs::NPC_KALECGOS_HUMANOID), searchRadius);
+        static_cast<uint32>(SwpNpcs::NPC_KALECGOS_HUMANOID), searchRadius);
 
     if (!kalec || sathrovarr->GetVictim() != kalec)
         return false;
 
     Position const position = kalec->GetPosition();
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 3.0f)
-    {
-        return MoveTo(
-            SUNWELL_MAP_ID, position.GetPositionX(), position.GetPositionY(),
-            position.GetPositionZ(), false, false, false, false,
-            MovementPriority::MOVEMENT_COMBAT, true, false);
-    }
+    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) < 3.0f)
+        return false;
 
-    return false;
+    return MoveTo(
+        SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
+        false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KalecgosReturnToSpectralRealmGroundAction::Execute(Event /*event*/)
 {
     return bot->TeleportTo(
-        SUNWELL_MAP_ID, bot->GetPositionX(), bot->GetPositionY(),
+        SWP_MAP_ID, bot->GetPositionX(), bot->GetPositionY(),
         KALECGOS_SPECTRAL_REALM_Z, bot->GetOrientation());
 }

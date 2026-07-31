@@ -1,3 +1,9 @@
+/*
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
+ */
+
 #include "RaidBossHelpers.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
@@ -98,13 +104,10 @@ void SetRtiTarget(PlayerbotAI* botAI, const std::string& rtiName, Unit* target)
     }
 }
 
-// Return the first alive dps bot in the specified instance map for purposes of assigning
+// Return the first alive bot in the specified instance map for purposes of assigning
 // a single bot to manage associative containers, mark targets, etc.
-bool IsMechanicTrackerBot(PlayerbotAI* botAI, Player* bot, uint32 mapId)
+bool IsMechanicTrackerBot(Player* bot, uint32 mapId)
 {
-    if (!botAI->IsDps(bot))
-        return false;
-
     Group* group = bot->GetGroup();
     if (!group)
         return false;
@@ -113,7 +116,7 @@ bool IsMechanicTrackerBot(PlayerbotAI* botAI, Player* bot, uint32 mapId)
     {
         Player* member = ref->GetSource();
         if (!member || !member->IsAlive() || member->GetMapId() != mapId ||
-            !GET_PLAYERBOT_AI(member) || !botAI->IsDps(member))
+            !GET_PLAYERBOT_AI(member))
         {
             continue;
         }
@@ -204,27 +207,28 @@ Unit* GetFirstAliveUnitByEntry(PlayerbotAI* botAI, uint32 entry)
     return nullptr;
 }
 
-// Return the nearest alive player (human or bot) within the specified radius
-// Distance is measured by GetDistance2d(), which takes into account hitboxes (1.5y)
-Unit* GetNearestPlayerInRadius(Player* bot, float radius)
+// Return the nearest alive player (human or bot) within the specified radius. Distance is
+// measured by GetExactDist2d(), which does not take into account player hitboxes (1.5y).
+Player* GetNearestPlayerInRadius(Player* bot, float radius)
 {
-    Unit* nearestPlayer = nullptr;
+    Group* group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    Player* nearestPlayer = nullptr;
     float nearestDistance = radius;
 
-    if (Group* group = bot->GetGroup())
+    for (GroupReference* ref = group->GetFirstMember(); ref != nullptr; ref = ref->next())
     {
-        for (GroupReference* ref = group->GetFirstMember(); ref != nullptr; ref = ref->next())
-        {
-            Player* member = ref->GetSource();
-            if (!member || !member->IsAlive() || member == bot)
-                continue;
+        Player* member = ref->GetSource();
+        if (!member || !member->IsAlive() || member == bot)
+            continue;
 
-            float distance = bot->GetDistance2d(member);
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestPlayer = member;
-            }
+        float distance = bot->GetExactDist2d(member);
+        if (distance < nearestDistance)
+        {
+            nearestDistance = distance;
+            nearestPlayer = member;
         }
     }
 

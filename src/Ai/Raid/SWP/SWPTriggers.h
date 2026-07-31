@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPTRIGGERS_H
@@ -45,6 +46,14 @@ public:
 };
 
 // Kalecgos
+
+class KalecgosShouldCommunicateBossHealthTrigger : public Trigger
+{
+public:
+    KalecgosShouldCommunicateBossHealthTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "kalecgos should communicate boss health") {}
+    bool IsActive() override;
+};
 
 class KalecgosBossEngagedByTankTrigger : public Trigger
 {
@@ -194,11 +203,11 @@ public:
     bool IsActive() override;
 };
 
-class FelmystDemonicVaporTrailsAreActiveTrigger : public Trigger
+class FelmystShouldAvoidDemonicVaporTrailsTrigger : public Trigger
 {
 public:
-    FelmystDemonicVaporTrailsAreActiveTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "felmyst demonic vapor trails are active") {}
+    FelmystShouldAvoidDemonicVaporTrailsTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst should avoid demonic vapor trails") {}
     bool IsActive() override;
 };
 
@@ -231,6 +240,14 @@ class FelmystPlayerIsCharmedByFogTrigger : public Trigger
 public:
     FelmystPlayerIsCharmedByFogTrigger(
         PlayerbotAI* botAI) : Trigger(botAI, "felmyst player is charmed by fog") {}
+    bool IsActive() override;
+};
+
+class FelmystShouldHoldDpsWhileLandingTrigger : public Trigger
+{
+public:
+    FelmystShouldHoldDpsWhileLandingTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "felmyst should hold dps while landing") {}
     bool IsActive() override;
 };
 

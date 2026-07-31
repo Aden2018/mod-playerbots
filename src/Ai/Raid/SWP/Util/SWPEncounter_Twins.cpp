@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "SWPEncounter_Twins.h"
@@ -14,7 +15,7 @@
 #include "ThreatManager.h"
 #include <list>
 
-namespace SunwellHelpers
+namespace SwpHelpers
 {
 
 // Note: Alythess and Sacrolash each have a CombatReach of 2.5f
@@ -35,7 +36,7 @@ std::array<Position, ALYTHESS_TANK_POSITION_COUNT> const alythessTankPositions =
 std::unordered_map<ObjectGuid, ObjectGuid> alythessTankLastBlazeGuid;
 
 // Adjusted positions are to address the occasional bug (?) where Alythess moves
-Position GetAlythessAdjustedPosition(Unit* alythess, Position const& basePosition)
+Position GetAdjustedPosition(Unit* alythess, Position const& basePosition)
 {
     if (!alythess)
         return basePosition;
@@ -61,6 +62,9 @@ Position const EREDAR_TWINS_MELEE_CONFLAG_POSITION =  { 1812.842f, 611.147f, 33.
 std::unordered_map<uint32, EredarTwinsIncomingConflagrationState>
     eredarTwinsIncomingConflagrationStates;
 
+std::unordered_map<uint32, EredarTwinsBlazeTargetState>
+    eredarTwinsBlazeTargetStates;
+
 std::unordered_map<uint32, time_t> eredarTwinsDpsHoldTimer;
 
 Position GetAlythessTankPosition(Unit* alythess, uint8 index)
@@ -68,37 +72,34 @@ Position GetAlythessTankPosition(Unit* alythess, uint8 index)
     if (index >= alythessTankPositions.size())
         index = 0;
 
-    return GetAlythessAdjustedPosition(alythess, alythessTankPositions[index]);
+    return GetAdjustedPosition(alythess, alythessTankPositions[index]);
 }
 
 Position GetEredarTwinsP2MeleeStackPosition(Unit* alythess)
 {
     Position const basePosition = { 1814.327f, 625.645f, 33.404f };
-    return GetAlythessAdjustedPosition(alythess, basePosition);
+    return GetAdjustedPosition(alythess, basePosition);
 }
 
 Position GetEredarTwinsP2RangedStackPosition(Unit* alythess)
 {
     Position const basePosition = { 1805.587f, 625.653f, 33.404f };
-    return GetAlythessAdjustedPosition(alythess, basePosition);
+    return GetAdjustedPosition(alythess, basePosition);
 }
 
 bool IsAnySacrolashTank(Player* bot)
 {
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
-    return botAI->IsMainTank(bot) || botAI->IsAssistTankOfIndex(bot, 1, true);
+    return PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 1, false);
 }
 
 bool IsAlythessTank(Player* bot)
 {
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
-    return botAI->IsAssistTankOfIndex(bot, 0, false);
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 0, false);
 }
 
 bool ShouldHoldTwinThreat(
     Player* bot, Unit* boss, float threatHoldRatio, bool (*isTwinTank)(Player*))
 {
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     if (!boss || isTwinTank(bot))
         return false;
 
@@ -114,7 +115,11 @@ bool ShouldHoldTwinThreat(
         if (!threatRef || !threatRef->IsAvailable())
             continue;
 
-        Player* threatPlayer = threatRef->GetVictim()->ToPlayer();
+        Unit* victim = threatRef->GetVictim();
+        if (!victim)
+            continue;
+
+        Player* threatPlayer = victim->ToPlayer();
         if (!threatPlayer || !threatPlayer->IsAlive())
             continue;
 
@@ -152,7 +157,7 @@ bool IsAlythessTankPositionSafe(Player* bot, Position const& position)
 
     for (GameObject* go : targets)
     {
-        if (!go || go->GetEntry() != static_cast<uint32>(SunwellObjects::GO_BLAZE))
+        if (!go || go->GetEntry() != static_cast<uint32>(SwpObjects::GO_BLAZE))
             continue;
 
         if (go->GetExactDist2d(
@@ -174,7 +179,7 @@ bool ShouldAdvanceAlythessTankPosition(Unit* alythess, Player* bot)
     constexpr float blazeObjectRadius = 5.0f;
 
     GameObject* blazeObject = bot->FindNearestGameObject(
-        static_cast<uint32>(SunwellObjects::GO_BLAZE), blazeObjectRadius);
+        static_cast<uint32>(SwpObjects::GO_BLAZE), blazeObjectRadius);
 
     if (!blazeObject)
     {
@@ -191,11 +196,12 @@ bool ShouldAdvanceAlythessTankPosition(Unit* alythess, Player* bot)
     return true;
 }
 
-void RecordEredarTwinsIncomingConflagrationTarget(Player* target, uint32 durationMs)
+void RecordIncomingEredarTwinsConflagrationTarget(Player* target)
 {
-    if (!target || !durationMs)
+    if (!target)
         return;
 
+    constexpr uint32 durationMs = 2000;
     uint32 const now = getMSTime();
     EredarTwinsIncomingConflagrationState& state =
         eredarTwinsIncomingConflagrationStates[target->GetInstanceId()];
@@ -225,6 +231,46 @@ Player* GetEredarTwinsConflagrationTarget(Player* bot)
 
     if (state.delayMs > now)
         return nullptr;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (member && member->GetGUID() == state.targetGuid)
+            return member;
+    }
+
+    return nullptr;
+}
+
+void RecordEredarTwinsBlazeTarget(Player* target)
+{
+    if (!target)
+        return;
+
+    constexpr uint32 durationMs = 2000;
+    uint32 const now = getMSTime();
+    EredarTwinsBlazeTargetState& state =
+        eredarTwinsBlazeTargetStates[target->GetInstanceId()];
+    state.targetGuid = target->GetGUID();
+    state.expireMs = now + durationMs;
+}
+
+Player* GetEredarTwinsBlazeTarget(Player* bot)
+{
+    auto const itr = eredarTwinsBlazeTargetStates.find(bot->GetInstanceId());
+    if (itr == eredarTwinsBlazeTargetStates.end())
+        return nullptr;
+
+    EredarTwinsBlazeTargetState const& state = itr->second;
+    if (state.expireMs <= getMSTime())
+    {
+        eredarTwinsBlazeTargetStates.erase(itr);
+        return nullptr;
+    }
 
     Group* group = bot->GetGroup();
     if (!group)

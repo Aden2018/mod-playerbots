@@ -10,13 +10,13 @@
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
 
-using namespace KarazhanHelpers;
+using namespace KaraHelpers;
 
 // General
 
 bool KarazhanBotIsNotInCombatTrigger::IsActive()
 {
-    return bot->GetMapId() == KARAZHAN_MAP_ID && !AI_VALUE2(bool, "combat", "self target");
+    return bot->GetMapId() == KARA_MAP_ID && !AI_VALUE2(bool, "combat", "self target");
 }
 
 bool KarazhanEnemiesCastFearTrigger::IsActive()
@@ -56,30 +56,36 @@ bool AttumenTheHuntsmanPhaseTwoActiveTrigger::IsActive()
     return AI_VALUE2(Unit*, "find target", "midnight") && GetAttumenMounted(bot);
 }
 
-bool AttumenTheHuntsmanBossWipesAggroWhenMountingTrigger::IsActive()
+bool AttumenTheHuntsmanPhaseTransitionTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID) &&
-        AI_VALUE2(Unit*, "find target", "midnight");
+    if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
+        return false;
+
+    if (!AI_VALUE2(Unit*, "find target", "midnight"))
+        return false;
+
+    constexpr uint32 searchRadius = 40.0f;
+    return bot->FindNearestCreature(
+        static_cast<uint32>(KaraNpcs::NPC_ATTUMEN_THE_HUNTSMAN), searchRadius, true);
 }
 
 // Moroes
 
 bool MoroesBossEngagedByMainTankTrigger::IsActive()
 {
-    return botAI->IsMainTank(bot) && AI_VALUE2(Unit*, "find target", "moroes");
+    return PlayerbotAI::IsMainTank(bot) && AI_VALUE2(Unit*, "find target", "moroes");
 }
 
 bool MoroesDpsShouldPrioritizeAddsTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID) &&
-        AI_VALUE2(Unit*, "find target", "moroes");
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID) && AI_VALUE2(Unit*, "find target", "moroes");
 }
 
 // Maiden of Virtue
 
 bool MaidenOfVirtueBossEngagedByTanksTrigger::IsActive()
 {
-    return botAI->IsTank(bot) && AI_VALUE2(Unit*, "find target", "maiden of virtue");
+    return PlayerbotAI::IsTank(bot) && AI_VALUE2(Unit*, "find target", "maiden of virtue");
 }
 
 bool MaidenOfVirtueGroundingTotemConsumesHolyFireTrigger::IsActive()
@@ -93,33 +99,32 @@ bool MaidenOfVirtueGroundingTotemConsumesHolyFireTrigger::IsActive()
 
 bool MaidenOfVirtueHolyWrathDealsChainDamageTrigger::IsActive()
 {
-    return botAI->IsRanged(bot) && AI_VALUE2(Unit*, "find target", "maiden of virtue");
+    return PlayerbotAI::IsRanged(bot) && AI_VALUE2(Unit*, "find target", "maiden of virtue");
 }
 
 // The Big Bad Wolf
 
 bool BigBadWolfBossEngagedByTankTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot))
+    if (!PlayerbotAI::IsTank(bot))
         return false;
 
     if (!AI_VALUE2(Unit*, "find target", "the big bad wolf"))
         return false;
 
-    return !bot->HasAura(
-        static_cast<uint32>(KarazhanSpells::SPELL_LITTLE_RED_RIDING_HOOD));
+    return !bot->HasAura(static_cast<uint32>(KaraSpells::SPELL_LITTLE_RED_RIDING_HOOD));
 }
 
 bool BigBadWolfBossIsChasingLittleRedRidingHoodTrigger::IsActive()
 {
-    return bot->HasAura(static_cast<uint32>(KarazhanSpells::SPELL_LITTLE_RED_RIDING_HOOD));
+    return bot->HasAura(static_cast<uint32>(KaraSpells::SPELL_LITTLE_RED_RIDING_HOOD));
 }
 
 // Romulo and Julianne
 
 bool RomuloAndJulianneBothBossesRevivedTrigger::IsActive()
 {
-    if (!IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID))
+    if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
         return false;
 
     return AI_VALUE2(Unit*, "find target", "romulo") && AI_VALUE2(Unit*, "find target", "julianne");
@@ -129,22 +134,12 @@ bool RomuloAndJulianneBothBossesRevivedTrigger::IsActive()
 
 bool WizardOfOzNeedTargetPriorityTrigger::IsActive()
 {
-    if (!IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID))
+    if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
         return false;
 
-    static const std::array<const char*, 6> ozTargets =
+    for (const char* name : GetOzTargets())
     {
-        "dorothee",
-        "tito",
-        "roar",
-        "strawman",
-        "tinhead",
-        "the crone"
-    };
-
-    for (const char* name : ozTargets)
-    {
-        if (Unit* target = AI_VALUE2(Unit*, "find target", name))
+        if (AI_VALUE2(Unit*, "find target", name))
             return true;
     }
 
@@ -160,25 +155,25 @@ bool WizardOfOzStrawmanIsVulnerableToFireTrigger::IsActive()
 
 bool TheCuratorAstralFlareSpawnedTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID) &&
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID) &&
         AI_VALUE2(Unit*, "find target", "astral flare");
 }
 
 bool TheCuratorBossEngagedByTanksTrigger::IsActive()
 {
-    return botAI->IsTank(bot) && AI_VALUE2(Unit*, "find target", "the curator");
+    return PlayerbotAI::IsTank(bot) && AI_VALUE2(Unit*, "find target", "the curator");
 }
 
 bool TheCuratorBossEngagedByRangedTrigger::IsActive()
 {
-    return botAI->IsRanged(bot) && AI_VALUE2(Unit*, "find target", "the curator");
+    return PlayerbotAI::IsRanged(bot) && AI_VALUE2(Unit*, "find target", "the curator");
 }
 
 // Terestian Illhoof
 
 bool TerestianIllhoofShouldPrioritizeChainsTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID) &&
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID) &&
         AI_VALUE2(Unit*, "find target", "terestian illhoof");
 }
 
@@ -197,20 +192,20 @@ bool ShadeOfAranFlameWreathIsActiveTrigger::IsActive()
 
 bool ShadeOfAranConjuredElementalsSummonedTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(botAI, bot, KARAZHAN_MAP_ID) &&
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID) &&
         AI_VALUE2(Unit*, "find target", "conjured elemental");
 }
 
 bool ShadeOfAranBossCastsCounterspellNearbyTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot))
+    if (!PlayerbotAI::IsRanged(bot))
         return false;
 
     Unit* aran = AI_VALUE2(Unit*, "find target", "shade of aran");
     if (!aran)
         return false;
 
-    if (bot->HasAura(static_cast<uint32>(KarazhanSpells::SPELL_BLIZZARD)))
+    if (bot->HasAura(static_cast<uint32>(KaraSpells::SPELL_BLIZZARD)))
         return false;
 
     return !IsAranCastingArcaneExplosion(aran) && !IsFlameWreathActive(bot);
@@ -226,7 +221,7 @@ bool NetherspiteRedBeamIsActiveTrigger::IsActive()
 
     constexpr float searchRadius = 150.0f;
     return bot->FindNearestCreature(
-        static_cast<uint32>(KarazhanNpcs::NPC_RED_PORTAL), searchRadius);
+        static_cast<uint32>(KaraNpcs::NPC_RED_PORTAL), searchRadius);
 }
 
 bool NetherspiteBlueBeamIsActiveTrigger::IsActive()
@@ -237,7 +232,7 @@ bool NetherspiteBlueBeamIsActiveTrigger::IsActive()
 
     constexpr float searchRadius = 150.0f;
     return bot->FindNearestCreature(
-        static_cast<uint32>(KarazhanNpcs::NPC_BLUE_PORTAL), searchRadius);
+        static_cast<uint32>(KaraNpcs::NPC_BLUE_PORTAL), searchRadius);
 }
 
 bool NetherspiteGreenBeamIsActiveTrigger::IsActive()
@@ -248,7 +243,7 @@ bool NetherspiteGreenBeamIsActiveTrigger::IsActive()
 
     constexpr float searchRadius = 150.0f;
     return bot->FindNearestCreature(
-        static_cast<uint32>(KarazhanNpcs::NPC_GREEN_PORTAL), searchRadius);
+        static_cast<uint32>(KaraNpcs::NPC_GREEN_PORTAL), searchRadius);
 }
 
 bool NetherspiteBotIsNotBeamBlockerTrigger::IsActive()
@@ -287,7 +282,7 @@ bool NetherspiteShouldManageTimersAndTrackersTrigger::IsActive()
 
 bool PrinceMalchezaarBotIsEnfeebledTrigger::IsActive()
 {
-    return bot->HasAura(static_cast<uint32>(KarazhanSpells::SPELL_ENFEEBLE));
+    return bot->HasAura(static_cast<uint32>(KaraSpells::SPELL_ENFEEBLE));
 }
 
 bool PrinceMalchezaarEngagedByNonTanksTrigger::IsActive()
@@ -296,11 +291,14 @@ bool PrinceMalchezaarEngagedByNonTanksTrigger::IsActive()
     if (!malchezaar)
         return false;
 
-    if (bot->HasAura(static_cast<uint32>(KarazhanSpells::SPELL_ENFEEBLE)))
+    if (bot->HasAura(static_cast<uint32>(KaraSpells::SPELL_ENFEEBLE)))
         return false;
 
-    if (botAI->IsMainTank(bot) || (botAI->IsTank(bot) && malchezaar->GetVictim() == bot))
+    if ((PlayerbotAI::IsTank(bot) && malchezaar->GetVictim() == bot) ||
+        PlayerbotAI::IsMainTank(bot))
+    {
         return false;
+    }
 
     return true;
 }
@@ -311,14 +309,15 @@ bool PrinceMalchezaarBossEngagedByTanksTrigger::IsActive()
     if (!malchezaar)
         return false;
 
-    return botAI->IsMainTank(bot) || (botAI->IsTank(bot) && malchezaar->GetVictim() == bot);
+    return (PlayerbotAI::IsTank(bot) && malchezaar->GetVictim() == bot) ||
+        PlayerbotAI::IsMainTank(bot);
 }
 
 // Nightbane
 
 bool NightbaneBossEngagedByTanksTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot))
+    if (!PlayerbotAI::IsTank(bot))
         return false;
 
     Unit* nightbane = AI_VALUE2(Unit*, "find target", "nightbane");
@@ -327,7 +326,7 @@ bool NightbaneBossEngagedByTanksTrigger::IsActive()
 
 bool NightbaneGroundPhaseEngagedByRangedTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot))
+    if (!PlayerbotAI::IsRanged(bot))
         return false;
 
     Unit* nightbane = AI_VALUE2(Unit*, "find target", "nightbane");
@@ -367,8 +366,9 @@ bool NightbaneBossIsFlyingTrigger::IsActive()
 
 bool NightbaneBotWentOutOfBoundsTrigger::IsActive()
 {
+    constexpr float outOfBoundsLeeway = 5.0f;
     return AI_VALUE2(Unit*, "find target", "nightbane") &&
-        bot->GetPositionZ() < NIGHTBANE_GROUND_Z - 5.0f;
+        bot->GetPositionZ() < NIGHTBANE_GROUND_Z - outOfBoundsLeeway;
 }
 
 bool NightbaneShouldManageTimersAndTrackersTrigger::IsActive()

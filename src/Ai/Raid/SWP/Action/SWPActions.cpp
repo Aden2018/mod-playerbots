@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "SWPActions.h"
@@ -16,15 +17,13 @@
 #include "SWPEncounter_Twins.h"
 #include <list>
 
-using namespace SunwellHelpers;
+using namespace SwpHelpers;
 
-bool SunwellPlateauEraseEncounterStatesAction::Execute(Event /*event*/)
+bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
 {
     ObjectGuid const guid = bot->GetGUID();
     uint32 const instanceId = bot->GetInstanceId();
-    bool const isMechanicTracker = IsMechanicTrackerBot(botAI, bot, SUNWELL_MAP_ID);
-    bool const isRanged = botAI->IsRanged(bot);
-    bool const isTank = botAI->IsTank(bot);
+    bool const isMechanicTracker = IsMechanicTrackerBot(bot, SWP_MAP_ID);
 
     bool didSomething = false;
 
@@ -37,7 +36,7 @@ bool SunwellPlateauEraseEncounterStatesAction::Execute(Event /*event*/)
         if (kalecgosRealmStates.erase(guid) > 0)
             didSomething = true;
 
-        if (isRanged)
+        if (PlayerbotAI::IsTank(bot))
         {
             Action* kalecAction = botAI->GetAiObjectContext()->GetAction(
                 "kalecgos disperse ranged");
@@ -51,16 +50,16 @@ bool SunwellPlateauEraseEncounterStatesAction::Execute(Event /*event*/)
 
     if (!AI_VALUE2(Unit*, "find target", "brutallus"))
     {
-        if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_BURN)))
+        if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_BURN)))
         {
-            bot->RemoveAura(static_cast<uint32>(SunwellSpells::SPELL_BURN));
+            bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_BURN));
             didSomething = true;
         }
 
-        if (botAI->IsRanged(bot) && brutallusRangedBurnStates.erase(guid) > 0)
+        if (PlayerbotAI::IsRanged(bot) && brutallusRangedBurnStates.erase(guid) > 0)
             didSomething = true;
 
-        if (botAI->IsRanged(bot) && ReleaseBrutallusBurnPad(bot))
+        if (PlayerbotAI::IsRanged(bot) && ReleaseBrutallusBurnPad(bot))
             didSomething = true;
 
         if (isMechanicTracker && brutallusRangedAssignments.erase(instanceId) > 0)
@@ -69,7 +68,7 @@ bool SunwellPlateauEraseEncounterStatesAction::Execute(Event /*event*/)
         if (isMechanicTracker && brutallusRangedBurnPadAssignments.erase(instanceId) > 0)
             didSomething = true;
 
-        if (isTank)
+        if (PlayerbotAI::IsTank(bot))
         {
             Action* brutallusAction = botAI->GetAiObjectContext()->GetAction(
                 "brutallus tanks handle boss");
@@ -96,7 +95,7 @@ bool SunwellPlateauEraseEncounterStatesAction::Execute(Event /*event*/)
             didSomething = true;
     }
 
-    if (isTank && !AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
+    if (PlayerbotAI::IsTank(bot) && !AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
     {
         Action* twinsAction = botAI->GetAiObjectContext()->GetAction(
             "eredar twins first assist tank move out of blaze");
@@ -138,12 +137,12 @@ bool SunwellPlateauRemoveProtectiveAuraAction::Execute(Event /*event*/)
 {
     if (bot->getClass() == CLASS_MAGE)
     {
-        bot->RemoveAura(static_cast<uint32>(SunwellSpells::SPELL_ICE_BLOCK));
+        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_ICE_BLOCK));
         return true;
     }
     else if (bot->getClass() == CLASS_PALADIN)
     {
-        bot->RemoveAura(static_cast<uint32>(SunwellSpells::SPELL_DIVINE_SHIELD));
+        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_DIVINE_SHIELD));
         return true;
     }
 
@@ -154,11 +153,11 @@ bool VolatileFiendKeepEnemyAwayFromGroupAction::Execute(Event /*event*/)
 {
     constexpr float searchRadius = 25.0f;
     Unit* volatileFiend = bot->FindNearestCreature(
-        static_cast<uint32>(SunwellNpcs::NPC_VOLATILE_FIEND), searchRadius, true);
+        static_cast<uint32>(SwpNpcs::NPC_VOLATILE_FIEND), searchRadius, true);
     if (!volatileFiend)
         return false;
 
-    if (botAI->IsTank(bot))
+    if (PlayerbotAI::IsTank(bot))
     {
         if (AI_VALUE(Unit*, "current target") != volatileFiend)
             return Attack(volatileFiend);
@@ -183,12 +182,12 @@ bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
     constexpr float searchRadius = 40.0f;
     std::list<Creature*> apocalypseGuards;
     bot->GetCreatureListWithEntryInGrid(
-        apocalypseGuards, static_cast<uint32>(SunwellNpcs::NPC_APOCALYPSE_GUARD), searchRadius);
+        apocalypseGuards, static_cast<uint32>(SwpNpcs::NPC_APOCALYPSE_GUARD), searchRadius);
 
     for (Creature* apocalypseGuard : apocalypseGuards)
     {
         if (!apocalypseGuard || !apocalypseGuard->IsAlive() ||
-            !apocalypseGuard->HasAura(static_cast<uint32>(SunwellSpells::SPELL_INFERNAL_DEFENSE)))
+            !apocalypseGuard->HasAura(static_cast<uint32>(SwpSpells::SPELL_INFERNAL_DEFENSE)))
         {
             continue;
         }
@@ -197,11 +196,8 @@ bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
             target = apocalypseGuard;
     }
 
-    if (bot->HasAura(static_cast<uint32>(SunwellSpells::SPELL_SHADOWFORM)))
-        bot->RemoveAura(static_cast<uint32>(SunwellSpells::SPELL_SHADOWFORM));
+    if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_SHADOWFORM)))
+        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_SHADOWFORM));
 
-    if (botAI->CanCastSpell("smite", target))
-        return botAI->CastSpell("smite", target);
-
-    return false;
+    return botAI->CanCastSpell("smite", target) && botAI->CastSpell("smite", target);
 }

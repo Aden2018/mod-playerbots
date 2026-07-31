@@ -9,26 +9,13 @@
 #include "KaraHelpers.h"
 #include "KaraMultipliers.h"
 #include "PlayerbotAI.h"
-
-void AppendNightbaneFlightPhaseExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
-{
-    Unit* nightbane =
-        botAI->GetAiObjectContext()->GetValue<Unit*>("find target", "nightbane")->Get();
-    if (nightbane && nightbane->GetPositionZ() > KarazhanHelpers::NIGHTBANE_FLIGHT_Z)
-        exclusions.insert(nightbane->GetGUID());
-}
-
-void RaidKarazhanStrategy::AppendTargetExclusions(
-    GuidSet& exclusions, TargetValueExclusionType type)
-{
-    AppendNightbaneFlightPhaseExclusions(botAI, exclusions);
-}
+#include "Playerbots.h"
 
 void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // General
     triggers.push_back(new TriggerNode("karazhan bot is not in combat",
-        { NextAction("karazhan erase encounter states", ACTION_EMERGENCY + 10) }
+        { NextAction("karazhan reset encounter states", ACTION_EMERGENCY + 10) }
     ));
     triggers.push_back(new TriggerNode("karazhan enemies cast fear",
         { NextAction("karazhan cast fear protection spell", ACTION_RAID) }
@@ -46,7 +33,7 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("attumen the huntsman phase two active",
         { NextAction("attumen the huntsman handle phase two", ACTION_RAID) }
     ));
-    triggers.push_back(new TriggerNode("attumen the huntsman boss wipes aggro when mounting",
+    triggers.push_back(new TriggerNode("attumen the huntsman phase transition",
         { NextAction("attumen the huntsman set dps timer", ACTION_EMERGENCY + 10) }
     ));
 
@@ -122,16 +109,16 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     // Netherspite
     triggers.push_back(new TriggerNode("netherspite red beam is active",
-        { NextAction("netherspite block red beam", ACTION_EMERGENCY + 8) }
+        { NextAction("netherspite block red beam", ACTION_EMERGENCY + 6) }
     ));
     triggers.push_back(new TriggerNode("netherspite blue beam is active",
-        { NextAction("netherspite block blue beam", ACTION_EMERGENCY + 8) }
+        { NextAction("netherspite block blue beam", ACTION_EMERGENCY + 6) }
     ));
     triggers.push_back(new TriggerNode("netherspite green beam is active",
-        { NextAction("netherspite block green beam", ACTION_EMERGENCY + 8) }
+        { NextAction("netherspite block green beam", ACTION_EMERGENCY + 6) }
     ));
     triggers.push_back(new TriggerNode("netherspite bot is not beam blocker",
-        { NextAction("netherspite avoid beam and void zone", ACTION_EMERGENCY + 7) }
+        { NextAction("netherspite avoid beam and void zone", ACTION_EMERGENCY + 6) }
     ));
     triggers.push_back(new TriggerNode("netherspite boss is banished",
         { NextAction("netherspite banish phase avoid void zone", ACTION_EMERGENCY + 1) }
@@ -162,10 +149,10 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("nightbane control pet aggression", ACTION_RAID + 1) }
     ));
     triggers.push_back(new TriggerNode("nightbane boss is flying",
-        { NextAction("nightbane flight phase stack and move together", ACTION_RAID) }
+        { NextAction("nightbane flight phase stack and move", ACTION_RAID) }
     ));
     triggers.push_back(new TriggerNode("nightbane bot went out of bounds",
-        { NextAction("nightbane teleport back to terrace", ACTION_EMERGENCY + 10) }
+        { NextAction("nightbane teleport back to terrace", ACTION_EMERGENCY + 9) }
     ));
     triggers.push_back(new TriggerNode("nightbane should manage timers and trackers",
         { NextAction("nightbane manage timers and trackers", ACTION_EMERGENCY + 10) }
@@ -194,4 +181,13 @@ void RaidKarazhanStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers
     multipliers.push_back(new NightbaneWaitForDpsMultiplier(botAI));
     multipliers.push_back(new NightbaneDisableAvoidAoeMultiplier(botAI));
     multipliers.push_back(new NightbaneDisableMovementMultiplier(botAI));
+}
+
+void RaidKarazhanStrategy::AppendTargetExclusions(
+    GuidSet& exclusions, TargetValueExclusionType /*type*/)
+{
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    Unit* nightbane = AI_VALUE2(Unit*, "find target", "nightbane");
+    if (nightbane && nightbane->GetPositionZ() > KaraHelpers::NIGHTBANE_FLIGHT_Z)
+        exclusions.insert(nightbane->GetGUID());
 }

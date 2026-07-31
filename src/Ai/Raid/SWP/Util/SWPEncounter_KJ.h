@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPENCOUNTERKJ_H
@@ -9,14 +10,16 @@
 #include "ObjectGuid.h"
 #include "Position.h"
 #include "SWPData.h"
+#include <array>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class Player;
 class PlayerbotAI;
 class Unit;
 
-namespace SunwellHelpers
+namespace SwpHelpers
 {
 
 struct KiljaedenRangedBotAssignment
@@ -57,7 +60,7 @@ constexpr uint8 KILJAEDEN_INNER_RANGED_SLOT_COUNT = 7;
 constexpr uint8 KILJAEDEN_OUTER_RANGED_SLOT_COUNT = 11;
 constexpr uint8 KILJAEDEN_TOTAL_RANGED_SLOT_COUNT =
     KILJAEDEN_INNER_RANGED_SLOT_COUNT + KILJAEDEN_OUTER_RANGED_SLOT_COUNT;
-extern uint32 const KILJAEDEN_DRAGON_ORB_ENTRIES[4];
+extern std::array<uint32, 4> const KILJAEDEN_DRAGON_ORB_ENTRIES;
 
 extern Position const KILJAEDEN_CENTER_POSITION;
 extern Position const KILJAEDEN_TANK_POSITION;

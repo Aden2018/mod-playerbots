@@ -1,3 +1,9 @@
+/*
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
+ */
+
 #ifndef PLAYERBOTS_RAIDBOSSHELPERS_H
 #define PLAYERBOTS_RAIDBOSSHELPERS_H
 
@@ -15,11 +21,11 @@ bool MarkTargetWithCross(Player* bot, Unit* target);
 bool MarkTargetWithMoon(Player* bot, Unit* target);
 bool ClearTargetIcon(Player* bot, uint8 iconId);
 void SetRtiTarget(PlayerbotAI* botAI, const std::string& rtiName, Unit* target);
-bool IsMechanicTrackerBot(PlayerbotAI* botAI, Player* bot, uint32 mapId);
+bool IsMechanicTrackerBot(Player* bot, uint32 mapId);
 Player* GetGroupMainTank(PlayerbotAI* botAI, Player* bot);
 Player* GetGroupAssistTank(PlayerbotAI* botAI, Player* bot, uint8 index);
 Unit* GetFirstAliveUnitByEntry(PlayerbotAI* botAI, uint32 entry);
-Unit* GetNearestPlayerInRadius(Player* bot, float radius);
+Player* GetNearestPlayerInRadius(Player* bot, float radius);
 std::vector<Position> GetDynamicObjectPositions(Player* bot, float searchRadius, uint32 spellId);
 
 #endif

@@ -10,13 +10,14 @@
 #include "AiObject.h"
 #include "Position.h"
 #include "Unit.h"
+#include <array>
 #include <ctime>
 #include <unordered_map>
 
-namespace KarazhanHelpers
+namespace KaraHelpers
 {
 
-enum class KarazhanSpells : uint32
+enum class KaraSpells : uint32
 {
     // Maiden of Virtue
     SPELL_REPENTANCE                 = 29511,
@@ -59,7 +60,7 @@ enum class KarazhanSpells : uint32
     SPELL_GROUNDING_TOTEM            = 8177,
 };
 
-enum class KarazhanNpcs : uint32
+enum class KaraNpcs : uint32
 {
     // Trash
     NPC_MANA_WARP                    = 16530,
@@ -86,13 +87,28 @@ enum class KarazhanNpcs : uint32
     NPC_NETHERSPITE_INFERNAL         = 17646,
 };
 
-constexpr uint32 KARAZHAN_MAP_ID = 532;
+constexpr uint32 KARA_MAP_ID = 532;
 constexpr float NIGHTBANE_FLIGHT_Z = 95.000f;
 constexpr float NIGHTBANE_GROUND_Z = 91.473f;
 
 // Attumen the Huntsman
+extern Position const ATTUMEN_TANK_POSITION;
 extern std::unordered_map<uint32, time_t> attumenDpsWaitTimer;
 Unit* GetAttumenMounted(Player* bot);
+
+// Maiden of Virtue
+extern Position const MAIDEN_OF_VIRTUE_TANK_POSITION;
+extern std::array<Position, 8> const MAIDEN_OF_VIRTUE_RANGED_POSITIONS;
+
+// The Big Bad Wolf
+extern Position const BIG_BAD_WOLF_TANK_POSITION;
+extern std::array<Position, 4> const BIG_BAD_WOLF_RUN_POSITIONS;
+
+// Wizard of Oz
+std::array<const char*, 5> const& GetOzTargets();
+
+// The Curator
+extern Position const THE_CURATOR_TANK_POSITION;
 
 // Shade of Aran
 bool IsAranCastingArcaneExplosion(Unit* aran);
@@ -121,9 +137,14 @@ bool TryFindSafePositionWithSafePath(
     float safeDistance, float maxSampleDist, float& outX, float& outY);
 
 // Nightbane
+extern Position const TERRACE_DOME_CENTER;
+extern Position const TERRACE_EAST_END;
+extern Position const TERRACE_WEST_END;
+extern std::array<Position, 2> const NIGHTBANE_FLIGHT_STACK_POSITIONS;
+extern std::array<Position, 2> const NIGHTBANE_RAIN_OF_BONES_POSITIONS;
+extern Position const NIGHTBANE_TELEPORT_POSITION;
 extern std::unordered_map<uint32, time_t> nightbaneDpsWaitTimer;
 extern std::unordered_map<uint32, time_t> nightbaneFlightPhaseStartTimer;
-std::vector<Position> GetCharredEarthPositions(Player* bot);
 
 }
 

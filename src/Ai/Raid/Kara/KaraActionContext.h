@@ -16,8 +16,8 @@ public:
     RaidKarazhanActionContext()
     {
         // General
-        creators["karazhan erase encounter states"] =
-            &RaidKarazhanActionContext::karazhan_erase_encounter_states;
+        creators["karazhan reset encounter states"] =
+            &RaidKarazhanActionContext::karazhan_reset_encounter_states;
 
         creators["karazhan cast fear protection spell"] =
             &RaidKarazhanActionContext::karazhan_cast_fear_protection_spell;
@@ -137,8 +137,8 @@ public:
         creators["nightbane control pet aggression"] =
             &RaidKarazhanActionContext::nightbane_control_pet_aggression;
 
-        creators["nightbane flight phase stack and move together"] =
-            &RaidKarazhanActionContext::nightbane_flight_phase_stack_and_move_together;
+        creators["nightbane flight phase stack and move"] =
+            &RaidKarazhanActionContext::nightbane_flight_phase_stack_and_move;
 
         creators["nightbane teleport back to terrace"] =
             &RaidKarazhanActionContext::nightbane_teleport_back_to_terrace;
@@ -149,8 +149,8 @@ public:
 
 private:
     // General
-    static Action* karazhan_erase_encounter_states(PlayerbotAI* botAI) {
-        return new KarazhanEraseEncounterStatesAction(botAI);
+    static Action* karazhan_reset_encounter_states(PlayerbotAI* botAI) {
+        return new KarazhanResetEncounterStatesAction(botAI);
     }
     static Action* karazhan_cast_fear_protection_spell(PlayerbotAI* botAI) {
         return new KarazhanCastFearProtectionSpellAction(botAI);
@@ -283,8 +283,8 @@ private:
     static Action* nightbane_control_pet_aggression(PlayerbotAI* botAI) {
         return new NightbaneControlPetAggressionAction(botAI);
     }
-    static Action* nightbane_flight_phase_stack_and_move_together(PlayerbotAI* botAI) {
-        return new NightbaneFlightPhaseStackAndMoveTogetherAction(botAI);
+    static Action* nightbane_flight_phase_stack_and_move(PlayerbotAI* botAI) {
+        return new NightbaneFlightPhaseStackAndMoveAction(botAI);
     }
     static Action* nightbane_teleport_back_to_terrace(PlayerbotAI* botAI) {
         return new NightbaneTeleportBackToTerraceAction(botAI);

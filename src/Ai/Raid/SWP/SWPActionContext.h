@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #ifndef PLAYERBOTS_SWPACTIONCONTEXT_H
@@ -15,8 +16,8 @@ public:
     RaidSunwellActionContext()
     {
         // General
-        creators["sunwell plateau erase encounter states"] =
-            &RaidSunwellActionContext::sunwell_plateau_erase_encounter_states;
+        creators["sunwell plateau reset encounter states"] =
+            &RaidSunwellActionContext::sunwell_plateau_reset_encounter_states;
 
         creators["sunwell plateau remove protective aura"] =
             &RaidSunwellActionContext::sunwell_plateau_remove_protective_aura;
@@ -29,6 +30,9 @@ public:
             &RaidSunwellActionContext::apocalypse_guard_attack_with_holy_magic;
 
         // Kalecgos
+        creators["kalecgos announce boss health"] =
+            &RaidSunwellActionContext::kalecgos_announce_boss_health;
+
         creators["kalecgos tank position boss"] =
             &RaidSunwellActionContext::kalecgos_tank_position_boss;
 
@@ -99,6 +103,9 @@ public:
 
         creators["felmyst kill charmed player"] =
             &RaidSunwellActionContext::felmyst_kill_charmed_player;
+
+        creators["felmyst manage landing dps timer"] =
+            &RaidSunwellActionContext::felmyst_manage_landing_dps_timer;
 
         // Eredar Twins
         creators["eredar twins melee jump down from balcony"] =
@@ -214,8 +221,8 @@ public:
 
 private:
     // General
-    static Action* sunwell_plateau_erase_encounter_states(PlayerbotAI* botAI) {
-        return new SunwellPlateauEraseEncounterStatesAction(botAI);
+    static Action* sunwell_plateau_reset_encounter_states(PlayerbotAI* botAI) {
+        return new SunwellPlateauResetEncounterStatesAction(botAI);
     }
     static Action* sunwell_plateau_remove_protective_aura(PlayerbotAI* botAI) {
         return new SunwellPlateauRemoveProtectiveAuraAction(botAI);
@@ -230,6 +237,9 @@ private:
     }
 
     // Kalecgos
+    static Action* kalecgos_announce_boss_health(PlayerbotAI* botAI) {
+        return new KalecgosAnnounceBossHealthAction(botAI);
+    }
     static Action* kalecgos_tank_position_boss(PlayerbotAI* botAI) {
         return new KalecgosTankPositionBossAction(botAI);
     }
@@ -302,6 +312,9 @@ private:
     }
     static Action* felmyst_kill_charmed_player(PlayerbotAI* botAI) {
         return new FelmystKillCharmedPlayerAction(botAI);
+    }
+    static Action* felmyst_manage_landing_dps_timer(PlayerbotAI* botAI) {
+        return new FelmystManageLandingDpsTimerAction(botAI);
     }
 
     // Eredar Twins
