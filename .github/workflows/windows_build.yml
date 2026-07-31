@@ -2,9 +2,9 @@ name: windows-build
 
 on:
   push:
-    branches: [ "master", "test-staging" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "master", "test-staging" ]
+    branches: [ "master" ]
 
 concurrency:
   group: "windows-build-${{ github.event.pull_request.number || github.ref }}"
@@ -29,14 +29,14 @@ jobs:
       - name: Checkout AzerothCore
         uses: actions/checkout@v4
         with:
-          repository: 'mod-playerbots/azerothcore-wotlk'
-          ref: ${{ (github.base_ref || github.ref_name) == 'test-staging' && 'test-staging' || 'Playerbot' }}
+          repository: 'Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots'
+          ref: ${{ (github.base_ref || github.ref_name) == 'Playerbot' && 'Playerbot' || 'Playerbot' }}
           path: a
 
       - name: Checkout Playerbot Module
         uses: actions/checkout@v4
         with:
-          repository: 'mod-playerbots/mod-playerbots'
+          repository: 'Aden2018/mod-playerbots'
           path: a/modules/mod-playerbots
 
       - name: Move source tree to short path
