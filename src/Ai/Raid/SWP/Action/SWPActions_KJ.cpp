@@ -279,7 +279,7 @@ bool KiljaedenStunHandsOfTheDeceiverAction::CastSilenceOnHand(Unit* hand)
 bool KiljaedenPositionTanksAction::Execute(Event /*event*/)
 {
     Position const& position = KILJAEDEN_TANK_POSITION;
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) <= 2.0f)
+    if (bot->GetExactDist2d(position) <= 2.0f)
         return false;
 
     return MoveTo(
@@ -296,7 +296,7 @@ bool KiljaedenPositionMeleeAction::Execute(Event /*event*/)
     if (!TryAdjustForArmageddon(position))
         return false;
 
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) <= 2.0f)
+    if (bot->GetExactDist2d(position) <= 2.0f)
         return false;
 
     return MoveTo(
@@ -402,7 +402,7 @@ bool KiljaedenPositionRangedAction::Execute(Event /*event*/)
     if (!TryAdjustForArmageddon(position))
         return false;
 
-    if (bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) <= 2.0f)
+    if (bot->GetExactDist2d(position) <= 2.0f)
         return false;
 
     return MoveTo(
@@ -469,9 +469,8 @@ bool KiljaedenStackForShieldOfTheBlueAction::Execute(Event /*event*/)
     float destX = darknessPosition.GetPositionX();
     float destY = darknessPosition.GetPositionY();
 
-    // Bots with Fire Bloom wait away from the darkness stack spot until
-    // the darkness cast is about to finish (4500ms, same threshold for
-    // the bot dragon to cast Shield of the Blue).
+    // Bots with Fire Bloom wait away from the darkness stack spot until the darkness cast is
+    // about to finish (4500ms, same threshold for the bot dragon to cast Shield of the Blue).
     if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_FIRE_BLOOM)))
     {
         Unit* kiljaeden = AI_VALUE2(Unit*, "find target", "kil'jaeden");

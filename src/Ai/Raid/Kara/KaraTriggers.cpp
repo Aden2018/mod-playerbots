@@ -64,19 +64,12 @@ bool AttumenTheHuntsmanPhaseTransitionTrigger::IsActive()
     if (!AI_VALUE2(Unit*, "find target", "midnight"))
         return false;
 
-    constexpr uint32 searchRadius = 40.0f;
-    return bot->FindNearestCreature(
-        static_cast<uint32>(KaraNpcs::NPC_ATTUMEN_THE_HUNTSMAN), searchRadius, true);
+    return GetAttumenMounted(bot);
 }
 
 // Moroes
 
-bool MoroesBossEngagedByMainTankTrigger::IsActive()
-{
-    return PlayerbotAI::IsMainTank(bot) && AI_VALUE2(Unit*, "find target", "moroes");
-}
-
-bool MoroesDpsShouldPrioritizeAddsTrigger::IsActive()
+bool MoroesShouldPrioritizeAddsTrigger::IsActive()
 {
     return IsMechanicTrackerBot(bot, KARA_MAP_ID) && AI_VALUE2(Unit*, "find target", "moroes");
 }
@@ -259,18 +252,7 @@ bool NetherspiteBotIsNotBeamBlockerTrigger::IsActive()
 bool NetherspiteBossIsBanishedTrigger::IsActive()
 {
     Unit* netherspite = AI_VALUE2(Unit*, "find target", "netherspite");
-    if (!netherspite || !IsBanishPhase(netherspite))
-        return false;
-
-    std::vector<Unit*> voidZones = GetAllVoidZones(bot);
-    constexpr float safeDistance = 4.0f;
-    for (Unit* vz : voidZones)
-    {
-        if (bot->GetExactDist2d(vz) < safeDistance)
-            return true;
-    }
-
-    return false;
+    return netherspite && IsBanishPhase(netherspite);
 }
 
 bool NetherspiteShouldManageTimersAndTrackersTrigger::IsActive()

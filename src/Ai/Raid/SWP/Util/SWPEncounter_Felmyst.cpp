@@ -46,18 +46,18 @@ std::array<Position, 3> const FOG_RIGHT_LANES =
 std::array<FogSafeThreshold, 3> const FOG_SAFE_THRESHOLDS =
 {{
     { // Top lane safe threshold (west→east: safe = south)
-        { 1469.520f, 656.731f, 20.473f },
-        { 1466.956f, 568.225f, 22.017f },
+        { 1470.122f, 660.345f, 20.462f },
+        { 1470.358f, 560.042f, 22.635f },
         false,
     },
     { // Middle lane safe threshold (west→east: safe = north)
-        { 1495.311f, 665.335f, 22.341f },
-        { 1492.171f, 544.230f, 25.189f },
+        { 1498.880f, 675.159f, 22.511f },
+        { 1497.864f, 546.197f, 26.351f },
         true,
     },
     { // Bottom lane safe threshold (west→east: safe = north)
-        { 1472.869f, 662.026f, 20.633f },
-        { 1467.544f, 565.057f, 22.260f },
+        { 1477.381f, 659.824f, 21.051f },
+        { 1477.397f, 555.516f, 23.968f },
         true,
     }
 }};
@@ -228,8 +228,6 @@ bool IsPastFogThreshold(Player* bot, FogLane dangerLane)
     Position const& a = threshold.a;
     Position const& b = threshold.b;
 
-    // Cross product to determine which side of line AB the bot is on.
-    // Positive = left of the directed segment A→B.
     float const cross = (b.GetPositionX() - a.GetPositionX()) *
         (bot->GetPositionY() - a.GetPositionY()) -
         (b.GetPositionY() - a.GetPositionY()) *
@@ -288,7 +286,7 @@ FogLocation GetFogLocationFromPosition(float positionX, float positionY, float m
     return bestLocation;
 }
 
-bool TryGetFelmystMovementDestination(Unit* felmyst, Position& destination)
+bool TryGetFelmystFlightDestination(Unit* felmyst, Position& destination)
 {
     if (!felmyst)
         return false;
@@ -310,27 +308,25 @@ FogLocation GetFelmystCurrentFogLocation(Unit* felmyst)
         return FogLocation::None;
 
     return GetFogLocationFromPosition(
-        felmyst->GetPositionX(), felmyst->GetPositionY(), FELMYST_FOG_LOCATION_MATCH_DISTANCE);
+        felmyst->GetPositionX(), felmyst->GetPositionY(), FELMYST_LOCATION_MATCH_DISTANCE);
 }
 
 FogLocation GetFelmystDestinationFogLocation(Unit* felmyst)
 {
     Position destination;
-    if (!TryGetFelmystMovementDestination(felmyst, destination))
+    if (!TryGetFelmystFlightDestination(felmyst, destination))
         return FogLocation::None;
 
     return GetFogLocationFromPosition(
-        destination.GetPositionX(), destination.GetPositionY(), FELMYST_FOG_LOCATION_MATCH_DISTANCE);
+        destination.GetPositionX(), destination.GetPositionY(), FELMYST_LOCATION_MATCH_DISTANCE);
 }
 
 bool IsNearFelmystLandingPosition(Position const& destination)
 {
-    bool const nearRight = destination.GetExactDist2d(
-        RIGHT_LANDING_POSITION.GetPositionX(),
-        RIGHT_LANDING_POSITION.GetPositionY()) <= FELMYST_FOG_LOCATION_MATCH_DISTANCE;
-    bool const nearLeft = destination.GetExactDist2d(
-        LEFT_LANDING_POSITION.GetPositionX(),
-        LEFT_LANDING_POSITION.GetPositionY()) <= FELMYST_FOG_LOCATION_MATCH_DISTANCE;
+    bool const nearRight =
+        destination.GetExactDist2d(RIGHT_LANDING_POSITION) <= FELMYST_LOCATION_MATCH_DISTANCE;
+    bool const nearLeft =
+        destination.GetExactDist2d(LEFT_LANDING_POSITION) <= FELMYST_LOCATION_MATCH_DISTANCE;
 
     return nearRight || nearLeft;
 }
@@ -343,8 +339,7 @@ FogLane GetNearestDemonicVaporLane(Player* bot)
     for (uint8 laneIndex = 0; laneIndex < DEMONIC_VAPOR_LANE_REFERENCES.size(); ++laneIndex)
     {
         Position const& reference = DEMONIC_VAPOR_LANE_REFERENCES[laneIndex];
-        float const distance = bot->GetExactDist2d(
-            reference.GetPositionX(), reference.GetPositionY());
+        float const distance = bot->GetExactDist2d(reference);
         if (distance < bestDistance)
         {
             bestDistance = distance;
@@ -357,12 +352,9 @@ FogLane GetNearestDemonicVaporLane(Player* bot)
 
 uint8 GetDemonicVaporAllowedSides(Player* bot)
 {
-    float const centerDistance = bot->GetExactDist2d(
-        CENTER_GROUND_REFERENCE.GetPositionX(), CENTER_GROUND_REFERENCE.GetPositionY());
-    float const rightDistance = bot->GetExactDist2d(
-        RIGHT_LANDING_POSITION.GetPositionX(), RIGHT_LANDING_POSITION.GetPositionY());
-    float const leftDistance = bot->GetExactDist2d(
-        LEFT_LANDING_POSITION.GetPositionX(), LEFT_LANDING_POSITION.GetPositionY());
+    float const centerDistance = bot->GetExactDist2d(CENTER_GROUND_REFERENCE);
+    float const rightDistance = bot->GetExactDist2d(RIGHT_LANDING_POSITION);
+    float const leftDistance = bot->GetExactDist2d(LEFT_LANDING_POSITION);
 
     if (centerDistance <= rightDistance && centerDistance <= leftDistance)
         return DEMONIC_VAPOR_LEFT_SIDE | DEMONIC_VAPOR_RIGHT_SIDE;
@@ -401,9 +393,8 @@ uint8 SelectPreferredDemonicVaporSide(Player* bot, FogLane lane, uint8 allowedSi
         if (anchor.lane != lane)
             continue;
 
-        Position const& anchorPos = DEMONIC_VAPOR_KITE_ANCHORS[anchorIndex].position;
-        float const distance = bot->GetExactDist2d(
-            anchorPos.GetPositionX(), anchorPos.GetPositionY());
+        Position const& anchorPosition = DEMONIC_VAPOR_KITE_ANCHORS[anchorIndex].position;
+        float const distance = bot->GetExactDist2d(anchorPosition);
 
         if (anchor.sideMask == DEMONIC_VAPOR_LEFT_SIDE)
             bestLeftDistance = distance;
@@ -450,8 +441,6 @@ void AppendDemonicVaporAnchorsForSide(
     }
 }
 
-
-
 float GetMinDistanceToOtherPlayers(Player* bot, float x, float y)
 {
     float minDistance = std::numeric_limits<float>::max();
@@ -487,12 +476,13 @@ float GetMinDistanceToHazards(float x, float y, std::vector<Creature*> const& ha
 }
 
 bool IsDemonicVaporPathSafe(
-    Player* bot, Position const& start, Position const& target, std::vector<Creature*> const& hazards)
+    Player* bot, Position const& start, Position const& target,
+    std::vector<Creature*> const& hazards)
 {
     constexpr float pathStepSize = 2.0f;
     constexpr float playerPathClearance = 7.0f;
     constexpr float hazardPathClearance = 10.0f;
-    float const totalDistance = start.GetExactDist2d(target.GetPositionX(), target.GetPositionY());
+    float const totalDistance = start.GetExactDist2d(target);
     if (totalDistance <= 0.0f)
         return true;
 
@@ -581,8 +571,7 @@ bool TryGetFelmystDemonicVaporStepDestination(
     Player* bot, Position const& anchorDestination, Position& destination)
 {
     constexpr float stepDistance = 10.0f;
-    float const distanceToAnchor = bot->GetExactDist2d(
-        anchorDestination.GetPositionX(), anchorDestination.GetPositionY());
+    float const distanceToAnchor = bot->GetExactDist2d(anchorDestination);
     if (distanceToAnchor <= stepDistance)
     {
         destination = anchorDestination;
@@ -609,7 +598,7 @@ bool TryGetFelmystDemonicVaporStepDestination(
         return false;
     }
 
-    if (bot->GetExactDist2d(destinationX, destinationY) <= 0.01f)
+    if (bot->GetExactDist2d(destination) <= 0.01f)
         return false;
 
     destination = Position(destinationX, destinationY, destinationZ, bot->GetOrientation());
@@ -618,8 +607,6 @@ bool TryGetFelmystDemonicVaporStepDestination(
 }
 
 } // end anonymous namespace
-
-// Helpers with external linkage — called from actions, scripts, multipliers.
 
 Position ClosestPointOnSegment(Position const& p, Position const& segA, Position const& segB)
 {
@@ -632,7 +619,9 @@ Position ClosestPointOnSegment(Position const& p, Position const& segA, Position
     float const t = std::clamp(
         ((p.GetPositionX() - segA.GetPositionX()) * abX +
          (p.GetPositionY() - segA.GetPositionY()) * abY) / lenSq, 0.0f, 1.0f);
-    return Position(segA.GetPositionX() + t * abX, segA.GetPositionY() + t * abY, segA.GetPositionZ());
+
+    return Position(
+        segA.GetPositionX() + t * abX, segA.GetPositionY() + t * abY, segA.GetPositionZ());
 }
 
 std::vector<Creature*> GetDemonicVaporHazards(Player* bot)
@@ -687,9 +676,7 @@ bool TryGetFelmystFogSafeDestination(
         // Use the exact threshold for the completed sweep lane.
         bestThresholdIndex = dangerIndex;
         bestProjection = ClosestPointOnSegment(
-            projectFrom,
-            FOG_SAFE_THRESHOLDS[dangerIndex].a,
-            FOG_SAFE_THRESHOLDS[dangerIndex].b);
+            projectFrom, FOG_SAFE_THRESHOLDS[dangerIndex].a, FOG_SAFE_THRESHOLDS[dangerIndex].b);
     }
     else
     {
@@ -698,9 +685,7 @@ bool TryGetFelmystFogSafeDestination(
         // be inside the fog range and offer no escape.
         bestThresholdIndex = dangerIndex;
         bestProjection = ClosestPointOnSegment(
-            projectFrom,
-            FOG_SAFE_THRESHOLDS[dangerIndex].a,
-            FOG_SAFE_THRESHOLDS[dangerIndex].b);
+            projectFrom, FOG_SAFE_THRESHOLDS[dangerIndex].a, FOG_SAFE_THRESHOLDS[dangerIndex].b);
     }
 
     FogSafeThreshold const& threshold = FOG_SAFE_THRESHOLDS[bestThresholdIndex];
@@ -726,9 +711,11 @@ bool TryGetFelmystFogSafeDestination(
     constexpr float maxClearance = 30.0f;
     constexpr float clearanceStep = 3.0f;
 
-    for (float clearance = minThresholdClearance;
-         clearance <= maxClearance; clearance += clearanceStep)
+    uint32 const clearanceStepCount =
+        static_cast<uint32>((maxClearance - minThresholdClearance) / clearanceStep);
+    for (uint32 step = 0; step <= clearanceStepCount; ++step)
     {
+        float const clearance = minThresholdClearance + static_cast<float>(step) * clearanceStep;
         float x = bestProjection.GetPositionX() + unitX * clearance;
         float y = bestProjection.GetPositionY() + unitY * clearance;
 
@@ -747,9 +734,11 @@ bool TryGetFelmystFogSafeDestination(
             float z = bot->GetMapWaterOrGroundLevel(x, y, bot->GetPositionZ());
             if (z <= INVALID_HEIGHT)
                 z = bot->GetPositionZ();
+
             bot->GetMap()->CheckCollisionAndGetValidCoords(
                 bot, bot->GetPositionX(), bot->GetPositionY(), bot->GetPositionZ(),
                 x, y, z, false);
+
             destination = Position(x, y, z);
             return true;
         }
@@ -765,8 +754,7 @@ Position const& GetFelmystMainTankGroundPosition(Player* bot)
 
     for (Position const& position : TANK_POSITIONS)
     {
-        float const distance = bot->GetExactDist2d(
-            position.GetPositionX(), position.GetPositionY());
+        float const distance = bot->GetExactDist2d(position);
         if (distance < bestDistance)
         {
             bestDistance = distance;
@@ -941,7 +929,7 @@ bool IsFelmystDemonicVaporHeadNearBot(Player* bot)
 bool IsFelmystLanding(Unit* felmyst)
 {
     Position destination;
-    if (!TryGetFelmystMovementDestination(felmyst, destination))
+    if (!TryGetFelmystFlightDestination(felmyst, destination))
         return false;
 
     return IsNearFelmystLandingPosition(destination);
@@ -1028,7 +1016,7 @@ bool IsFelmystAirPhaseTargetSuppressed(Unit* felmyst)
         return false;
 
     Position destination;
-    if (!TryGetFelmystMovementDestination(felmyst, destination))
+    if (!TryGetFelmystFlightDestination(felmyst, destination))
         return true;
 
     return !IsNearFelmystLandingPosition(destination);
