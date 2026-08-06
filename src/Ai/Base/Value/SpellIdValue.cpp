@@ -30,7 +30,7 @@ uint32 SpellIdValue::Calculate()
         return 0;
 
     wstrToLower(wnamepart);
-    char firstSymbol = tolower(namepart[0]);
+    char firstSymbol = static_cast<char>(tolower(static_cast<unsigned char>(namepart[0])));
     size_t spellLength = wnamepart.length();
 
     LocaleConstant loc = LOCALE_enUS;
@@ -62,7 +62,7 @@ uint32 SpellIdValue::Calculate()
         }
 
         char const* spellName = spellInfo->SpellName[loc];
-        if (!useByItem && (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
+        if (!useByItem && (tolower(static_cast<unsigned char>(spellName[0])) != firstSymbol || strlen(spellName) != spellLength ||
                            !Utf8FitTo(spellName, wnamepart)))
             continue;
 
@@ -86,7 +86,7 @@ uint32 SpellIdValue::Calculate()
                 continue;
 
             char const* spellName = spellInfo->SpellName[loc];
-            if (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
+            if (tolower(static_cast<unsigned char>(spellName[0])) != firstSymbol || strlen(spellName) != spellLength ||
                 !Utf8FitTo(spellName, wnamepart))
                 continue;
 
@@ -118,7 +118,7 @@ uint32 SpellIdValue::Calculate()
             size_t i = 0;
             for (; i < spellName.length(); i++)
             {
-                if (isdigit(spellName[i]))
+                if (isdigit(static_cast<unsigned char>(spellName[i])))
                     break;
             }
 
@@ -192,7 +192,7 @@ uint32 VehicleSpellIdValue::Calculate()
         return 0;
 
     wstrToLower(wnamepart);
-    char firstSymbol = tolower(namepart[0]);
+    char firstSymbol = static_cast<char>(tolower(static_cast<unsigned char>(namepart[0])));
     size_t spellLength = wnamepart.length();
 
     const int loc = LocaleConstant::LOCALE_enUS;
@@ -209,7 +209,7 @@ uint32 VehicleSpellIdValue::Calculate()
             continue;
 
         char const* spellName = spellInfo->SpellName[loc];
-        if (tolower(spellName[0]) != firstSymbol || strlen(spellName) != spellLength ||
+        if (tolower(static_cast<unsigned char>(spellName[0])) != firstSymbol || strlen(spellName) != spellLength ||
             !Utf8FitTo(spellName, wnamepart))
             continue;
 

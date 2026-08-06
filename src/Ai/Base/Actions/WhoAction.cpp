@@ -14,7 +14,7 @@
 #ifndef WIN32
 inline int strcmpi(char const* s1, char const* s2)
 {
-    for (; *s1 && *s2 && (toupper(*s1) == toupper(*s2)); ++s1, ++s2)
+    for (; *s1 && *s2 && (toupper(static_cast<unsigned char>(*s1)) == toupper(static_cast<unsigned char>(*s2))); ++s1, ++s2)
     {
     }
     return *s1 - *s2;

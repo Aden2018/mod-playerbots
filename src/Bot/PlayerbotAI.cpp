@@ -4393,7 +4393,7 @@ bool PlayerbotAI::HasAuraToDispel(Unit* target, uint32 dispelType)
 #ifndef WIN32
 inline int strcmpi(char const* s1, char const* s2)
 {
-    for (; *s1 && *s2 && (toupper(*s1) == toupper(*s2)); ++s1, ++s2)
+    for (; *s1 && *s2 && (toupper(static_cast<unsigned char>(*s1)) == toupper(static_cast<unsigned char>(*s2))); ++s1, ++s2)
     {
     }
     return *s1 - *s2;
@@ -6081,7 +6081,7 @@ bool PlayerbotAI::EqualLowercaseName(std::string s1, std::string s2)
     }
     for (std::string::size_type i = 0; i < s1.length(); i++)
     {
-        if (tolower(s1[i]) != tolower(s2[i]))
+        if (tolower(static_cast<unsigned char>(s1[i])) != tolower(static_cast<unsigned char>(s2[i])))
         {
             return false;
         }
