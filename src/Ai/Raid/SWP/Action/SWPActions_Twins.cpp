@@ -8,6 +8,7 @@
 #include "SWPEncounter_Twins.h"
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
+#include "SWPData.h"
 #include <vector>
 
 using namespace SwpHelpers;
@@ -16,7 +17,7 @@ bool EredarTwinsMeleeJumpDownFromBalconyAction::Execute(Event /*event*/)
 {
     Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
     Position const& jumpPosition = EREDAR_TWINS_P1_RANGED_POSITION;
-    Position const landingPosition = GetEredarTwinsP2MeleeStackPosition(alythess);
+    Position const landingPosition = GetEredarTwinsP2MeleePosition(alythess);
 
     constexpr float arrivalDistance = 2.0f;
     float const distanceToJumpPos = bot->GetExactDist2d(jumpPosition);
@@ -28,12 +29,10 @@ bool EredarTwinsMeleeJumpDownFromBalconyAction::Execute(Event /*event*/)
             jumpPosition.GetPositionZ(), false, false, false, false,
             MovementPriority::MOVEMENT_FORCED, true, false);
     }
-    else
-    {
-        return JumpTo(
-            SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
-            landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
-    }
+
+    return JumpTo(
+        SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
+        landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
 }
 
 bool EredarTwinsMisdirectBossesToTanksAction::Execute(Event /*event*/)
@@ -46,8 +45,8 @@ bool EredarTwinsMisdirectBossesToTanksAction::Execute(Event /*event*/)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (member && member->IsAlive() && member->getClass() == CLASS_HUNTER &&
-            GET_PLAYERBOT_AI(member))
+        if (member && member->IsAlive() && member->GetMapId() == SWP_MAP_ID &&
+            member->getClass() == CLASS_HUNTER && GET_PLAYERBOT_AI(member))
         {
             hunters.push_back(member);
         }
@@ -92,7 +91,7 @@ bool EredarTwinsMisdirectBossesToTanksAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("misdirection", tankTarget))
         return botAI->CastSpell("misdirection", tankTarget);
 
-    if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_MISDIRECTION)) &&
+    if (bot->HasAura(Id(SwpSpells::SPELL_MISDIRECTION)) &&
         botAI->CanCastSpell("steady shot", bossTarget))
     {
         return botAI->CastSpell("steady shot", bossTarget);
@@ -135,7 +134,7 @@ bool EredarTwinsMainAndSecondAssistTanksPositionSacrolashAction::Execute(Event /
     float const moveY = botY + (toPosY / distToPosition) * moveDist;
 
     return MoveTo(
-        SWP_MAP_ID, moveX, moveY, position.GetPositionZ(), false, false,
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
         false, false, MovementPriority::MOVEMENT_COMBAT, true, backwards);
 }
 
@@ -231,7 +230,7 @@ bool EredarTwinsPositionRangedAction::Execute(Event /*event*/)
     {
         Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
         Position const& jumpPosition = EREDAR_TWINS_P1_RANGED_POSITION;
-        Position const landingPosition = GetEredarTwinsP2RangedStackPosition(alythess);
+        Position const landingPosition = GetEredarTwinsP2RangedPosition(alythess);
 
         constexpr float arrivalDistance = 2.0f;
         float const distanceToJumpPos = bot->GetExactDist2d(jumpPosition);
@@ -243,12 +242,10 @@ bool EredarTwinsPositionRangedAction::Execute(Event /*event*/)
                 jumpPosition.GetPositionZ(), false, false, false, false,
                 MovementPriority::MOVEMENT_FORCED, true, false);
         }
-        else
-        {
-            return JumpTo(
-                SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
-                landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
-        }
+
+        return JumpTo(
+            SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
+            landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
     }
 
     return false;
@@ -261,8 +258,8 @@ bool EredarTwinsStackInRoomCenterAction::Execute(Event /*event*/)
         return false;
 
     Position const position = PlayerbotAI::IsRanged(bot) ?
-        GetEredarTwinsP2RangedStackPosition(alythess) :
-        GetEredarTwinsP2MeleeStackPosition(alythess);
+        GetEredarTwinsP2RangedPosition(alythess) :
+        GetEredarTwinsP2MeleePosition(alythess);
 
     if (bot->GetExactDist2d(position) <= 0.5f)
         return false;
@@ -277,16 +274,16 @@ bool EredarTwinsRemoveFlameSearAction::Execute(Event /*event*/)
     switch (bot->getClass())
     {
         case CLASS_MAGE:
-            return botAI->CanCastSpell("ice block", bot) &&
-                botAI->CastSpell("ice block", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot);
 
         case CLASS_PALADIN:
-            return botAI->CanCastSpell("divine shield", bot) &&
-                botAI->CastSpell("divine shield", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot);
 
         case CLASS_ROGUE:
-            return botAI->CanCastSpell("cloak of shadows", bot) &&
-                botAI->CastSpell("cloak of shadows", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot);
 
         default:
             return false;
@@ -295,40 +292,32 @@ bool EredarTwinsRemoveFlameSearAction::Execute(Event /*event*/)
 
 bool EredarTwinsDpsPrioritizeLadySacrolashAction::Execute(Event /*event*/)
 {
-    if (Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash"))
-    {
-        constexpr float threatRatio = 0.8f;
-        if (ShouldHoldTwinThreat(bot, sacrolash, threatRatio, IsAnySacrolashTank))
-        {
-            bot->AttackStop();
-            bot->InterruptNonMeleeSpells(true);
-            bot->SetTarget(ObjectGuid::Empty);
-            bot->SetSelection(ObjectGuid());
-            return true;
-        }
-        else if (AI_VALUE(Unit*, "current target") != sacrolash)
-        {
-            return Attack(sacrolash);
-        }
+    Unit* twinTarget = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    float threatHoldRatio = 0.8f;
+    bool (*isTwinTank)(Player*) = IsAnySacrolashTank;
 
-        return false;
-    }
-    else if (Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
+    if (!twinTarget)
     {
-        constexpr float threatRatio = 0.9f;
-        if (ShouldHoldTwinThreat(bot, alythess, threatRatio, IsAlythessTank))
-        {
-            bot->AttackStop();
-            bot->InterruptNonMeleeSpells(true);
-            bot->SetTarget(ObjectGuid::Empty);
-            bot->SetSelection(ObjectGuid());
-            return true;
-        }
-        else if (AI_VALUE(Unit*, "current target") != alythess)
-        {
-            return Attack(alythess);
-        }
+        twinTarget = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+        threatHoldRatio = 0.9f;
+        isTwinTank = IsAlythessTank;
     }
+
+    if (!twinTarget)
+        return false;
+
+    if (ShouldHoldTwinThreat(bot, twinTarget, threatHoldRatio, isTwinTank))
+    {
+        bot->AttackStop();
+        bot->InterruptSpell(CURRENT_MELEE_SPELL);
+        bot->CastStop();
+        context->GetValue<Unit*>("current target")->Set(nullptr);
+        bot->SetSelection(ObjectGuid());
+        return true;
+    }
+
+    if (AI_VALUE(Unit*, "current target") != twinTarget)
+        return Attack(twinTarget);
 
     return false;
 }
@@ -353,21 +342,18 @@ bool EredarTwinsConflagratedBotMoveFromGroupAction::Execute(Event /*event*/)
             SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
             false, false, false, false, MovementPriority::MOVEMENT_FORCED, true, false);
     }
-    else
-    {
-        constexpr float safeDistance = 10.0f;
-        if (Player* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistance))
-        {
-            float const distanceToPlayer = bot->GetExactDist2d(nearestPlayer);
-            if (distanceToPlayer >= safeDistance)
-                return false;
 
-            botAI->InterruptSpell();
-            return MoveAway(nearestPlayer, safeDistance - distanceToPlayer);
-        }
-    }
+    constexpr float safeDistance = 10.0f;
+    Player* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistance);
+    if (!nearestPlayer)
+        return false;
 
-    return false;
+    float const distanceToPlayer = bot->GetExactDist2d(nearestPlayer);
+    if (distanceToPlayer >= safeDistance)
+        return false;
+
+    bot->CastStop();
+    return MoveAway(nearestPlayer, safeDistance - distanceToPlayer);
 }
 
 bool EredarTwinsMoveFromConflagSacrolashVictimAction::Execute(Event /*event*/)
@@ -384,6 +370,6 @@ bool EredarTwinsMoveFromConflagSacrolashVictimAction::Execute(Event /*event*/)
     if (bot->GetDistance2d(victim) >= safeDistance)
         return false;
 
-    botAI->InterruptSpell();
+    bot->CastStop();
     return MoveFromGroup(safeDistance);
 }

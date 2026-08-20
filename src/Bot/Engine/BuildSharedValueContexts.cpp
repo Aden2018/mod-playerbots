@@ -5,13 +5,15 @@
  */
 
 #include "AiObjectContext.h"
-#include "ValueContext.h"
+#include "HyjalValueContext.h"
 #include "MechValueContext.h"
 #include "UBValueContext.h"
+#include "ValueContext.h"
 
 void AiObjectContext::BuildSharedValueContexts(SharedNamedObjectContextList<UntypedValue>& valueContexts)
 {
     valueContexts.Add(new ValueContext());
     valueContexts.Add(new TbcDungeonMechValueContext());
     valueContexts.Add(new TbcDungeonUnderbogValueContext());
+    valueContexts.Add(new RaidHyjalSummitValueContext());
 }

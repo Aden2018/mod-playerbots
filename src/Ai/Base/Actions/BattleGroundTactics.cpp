@@ -5,9 +5,6 @@
  */
 
 #include "BattleGroundTactics.h"
-
-#include <algorithm>
-
 #include "ArenaTeam.h"
 #include "ArenaTeamMgr.h"
 #include "BattleGroundJoinAction.h"
@@ -33,6 +30,7 @@
 #include "PvpTriggers.h"
 #include "ServerFacade.h"
 #include "Vehicle.h"
+#include <algorithm>
 
 // common bg positions
 Position const WS_WAITING_POS_HORDE_1 = {944.981f, 1423.478f, 345.434f, 6.18f};
@@ -3626,18 +3624,10 @@ bool BGTactics::atFlag(std::vector<BattleBotPath*> const& vPaths, std::vector<ui
             return false;
 
         // If the capture target is no longer available (another bot already captured it), stop channeling
-        if (GameObject* targetFlag = currentSpell->m_targets.GetGOTarget())
+        GameObject* targetFlag = currentSpell->m_targets.GetGOTarget();
+        if (!targetFlag || !targetFlag->isSpawned() || targetFlag->GetGoState() != GO_STATE_READY)
         {
-            if (!targetFlag->isSpawned() || targetFlag->GetGoState() != GO_STATE_READY)
-            {
-                bot->InterruptNonMeleeSpells(true);
-                resetObjective();
-                return false;
-            }
-        }
-        else
-        {
-            bot->InterruptNonMeleeSpells(true);
+            bot->CastStop();
             resetObjective();
             return false;
         }
@@ -4297,9 +4287,7 @@ bool ArenaTactics::Execute(Event /*event*/)
 
             if (path.GetPathType() != PATHFIND_NOPATH)
             {
-                // If you are casting a spell and lost your target due to LoS, interrupt the cast and move
-                if (bot->IsNonMeleeSpellCast(false, true, true, false, true))
-                    bot->InterruptNonMeleeSpells(true);
+                bot->CastStop();
 
                 float x, y, z;
                 target->GetPosition(x, y, z);

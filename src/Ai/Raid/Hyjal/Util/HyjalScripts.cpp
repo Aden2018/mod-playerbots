@@ -7,7 +7,6 @@
 #include "AllCreatureScript.h"
 #include "DynamicObjectScript.h"
 #include "HyjalHelpers.h"
-#include "ObjectAccessor.h"
 #include "Player.h"
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
@@ -17,20 +16,17 @@
 
 using namespace HyjalHelpers;
 
-static Player* GetFirstPlayerSpellTarget(Spell* spell, Unit* caster)
+// The explicitly cast-at target, which is all that exists when a cast begins: Spell::prepare only
+// resolves a target list for item casts, so for a creature's cast GetUniqueTargetInfo stays empty
+// until Spell::cast runs at the end of the cast time. Both listeners below are driven by
+// DoCastRandomTarget, which always supplies an explicit unit target
+static Player* GetSpellPlayerTarget(Spell* spell)
 {
-    if (!spell || !caster)
+    if (!spell)
         return nullptr;
 
     if (Unit* unitTarget = spell->m_targets.GetUnitTarget())
         return unitTarget->ToPlayer();
-
-    std::list<TargetInfo> const& targets = *spell->GetUniqueTargetInfo();
-    for (TargetInfo const& targetInfo : targets)
-    {
-        if (Player* target = ObjectAccessor::GetPlayer(*caster, targetInfo.targetGUID))
-            return target;
-    }
 
     return nullptr;
 }
@@ -48,61 +44,19 @@ static bool ShouldInterruptForArchimondeAirBurst(PlayerbotAI* botAI, Player* tar
     if (target != mainTank && target != bot)
         return false;
 
-    float const distanceToMainTank = bot->GetDistance2d(mainTank);
+    float const distanceToMainTank = bot->GetExactDist2d(mainTank);
     return distanceToMainTank < AIR_BURST_SAFE_DISTANCE;
 }
 
-// Records the active Rain of Fire dynamic object so that melee bots can avoid it by running
-// away from Azgalor or swapping to a Doomguard; the standard FleePosition() logic to avoid aoe
-// can take melee in front of Azgalor, resulting in them getting cleaved
-class AzgalorRainOfFireScript : public DynamicObjectScript
-{
-public:
-    AzgalorRainOfFireScript() : DynamicObjectScript("AzgalorRainOfFireScript") {}
-
-    void OnUpdate(DynamicObject* dynobj, uint32 /*diff*/) override
-    {
-        if (dynobj->GetSpellId() != static_cast<uint32>(HyjalSpells::SPELL_RAIN_OF_FIRE))
-            return;
-
-        uint32 instanceId = dynobj->GetMap()->GetInstanceId();
-        if (GetActiveAzgalorRainOfFire(instanceId))
-            return;
-
-        uint32 now = getMSTime();
-        auto instanceIt = rainOfFirePosition.find(instanceId);
-        if (instanceIt != rainOfFirePosition.end() &&
-            getMSTimeDiff(instanceIt->second.spawnTime, now) < RAIN_OF_FIRE_REACQUIRE_DELAY)
-        {
-            return;
-        }
-
-        bool shouldTrackRainOfFire = false;
-        Map::PlayerList const& players = dynobj->GetMap()->GetPlayers();
-        for (Map::PlayerList::const_iterator it = players.begin(); it != players.end(); ++it)
-        {
-            Player* player = it->GetSource();
-            if (!player || !player->IsAlive())
-                continue;
-
-            PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
-            if (!botAI || !botAI->HasStrategy("hyjal", BOT_STATE_COMBAT))
-                continue;
-
-            shouldTrackRainOfFire = true;
-            break;
-        }
-
-        if (!shouldTrackRainOfFire)
-            return;
-
-        rainOfFirePosition[instanceId] = RainOfFireData{ dynobj->GetPosition(), now };
-    }
-};
-
-// Records the position of each Doomfire NPC at regular intervals so that bots can avoid
-// the persistent fire trail it leaves behind. Each sample is tagged with a timestamp and
-// expires after TRAIL_DURATION ms, matching the lifetime of a Doomfire DynamicObject (18s)
+// Interrupts a cast when a Doomfire NPC comes too close. The trail it leaves behind is made of
+// SPELL_DOOMFIRE_TRAIL dynamic objects, which bots query directly, so nothing is recorded here.
+//
+// Keyed on the Doomfire itself and not on the Doomfire Spirit it follows. The Spirit is the invisible
+// one, and it does not walk--it NearTeleportTo's up to 8 yards every 1600ms--so reading it would let
+// bots react to a position no human can see, and to one the fire has not reached yet. The Doomfire
+// walks after it carrying 31945, a 1s periodic that drops the next patch at its own feet, so its
+// position is where fire is about to be. That is what makes DOOMFIRE_DANGER_RADIUS the right figure
+// here: the same distance the avoidance keeps from patches already on the ground
 class ArchimondeDoomfireTrailScript : public AllCreatureScript
 {
 public:
@@ -110,34 +64,9 @@ public:
 
     void OnAllCreatureUpdate(Creature* creature, uint32 /*diff*/) override
     {
-        if (creature->GetEntry() != static_cast<uint32>(HyjalNpcs::NPC_DOOMFIRE))
+        if (creature->GetEntry() != Id(HyjalNpcs::NPC_DOOMFIRE))
             return;
 
-        uint32 now = getMSTime();
-        ObjectGuid guid = creature->GetGUID();
-
-        auto& lastSample = doomfireLastSampleTime[guid];
-        if (getMSTimeDiff(lastSample, now) < 500)
-            return;
-
-        lastSample = now;
-
-        uint32 instanceId = creature->GetMap()->GetInstanceId();
-        auto& trail = doomfireTrails[instanceId];
-
-        DoomfireTrailData data;
-        data.position = creature->GetPosition();
-        data.recordTime = now;
-        trail.push_back(data);
-
-        constexpr uint32 TRAIL_DURATION = 18000;
-        trail.erase(std::remove_if(trail.begin(), trail.end(),
-            [now](const DoomfireTrailData& d)
-            {
-                return getMSTimeDiff(d.recordTime, now) > TRAIL_DURATION;
-            }), trail.end());
-
-        constexpr float DOOMFIRE_DANGER_RANGE = 10.0f;
         Map::PlayerList const& players = creature->GetMap()->GetPlayers();
         for (Map::PlayerList::const_iterator it = players.begin(); it != players.end(); ++it)
         {
@@ -146,8 +75,10 @@ public:
                 continue;
 
             PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
+            // Centre to centre, as the avoidance measures. GetDistance would subtract both object
+            // sizes, quietly making this wider than the figure it shares
             if (!botAI || !botAI->HasStrategy("hyjal", BOT_STATE_COMBAT) ||
-                creature->GetDistance(player) > DOOMFIRE_DANGER_RANGE)
+                creature->GetExactDist2d(player) > DOOMFIRE_DANGER_RADIUS)
             {
                 continue;
             }
@@ -155,29 +86,21 @@ public:
             botAI->RequestSpellInterrupt();
         }
     }
-
-    void OnCreatureRemoveWorld(Creature* creature) override
-    {
-        if (creature->GetEntry() != static_cast<uint32>(HyjalNpcs::NPC_DOOMFIRE))
-            return;
-
-        doomfireLastSampleTime.erase(creature->GetGUID());
-    }
 };
 
+// Air Burst is a 2s cast that hits all players within 13y of the target
 class ArchimondeAirBurstSpellListenerScript : public AllSpellScript
 {
 public:
     ArchimondeAirBurstSpellListenerScript() :
         AllSpellScript("ArchimondeAirBurstSpellListenerScript") {}
 
-    void OnSpellCast(
-        Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
+    void OnSpellPrepare(Spell* spell, Unit* caster, SpellInfo const* spellInfo) override
     {
-        if (spellInfo->Id != static_cast<uint32>(HyjalSpells::SPELL_AIR_BURST))
+        if (spellInfo->Id != Id(HyjalSpells::SPELL_AIR_BURST))
             return;
 
-        Player* target = GetFirstPlayerSpellTarget(spell, caster);
+        Player* target = GetSpellPlayerTarget(spell);
         if (!target)
             return;
 
@@ -203,9 +126,33 @@ public:
     }
 };
 
+// Inferno summons a Towering Infernal at its target's then-current position after a 3.5s cast
+class AnetheronInfernoSpellListenerScript : public AllSpellScript
+{
+public:
+    AnetheronInfernoSpellListenerScript() :
+        AllSpellScript("AnetheronInfernoSpellListenerScript") {}
+
+    void OnSpellPrepare(Spell* spell, Unit* /*caster*/, SpellInfo const* spellInfo) override
+    {
+        if (spellInfo->Id != Id(HyjalSpells::SPELL_INFERNO))
+            return;
+
+        Player* target = GetSpellPlayerTarget(spell);
+        if (!target)
+            return;
+
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(target);
+        if (!botAI || !botAI->HasStrategy("hyjal", BOT_STATE_COMBAT))
+            return;
+
+        botAI->RequestSpellInterrupt();
+    }
+};
+
 void AddSC_HyjalSummitBotScripts()
 {
-    new AzgalorRainOfFireScript();
     new ArchimondeDoomfireTrailScript();
     new ArchimondeAirBurstSpellListenerScript();
+    new AnetheronInfernoSpellListenerScript();
 }

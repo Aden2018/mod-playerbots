@@ -4,10 +4,9 @@
  * or (at your option) any later version.
  */
 
-#include "Playerbots.h"
 #include "UKTriggers.h"
-#include "AiObject.h"
 #include "AiObjectContext.h"
+#include "Playerbots.h"
 
 bool KelesethFrostTombTrigger::IsActive()
 {
@@ -30,18 +29,6 @@ bool DalronnDpsTrigger::IsActive()
 
     // This doesn't cause issues with healers currently and they will continue to heal even when included here
     return !botAI->IsTank(bot);
-}
-
-bool IngvarStaggeringRoarTrigger::IsActive()
-{
-    Unit* boss = AI_VALUE2(Unit*, "find target", "ingvar the plunderer");
-    if (!boss) { return false; }
-
-    if (boss->FindCurrentSpellBySpellId(SPELL_STAGGERING_ROAR))
-    {
-        return true;
-    }
-    return false;
 }
 
 bool IngvarDreadfulRoarTrigger::IsActive()

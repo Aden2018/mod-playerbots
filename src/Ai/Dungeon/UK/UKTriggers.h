@@ -7,10 +7,10 @@
 #ifndef PLAYERBOTS_UKTRIGGERS_H
 #define PLAYERBOTS_UKTRIGGERS_H
 
-#include "Trigger.h"
-#include "PlayerbotAIConfig.h"
-#include "GenericTriggers.h"
 #include "DungeonStrategyUtils.h"
+#include "GenericTriggers.h"
+#include "PlayerbotAIConfig.h"
+#include "Trigger.h"
 
 enum UtgardeKeepIDs
 {
@@ -47,13 +47,6 @@ class DalronnDpsTrigger : public Trigger
 {
 public:
     DalronnDpsTrigger(PlayerbotAI* ai) : Trigger(ai, "dalronn dps") {}
-    bool IsActive() override;
-};
-
-class IngvarStaggeringRoarTrigger : public Trigger
-{
-public:
-    IngvarStaggeringRoarTrigger(PlayerbotAI* ai) : Trigger(ai, "ingvar staggering roar") {}
     bool IsActive() override;
 };
 

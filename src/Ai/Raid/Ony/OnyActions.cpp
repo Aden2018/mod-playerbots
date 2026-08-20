@@ -5,7 +5,6 @@
  */
 
 #include "OnyActions.h"
-
 #include "GenericSpellActions.h"
 #include "LastMovementValue.h"
 #include "MovementActions.h"
@@ -105,9 +104,9 @@ bool RaidOnyxiaMoveToSafeZoneAction::Execute(Event /*event*/)
     if (bot->IsWithinDist2d(bestZone->pos.GetPositionX(), bestZone->pos.GetPositionY(), bestZone->radius))
         return false;  // Already safe
 
-    // Stop current spell first
+    // Stop channeling spell first
     bot->AttackStop();
-    bot->InterruptNonMeleeSpells(false);
+    bot->CastStop();
 
     // bot->Yell("Moving to Safe Zone!", LANG_UNIVERSAL);
     return MoveTo(bot->GetMapId(), bestZone->pos.GetPositionX(), bestZone->pos.GetPositionY(), bestZone->pos.GetPositionZ(),

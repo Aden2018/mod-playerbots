@@ -65,9 +65,6 @@ public:
         creators["high astromancer solarian engaged by main tank"] =
             &RaidTempestKeepTriggerContext::high_astromancer_solarian_engaged_by_main_tank;
 
-        creators["high astromancer solarian should position bots"] =
-            &RaidTempestKeepTriggerContext::high_astromancer_solarian_should_position_bots;
-
         creators["high astromancer solarian bot has wrath of the astromancer"] =
             &RaidTempestKeepTriggerContext::high_astromancer_solarian_bot_has_wrath_of_the_astromancer;
 
@@ -90,11 +87,11 @@ public:
         creators["kael'thas sunstrider sanguinar casts bellowing roar"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_sanguinar_casts_bellowing_roar;
 
-        creators["kael'thas sunstrider capernian should be tanked by a warlock"] =
-            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_capernian_should_be_tanked_by_a_warlock;
+        creators["kael'thas sunstrider capernian should be tanked by warlock"] =
+            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_capernian_should_be_tanked_by_warlock;
 
-        creators["kael'thas sunstrider capernian casts arcane burst and conflagration"] =
-            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_capernian_casts_arcane_burst_and_conflagration;
+        creators["kael'thas sunstrider capernian blows up near and far"] =
+            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_capernian_blows_up_near_and_far;
 
         creators["kael'thas sunstrider telonicus engaged by first assist tank"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_telonicus_engaged_by_first_assist_tank;
@@ -105,8 +102,8 @@ public:
         creators["kael'thas sunstrider determining advisor kill order"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_determining_advisor_kill_order;
 
-        creators["kael'thas sunstrider waiting for tanks to get aggro on advisors"] =
-            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_waiting_for_tanks_to_get_aggro_on_advisors;
+        creators["kael'thas sunstrider should manage advisor dps timer"] =
+            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_should_manage_advisor_dps_timer;
 
         creators["kael'thas sunstrider legendary weapons are alive"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_legendary_weapons_are_alive;
@@ -114,8 +111,8 @@ public:
         creators["kael'thas sunstrider legendary axe casts whirlwind"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_legendary_axe_casts_whirlwind;
 
-        creators["kael'thas sunstrider legendary weapons are dead and lootable"] =
-            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_legendary_weapons_are_dead_and_lootable;
+        creators["kael'thas sunstrider legendary weapons are dead"] =
+            &RaidTempestKeepTriggerContext::kaelthas_sunstrider_legendary_weapons_are_dead;
 
         creators["kael'thas sunstrider legendary weapons are equipped"] =
             &RaidTempestKeepTriggerContext::kaelthas_sunstrider_legendary_weapons_are_equipped;
@@ -191,9 +188,6 @@ private:
     static Trigger* high_astromancer_solarian_engaged_by_main_tank(PlayerbotAI* botAI) {
         return new HighAstromancerSolarianEngagedByMainTankTrigger(botAI);
     }
-    static Trigger* high_astromancer_solarian_should_position_bots(PlayerbotAI* botAI) {
-        return new HighAstromancerSolarianShouldPositionBotsTrigger(botAI);
-    }
     static Trigger* high_astromancer_solarian_bot_has_wrath_of_the_astromancer(PlayerbotAI* botAI) {
         return new HighAstromancerSolarianBotHasWrathOfTheAstromancerTrigger(botAI);
     }
@@ -217,11 +211,11 @@ private:
     static Trigger* kaelthas_sunstrider_sanguinar_casts_bellowing_roar(PlayerbotAI* botAI) {
         return new KaelthasSunstriderSanguinarCastsBellowingRoarTrigger(botAI);
     }
-    static Trigger* kaelthas_sunstrider_capernian_should_be_tanked_by_a_warlock(PlayerbotAI* botAI) {
-        return new KaelthasSunstriderCapernianShouldBeTankedByAWarlockTrigger(botAI);
+    static Trigger* kaelthas_sunstrider_capernian_should_be_tanked_by_warlock(PlayerbotAI* botAI) {
+        return new KaelthasSunstriderCapernianShouldBeTankedByWarlockTrigger(botAI);
     }
-    static Trigger* kaelthas_sunstrider_capernian_casts_arcane_burst_and_conflagration(PlayerbotAI* botAI) {
-        return new KaelthasSunstriderCapernianCastsArcaneBurstAndConflagrationTrigger(botAI);
+    static Trigger* kaelthas_sunstrider_capernian_blows_up_near_and_far(PlayerbotAI* botAI) {
+        return new KaelthasSunstriderCapernianBlowsUpNearAndFarTrigger(botAI);
     }
     static Trigger* kaelthas_sunstrider_telonicus_engaged_by_first_assist_tank(PlayerbotAI* botAI) {
         return new KaelthasSunstriderTelonicusEngagedByFirstAssistTankTrigger(botAI);
@@ -232,8 +226,8 @@ private:
     static Trigger* kaelthas_sunstrider_determining_advisor_kill_order(PlayerbotAI* botAI) {
         return new KaelthasSunstriderDeterminingAdvisorKillOrderTrigger(botAI);
     }
-    static Trigger* kaelthas_sunstrider_waiting_for_tanks_to_get_aggro_on_advisors(PlayerbotAI* botAI) {
-        return new KaelthasSunstriderWaitingForTanksToGetAggroOnAdvisorsTrigger(botAI);
+    static Trigger* kaelthas_sunstrider_should_manage_advisor_dps_timer(PlayerbotAI* botAI) {
+        return new KaelthasSunstriderShouldManageAdvisorDpsTimerTrigger(botAI);
     }
     static Trigger* kaelthas_sunstrider_legendary_weapons_are_alive(PlayerbotAI* botAI) {
         return new KaelthasSunstriderLegendaryWeaponsAreAliveTrigger(botAI);
@@ -241,8 +235,8 @@ private:
     static Trigger* kaelthas_sunstrider_legendary_axe_casts_whirlwind(PlayerbotAI* botAI) {
         return new KaelthasSunstriderLegendaryAxeCastsWhirlwindTrigger(botAI);
     }
-    static Trigger* kaelthas_sunstrider_legendary_weapons_are_dead_and_lootable(PlayerbotAI* botAI) {
-        return new KaelthasSunstriderLegendaryWeaponsAreDeadAndLootableTrigger(botAI);
+    static Trigger* kaelthas_sunstrider_legendary_weapons_are_dead(PlayerbotAI* botAI) {
+        return new KaelthasSunstriderLegendaryWeaponsAreDeadTrigger(botAI);
     }
     static Trigger* kaelthas_sunstrider_legendary_weapons_are_equipped(PlayerbotAI* botAI) {
         return new KaelthasSunstriderLegendaryWeaponsAreEquippedTrigger(botAI);

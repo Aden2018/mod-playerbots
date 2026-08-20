@@ -4,17 +4,17 @@
  * or (at your option) any later version.
  */
 
+#include "GenericActions.h"
+#include "GenericSpellActions.h"
 #include "ICCActions.h"
-#include <limits>
+#include "ICCTriggers.h"
+#include "Multiplier.h"
 #include "NearestNpcsValue.h"
 #include "ObjectAccessor.h"
 #include "Playerbots.h"
-#include "Vehicle.h"
 #include "RtiValue.h"
-#include "GenericSpellActions.h"
-#include "GenericActions.h"
-#include "ICCTriggers.h"
-#include "Multiplier.h"
+#include "Vehicle.h"
+#include <limits>
 
 namespace
 {
@@ -1102,7 +1102,7 @@ bool IccSindragosaFrostBombAction::Execute(Event /*event*/)
                     continue;
                 pet->SetReactState(REACT_PASSIVE);
                 pet->AttackStop();
-                pet->InterruptNonMeleeSpells(true);
+                pet->CastStop();
                 pet->CombatStop();
                 pet->SetTarget(ObjectGuid::Empty);
                 if (CharmInfo* ci = pet->GetCharmInfo())
@@ -1248,7 +1248,7 @@ bool IccSindragosaFrostBombAction::Execute(Event /*event*/)
     if (myZoneAllProtected)
     {
         bot->AttackStop();
-        bot->InterruptNonMeleeSpells(true);
+        bot->CastStop();
         bot->SetTarget(ObjectGuid::Empty);
         bot->SetFacingTo(losTomb->GetAngle(bot));
     }

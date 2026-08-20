@@ -5,16 +5,9 @@
  */
 
 #include "MovementActions.h"
-
-#include <cmath>
-#include <cstdlib>
-#include <iomanip>
-#include <string>
-
 #include "Corpse.h"
 #include "Event.h"
 #include "FleeManager.h"
-#include "G3D/Vector3.h"
 #include "GameObject.h"
 #include "LastMovementValue.h"
 #include "LootObjectStack.h"
@@ -40,6 +33,11 @@
 #include "Unit.h"
 #include "Vehicle.h"
 #include "WaypointMovementGenerator.h"
+#include "G3D/Vector3.h"
+#include <cmath>
+#include <cstdlib>
+#include <iomanip>
+#include <string>
 
 MovementAction::MovementAction(PlayerbotAI* botAI, std::string const name) : Action(botAI, name)
 {
@@ -221,11 +219,8 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool /*idle
             if (bot->IsSitState())
                 bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-            // if (bot->IsNonMeleeSpellCast(true))
-            // {
-            //     bot->CastStop();
-            //     botAI->InterruptSpell();
-            // }
+            // bot->CastStop();
+
             DoMovePoint(bot, x, y, z, generatePath, backwards);
             float delay = 1000.0f * MoveDelay(distance, backwards);
             if (lessDelay)
@@ -251,11 +246,8 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool /*idle
             if (bot->IsSitState())
                 bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-            // if (bot->IsNonMeleeSpellCast(true))
-            // {
-            //     bot->CastStop();
-            //     botAI->InterruptSpell();
-            // }
+            // bot->CastStop();
+
             DoMovePoint(bot, x, y, modifiedZ, generatePath, backwards);
             float delay = 1000.0f * MoveDelay(distance, backwards);
             if (lessDelay)
@@ -439,7 +431,7 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool /*idle
     //     uint32 entry;
     //     movePosition = movePath.getNextPoint(startPosition, maxDist, pathType, entry);
 
-    //     if (pathType == TravelNodePathType::portal) // && !botAI->isRealPlayer())
+    //     if (pathType == TravelNodePathType::portal) // && !IsSelfBot(bot))
     //     {
     //         //Log bot movement
     //         if (sPlayerbotAIConfig.hasLog("bot_movement.csv"))
@@ -639,12 +631,7 @@ bool MovementAction::MoveTo(uint32 mapId, float x, float y, float z, bool /*idle
     //     if (bot->IsSitState())
     //         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-    //     if (bot->IsNonMeleeSpellCast(true))
-    //     {
-    //         bot->CastStop();
-    //         botAI->InterruptSpell();
-    //     }
-    // }
+    //     bot->CastStop();
 
     //  /* Why do we do this?
     // if (lastMove.lastMoveShort.distance(movePosition) < minDist)
@@ -1022,14 +1009,11 @@ void MovementAction::UpdateMovementState()
     wasMovementRestricted = isCurrentlyRestricted;
 
     // Temporary speed increase in group
-    // if (botAI->HasRealPlayerMaster())
-    // {
+    // if (botAI->HasGameClientMaster())
     //     bot->SetSpeedRate(MOVE_RUN, 1.1f);
-    // }
     // else
-    // {
     //     bot->SetSpeedRate(MOVE_RUN, 1.0f);
-    // }
+
     // check if target is not reachable (from Vmangos)
     // if (bot->GetMotionMaster()->GetCurrentMovementGeneratorType() == CHASE_MOTION_TYPE && bot->CanNotReachTarget() &&
     // !bot->InBattleground())
@@ -1117,7 +1101,7 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
         && ServerFacade::instance().IsDistanceLessOrEqualThan(ServerFacade::instance().GetDistance2d(bot, target->GetPositionX(),
     target->GetPositionY()), sPlayerbotAIConfig.sightDistance)
         && abs(bot->GetPositionZ() - target->GetPositionZ()) >= sPlayerbotAIConfig.spellDistance &&
-    botAI->HasRealPlayerMaster()
+    botAI->HasGameClientMaster()
         && (target->GetMapId() && bot->GetMapId() != target->GetMapId()))
     {
         bot->StopMoving();
@@ -1144,7 +1128,7 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
         return true;
     }
 
-    if (!IsMovingAllowed(target) && botAI->HasRealPlayerMaster())
+    if (!IsMovingAllowed(target) && botAI->HasGameClientMaster())
     {
         if ((target->GetMap() && target->GetMap()->IsBattlegroundOrArena()) || (bot->GetMap() &&
     bot->GetMap()->IsBattlegroundOrArena())) return false;
@@ -1251,11 +1235,7 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
     if (bot->IsSitState())
         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-    if (bot->IsNonMeleeSpellCast(true))
-    {
-        bot->CastStop();
-        botAI->InterruptSpell();
-    }
+    bot->CastStop();
 
     // AI_VALUE(LastMovement&, "last movement").Set(target);
     ClearIdleState();
@@ -1297,11 +1277,7 @@ bool MovementAction::ChaseTo(WorldObject* obj, float distance)
     if (!bot->IsStandState())
         bot->SetStandState(UNIT_STAND_STATE_STAND);
 
-    if (bot->IsNonMeleeSpellCast(true))
-    {
-        bot->CastStop();
-        botAI->InterruptSpell();
-    }
+    bot->CastStop();
 
     // bot->GetMotionMaster()->Clear();
     bot->GetMotionMaster()->MoveChase((Unit*)obj, distance);

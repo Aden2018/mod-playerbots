@@ -6,9 +6,9 @@
 
 #include "TKStrategy.h"
 #include "AiObjectContext.h"
-#include "PlayerbotAI.h"
 #include "Playerbots.h"
 #include "TKHelpers.h"
+#include "TKKaelthasBossAI.h"
 #include "TKMultipliers.h"
 
 void RaidTempestKeepStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
@@ -66,9 +66,6 @@ void RaidTempestKeepStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("high astromancer solarian engaged by main tank", {
         NextAction("high astromancer solarian main tank pick up boss", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("high astromancer solarian should position bots", {
-        NextAction("high astromancer solarian stack on ranged leader", ACTION_RAID) }));
-
     triggers.push_back(new TriggerNode("high astromancer solarian bot has wrath of the astromancer", {
         NextAction("high astromancer solarian move away from group", ACTION_EMERGENCY + 6) }));
 
@@ -91,10 +88,10 @@ void RaidTempestKeepStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("kael'thas sunstrider sanguinar casts bellowing roar", {
         NextAction("kael'thas sunstrider cast fear ward on sanguinar tank", ACTION_RAID + 1) }));
 
-    triggers.push_back(new TriggerNode("kael'thas sunstrider capernian should be tanked by a warlock", {
+    triggers.push_back(new TriggerNode("kael'thas sunstrider capernian should be tanked by warlock", {
         NextAction("kael'thas sunstrider warlock tank position capernian", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("kael'thas sunstrider capernian casts arcane burst and conflagration", {
+    triggers.push_back(new TriggerNode("kael'thas sunstrider capernian blows up near and far", {
         NextAction("kael'thas sunstrider spread and move away from capernian", ACTION_RAID + 2) }));
 
     triggers.push_back(new TriggerNode("kael'thas sunstrider telonicus engaged by first assist tank", {
@@ -106,7 +103,7 @@ void RaidTempestKeepStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("kael'thas sunstrider determining advisor kill order", {
         NextAction("kael'thas sunstrider assign advisor dps priority", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("kael'thas sunstrider waiting for tanks to get aggro on advisors", {
+    triggers.push_back(new TriggerNode("kael'thas sunstrider should manage advisor dps timer", {
         NextAction("kael'thas sunstrider manage advisor dps timer", ACTION_EMERGENCY + 10) }));
 
     triggers.push_back(new TriggerNode("kael'thas sunstrider legendary weapons are alive", {
@@ -115,7 +112,7 @@ void RaidTempestKeepStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("kael'thas sunstrider legendary axe casts whirlwind", {
         NextAction("kael'thas sunstrider move devastation away", ACTION_EMERGENCY + 1) }));
 
-    triggers.push_back(new TriggerNode("kael'thas sunstrider legendary weapons are dead and lootable", {
+    triggers.push_back(new TriggerNode("kael'thas sunstrider legendary weapons are dead", {
         NextAction("kael'thas sunstrider loot legendary weapons", ACTION_NORMAL) }));
 
     triggers.push_back(new TriggerNode("kael'thas sunstrider legendary weapons are equipped", {
@@ -142,17 +139,16 @@ void RaidTempestKeepStrategy::InitMultipliers(std::vector<Multiplier*>& multipli
 {
     // Alar <Phoenix God>
     multipliers.push_back(new AlarMoveBetweenPlatformsMultiplier(botAI));
-    multipliers.push_back(new AlarDisableDisperseMultiplier(botAI));
+    multipliers.push_back(new AlarControlMovementMultiplier(botAI));
     multipliers.push_back(new AlarDisableAutomaticTargetingMultiplier(botAI));
     multipliers.push_back(new AlarStayAwayFromRebirthMultiplier(botAI));
-    multipliers.push_back(new AlarDontTauntBossIfArmorMeltedMultiplier(botAI));
+    multipliers.push_back(new AlarControlTauntingMultiplier(botAI));
 
     // Void Reaver
     multipliers.push_back(new VoidReaverMaintainPositionsMultiplier(botAI));
 
     // High Astromancer Solarian
     multipliers.push_back(new HighAstromancerSolarianDisableMeleeTargetingMultiplier(botAI));
-    multipliers.push_back(new HighAstromancerSolarianMaintainPositionMultiplier(botAI));
     multipliers.push_back(new HighAstromancerSolarianWrathStayAwayMultiplier(botAI));
 
     // Kael'thas Sunstrider <Lord of the Blood Elves>
@@ -170,7 +166,6 @@ void RaidTempestKeepStrategy::InitMultipliers(std::vector<Multiplier*>& multipli
 }
 
 namespace
-
 {
 
 using namespace TkHelpers;
@@ -178,8 +173,20 @@ using namespace TkHelpers;
 void AppendKaelthasDevastationExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
 {
     AiObjectContext* context = botAI->GetAiObjectContext();
-    if (Unit* axe = AI_VALUE2(Unit*, "find target", "devastation"))
+    Unit* kaelthas = AI_VALUE2(Unit*, "find target", "kael'thas sunstrider");
+    if (!kaelthas)
+        return;
+
+    boss_kaelthas* kaelAI = dynamic_cast<boss_kaelthas*>(kaelthas->GetAI());
+    if (kaelAI && (kaelAI->GetPhase() < PHASE_WEAPONS || kaelAI->GetPhase() > PHASE_ALL_ADVISORS))
+        return;
+
+    constexpr float searchRadius = 75.0f;
+    if (Creature* axe = botAI->GetBot()->FindNearestCreature(
+            Id(TkNpcs::NPC_DEVASTATION), searchRadius))
+    {
         exclusions.insert(axe->GetGUID());
+    }
 }
 
 void AppendEmberOfAlarExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
@@ -188,7 +195,7 @@ void AppendEmberOfAlarExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
     for (auto const& guid : AI_VALUE(GuidVector, "attackers"))
     {
         Unit* unit = botAI->GetUnit(guid);
-        if (unit && unit->GetEntry() == static_cast<uint32>(TkNpcs::NPC_EMBER_OF_ALAR))
+        if (unit && unit->GetEntry() == Id(TkNpcs::NPC_EMBER_OF_ALAR))
             exclusions.insert(unit->GetGUID());
     }
 }
@@ -199,7 +206,7 @@ void RaidTempestKeepStrategy::AppendTargetExclusions(
     GuidSet& exclusions, TargetValueExclusionType /*type*/)
 {
     Player* bot = botAI->GetBot();
-    if (!PlayerbotAI::IsMelee(bot) && !PlayerbotAI::IsDps(bot))
+    if (!PlayerbotAI::IsMelee(bot) || !PlayerbotAI::IsDps(bot))
         return;
 
     AppendKaelthasDevastationExclusions(botAI, exclusions);

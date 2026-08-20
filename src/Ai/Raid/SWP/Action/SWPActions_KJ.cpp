@@ -9,7 +9,9 @@
 #include "Playerbots.h"
 #include "PlayerbotTextMgr.h"
 #include "RaidBossHelpers.h"
+#include "SWPData.h"
 #include <map>
+#include <string>
 #include <vector>
 
 using namespace SwpHelpers;
@@ -51,24 +53,21 @@ bool KiljaedenAnnounceDragonOrbUserAction::Execute(Event /*event*/)
 
 bool KiljaedenMarkAndPrioritizeHandsOfTheDeceiverAction::Execute(Event /*event*/)
 {
-    Player* mainTank = GetGroupMainTank(botAI, bot);
-    Player* firstAssistTank = GetGroupAssistTank(botAI, bot, 0);
-    Player* secondAssistTank = GetGroupAssistTank(botAI, bot, 1);
-    if (!mainTank || !GET_PLAYERBOT_AI(mainTank) ||
-        !firstAssistTank || !GET_PLAYERBOT_AI(firstAssistTank) ||
-        !secondAssistTank || !GET_PLAYERBOT_AI(secondAssistTank))
-    {
+    // Fewer than 3 bot tanks makes this a headache so just skip in that case;
+    // it's not vital anyway
+    Player* mainTank = nullptr;
+    Player* firstAssistTank = nullptr;
+    Player* secondAssistTank = nullptr;
+    if (!HasAtLeastThreeBotTanks(bot, &mainTank, &firstAssistTank, &secondAssistTank))
         return false;
-    }
 
     std::vector<Unit*> hands;
-    auto const& targets =
-        botAI->GetAiObjectContext()->GetValue<GuidVector>("possible targets no los")->Get();
+    auto const& targets = AI_VALUE(GuidVector, "possible targets no los");
 
-    for (ObjectGuid const targetGuid : targets)
+    for (ObjectGuid const& targetGuid : targets)
     {
         Unit* target = botAI->GetUnit(targetGuid);
-        if (target && target->GetEntry() == static_cast<uint32>(SwpNpcs::NPC_HAND_OF_THE_DECEIVER))
+        if (target && target->GetEntry() == Id(SwpNpcs::NPC_HAND_OF_THE_DECEIVER))
             hands.push_back(target);
     }
 
@@ -189,17 +188,16 @@ bool KiljaedenMarkAndPrioritizeHandsOfTheDeceiverAction::ExecuteTankHandAssignme
 
 bool KiljaedenStunHandsOfTheDeceiverAction::Execute(Event /*event*/)
 {
-    if (bot->getClass() == CLASS_SHAMAN || bot->getClass() == CLASS_MAGE)
+    if (bot->getClass() == CLASS_SHAMAN)
         return false;
 
-    auto const& targets =
-        botAI->GetAiObjectContext()->GetValue<GuidVector>("possible targets no los")->Get();
+    auto const& targets = AI_VALUE(GuidVector, "possible targets no los");
 
-    for (ObjectGuid const targetGuid : targets)
+    for (ObjectGuid const& targetGuid : targets)
     {
         Unit* target = botAI->GetUnit(targetGuid);
         if (!target || target->GetHealthPct() <= 20.0f ||
-            target->GetEntry() != static_cast<uint32>(SwpNpcs::NPC_HAND_OF_THE_DECEIVER))
+            target->GetEntry() != Id(SwpNpcs::NPC_HAND_OF_THE_DECEIVER))
         {
             continue;
         }
@@ -219,6 +217,7 @@ bool KiljaedenStunHandsOfTheDeceiverAction::Execute(Event /*event*/)
 
 bool KiljaedenStunHandsOfTheDeceiverAction::CastStunOnHand(Unit* hand)
 {
+    // 80% HP is arbitrary; it's to try to let tanks get some spread before stunning
     if (hand->GetHealthPct() > 80.0f)
         return false;
 
@@ -234,6 +233,9 @@ bool KiljaedenStunHandsOfTheDeceiverAction::CastStunOnHand(Unit* hand)
 
         case CLASS_PALADIN:
             return castSpell("hammer of justice");
+
+        case CLASS_MAGE:
+            return castSpell("deep freeze");
 
         case CLASS_ROGUE:
             return castSpell("kidney shot");
@@ -260,14 +262,14 @@ bool KiljaedenStunHandsOfTheDeceiverAction::CastSilenceOnHand(Unit* hand)
 
     switch (bot->getClass())
     {
+        case CLASS_HUNTER:
+            return castSpell("silencing shot");
+
         case CLASS_PRIEST:
             return castSpell("silence");
 
         case CLASS_DEATH_KNIGHT:
             return castSpell("strangulate");
-
-        case CLASS_HUNTER:
-            return castSpell("silencing shot");
 
         default:
             if (bot->getRace() == RACE_BLOODELF)
@@ -278,6 +280,9 @@ bool KiljaedenStunHandsOfTheDeceiverAction::CastSilenceOnHand(Unit* hand)
 
 bool KiljaedenPositionTanksAction::Execute(Event /*event*/)
 {
+    if (AI_VALUE2(Unit*, "find target", "sinister reflection") && !PlayerbotAI::IsMainTank(bot))
+        return PickUpSinisterReflections();
+
     Position const& position = KILJAEDEN_TANK_POSITION;
     if (bot->GetExactDist2d(position) <= 2.0f)
         return false;
@@ -285,6 +290,44 @@ bool KiljaedenPositionTanksAction::Execute(Event /*event*/)
     return MoveTo(
         SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
         false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
+}
+
+bool KiljaedenPositionTanksAction::PickUpSinisterReflections()
+{
+    constexpr float searchRadius = 100.0f;
+    Creature* reflection = bot->FindNearestCreature(
+        Id(SwpNpcs::NPC_SINISTER_REFLECTION), searchRadius, true);
+    if (!reflection)
+        return false;
+
+    if (AI_VALUE(Unit*, "current target") != reflection)
+        return Attack(reflection);
+
+    if (reflection->GetReactState() != REACT_PASSIVE)
+        return false;
+
+    auto const castSpell = [&](char const* spell)
+    {
+        return botAI->CanCastSpell(spell, reflection) && botAI->CastSpell(spell, reflection);
+    };
+
+    switch (bot->getClass())
+    {
+        case CLASS_DEATH_KNIGHT:
+            return castSpell("death and decay");
+
+        case CLASS_DRUID:
+            return castSpell("challenging roar");
+
+        case CLASS_PALADIN:
+            return castSpell("consecration");
+
+        case CLASS_WARRIOR:
+            return castSpell("challenging shout");
+
+        default:
+            return false;
+    }
 }
 
 bool KiljaedenPositionMeleeAction::Execute(Event /*event*/)
@@ -447,16 +490,16 @@ bool KiljaedenRemoveFireBloomAction::Execute(Event /*event*/)
     switch (bot->getClass())
     {
         case CLASS_MAGE:
-            return botAI->CanCastSpell("ice block", bot) &&
-                botAI->CastSpell("ice block", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot);
 
         case CLASS_PALADIN:
-            return botAI->CanCastSpell("divine shield", bot) &&
-                botAI->CastSpell("divine shield", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot);
 
         case CLASS_ROGUE:
-            return botAI->CanCastSpell("cloak of shadows", bot) &&
-                botAI->CastSpell("cloak of shadows", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot);
 
         default:
             return false;
@@ -469,17 +512,17 @@ bool KiljaedenStackForShieldOfTheBlueAction::Execute(Event /*event*/)
     float destX = darknessPosition.GetPositionX();
     float destY = darknessPosition.GetPositionY();
 
-    // Bots with Fire Bloom wait away from the darkness stack spot until the darkness cast is
-    // about to finish (4500ms, same threshold for the bot dragon to cast Shield of the Blue).
-    if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_FIRE_BLOOM)))
+    // Bots with Fire Bloom wait 15y away from the Darkness stack spot until the Darkness cast
+    // is about to finish (4.5s, same threshold for the bot dragon to cast Shield of the Blue).
+    if (bot->HasAura(Id(SwpSpells::SPELL_FIRE_BLOOM)))
     {
         Unit* kiljaeden = AI_VALUE2(Unit*, "find target", "kil'jaeden");
         if (!kiljaeden)
             return false;
 
-        if (Spell* darknessSpell = kiljaeden->FindCurrentSpellBySpellId(
-                static_cast<uint32>(SwpSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
-            darknessSpell && darknessSpell->GetCastTimeRemaining() >= 4500)
+        Spell* darknessSpell = kiljaeden->FindCurrentSpellBySpellId(
+            Id(SwpSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
+        if (darknessSpell && darknessSpell->GetCastTimeRemaining() >= 4500)
         {
             constexpr float targetDistance = 15.0f;
             float const angle = darknessPosition.GetAngle(bot);
@@ -491,7 +534,7 @@ bool KiljaedenStackForShieldOfTheBlueAction::Execute(Event /*event*/)
     if (bot->GetExactDist2d(destX, destY) < 1.0f)
         return false;
 
-    botAI->InterruptSpell();
+    bot->CastStop();
     return MoveTo(
         SWP_MAP_ID, destX, destY, bot->GetPositionZ(), false, false, false, false,
         MovementPriority::MOVEMENT_FORCED, true, false);
@@ -504,8 +547,6 @@ bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
     float closestDistance = 0.0f;
     float closestInUseOrbDistance = 0.0f;
     bool orbInUse = false;
-
-    constexpr float orbInUsePendingDistance = 15.0f;
 
     for (uint32 const orbEntry : KILJAEDEN_DRAGON_ORB_ENTRIES)
     {
@@ -536,20 +577,20 @@ bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
         }
     }
 
+    // Failsafe to keep the orb user from leaving early
     if (orbInUse)
     {
-        if (closestInUseOrb)
-        {
-            if (closestInUseOrbDistance <= orbInUsePendingDistance)
-                return true;
+        if (!closestInUseOrb)
+            return false;
 
-            return MoveTo(
-                SWP_MAP_ID, closestInUseOrb->GetPositionX(), closestInUseOrb->GetPositionY(),
-                closestInUseOrb->GetPositionZ(), false, false, false, false,
-                MovementPriority::MOVEMENT_FORCED, true, false);
-        }
+        constexpr float orbInUsePendingDistance = 15.0f;
+        if (closestInUseOrbDistance <= orbInUsePendingDistance)
+            return true;
 
-        return false;
+        return MoveTo(
+            SWP_MAP_ID, closestInUseOrb->GetPositionX(), closestInUseOrb->GetPositionY(),
+            closestInUseOrb->GetPositionZ(), false, false, false, false,
+            MovementPriority::MOVEMENT_FORCED, true, false);
     }
 
     if (!closestOrb)
@@ -572,9 +613,8 @@ bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
         false, false, MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
-// There is an issue with the root packets that causes bots to get stuck with
-// the root movement flag after using a dragon orb; this action is a workaround
-// to remove the stale root flag in those cases
+// There is an issue (maybe with the root packets) that causes bots to get stuck with the root
+// movement flag after using a dragon orb; this action is a workaround to remove the stale flag.
 bool KiljaedenReleaseStaleRootAction::Execute(Event /*event*/)
 {
     bot->m_movementInfo.RemoveMovementFlag(MOVEMENTFLAG_ROOT);
@@ -588,18 +628,16 @@ bool KiljaedenControlDragonAction::Execute(Event /*event*/)
     if (!kiljaeden)
         return false;
 
-    // End remaining drake control after phase changes
+    // End remaining bot drake control after phase changes, which may not be ideal but
+    // is the safer approach without knowing the player's composition or raid knowledge.
     if (kiljaeden->HasUnitState(UNIT_STATE_CASTING) &&
-        kiljaeden->FindCurrentSpellBySpellId(static_cast<uint32>(SwpSpells::SPELL_SHADOW_SPIKE)))
+        kiljaeden->FindCurrentSpellBySpellId(Id(SwpSpells::SPELL_SHADOW_SPIKE)))
     {
-        if (HasKiljaedenDragonAura(bot))
-        {
-            bot->RemoveAura(
-                static_cast<uint32>(SwpSpells::SPELL_VENGEANCE_OF_THE_BLUE_FLIGHT));
-            return true;
-        }
+        if (!HasKiljaedenDragonAura(bot))
+            return false;
 
-        return false;
+        bot->RemoveAura(Id(SwpSpells::SPELL_VENGEANCE_OF_THE_BLUE_FLIGHT));
+        return true;
     }
 
     Unit* dragon = GetKiljaedenControlledDragon(bot);
@@ -616,7 +654,7 @@ bool KiljaedenControlDragonAction::ExecuteDuringDarknessOfAThousandSouls(
     Unit* kiljaeden, Unit* dragon)
 {
     Spell* darknessSpell = kiljaeden->FindCurrentSpellBySpellId(
-        static_cast<uint32>(SwpSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
+        Id(SwpSpells::SPELL_DARKNESS_OF_A_THOUSAND_SOULS));
     if (!darknessSpell)
         return false;
 
@@ -644,46 +682,29 @@ bool KiljaedenControlDragonAction::ExecuteDuringDarknessOfAThousandSouls(
         return true;
     }
 
-    if (dragon->GetCurrentSpell(CURRENT_GENERIC_SPELL) ||
-        dragon->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-    {
+    if (dragon->IsNonMeleeSpellCast(false))
         return false;
-    }
 
     if (darknessSpell->GetCastTimeRemaining() < 4500)
-    {
-        return CastKiljaedenDragonSpell(
-            dragon, static_cast<uint32>(SwpSpells::SPELL_SHIELD_OF_THE_BLUE));
-    }
-    else if (CastKiljaedenDragonSpell(
-        dragon, static_cast<uint32>(SwpSpells::SPELL_DRAGON_BREATH_HASTE)))
-    {
+        return CastKiljaedenDragonSpell(dragon, Id(SwpSpells::SPELL_SHIELD_OF_THE_BLUE));
+    else if (CastKiljaedenDragonSpell(dragon, Id(SwpSpells::SPELL_DRAGON_BREATH_HASTE)))
         return true;
-    }
-    else if (CastKiljaedenDragonSpell(
-        dragon, static_cast<uint32>(SwpSpells::SPELL_DRAGON_BREATH_REVITALIZE)))
-    {
+    else if (CastKiljaedenDragonSpell(dragon, Id(SwpSpells::SPELL_DRAGON_BREATH_REVITALIZE)))
         return true;
-    }
 
     return false;
 }
 
 bool KiljaedenControlDragonAction::ExecuteOutsideDarknessOfAThousandSouls(Unit* dragon)
 {
-    if (dragon->GetCurrentSpell(CURRENT_GENERIC_SPELL) ||
-        dragon->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
-    {
+    if (dragon->IsNonMeleeSpellCast(false))
         return false;
-    }
 
     uint32 spellId = 0;
     Player* target = nullptr;
 
-    constexpr uint32 hasteSpellId =
-        static_cast<uint32>(SwpSpells::SPELL_DRAGON_BREATH_HASTE);
-    constexpr uint32 revitalizeSpellId =
-        static_cast<uint32>(SwpSpells::SPELL_DRAGON_BREATH_REVITALIZE);
+    constexpr uint32 hasteSpellId = Id(SwpSpells::SPELL_DRAGON_BREATH_HASTE);
+    constexpr uint32 revitalizeSpellId = Id(SwpSpells::SPELL_DRAGON_BREATH_REVITALIZE);
 
     if (!dragon->HasSpellCooldown(hasteSpellId))
     {

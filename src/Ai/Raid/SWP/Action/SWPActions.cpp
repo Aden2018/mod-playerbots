@@ -33,13 +33,9 @@ bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
         if (isMechanicTracker && kalecgosEncounterStates.erase(instanceId) > 0)
             didSomething = true;
 
-        if (kalecgosRealmStates.erase(guid) > 0)
-            didSomething = true;
-
         if (PlayerbotAI::IsTank(bot))
         {
-            Action* kalecAction = botAI->GetAiObjectContext()->GetAction(
-                "kalecgos disperse ranged");
+            Action* kalecAction = context->GetAction("kalecgos disperse ranged");
             if (kalecAction && static_cast<KalecgosDisperseRangedAction*>(
                     kalecAction)->ResetInitialRangedPositionReached())
             {
@@ -50,9 +46,9 @@ bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
 
     if (!AI_VALUE2(Unit*, "find target", "brutallus"))
     {
-        if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_BURN)))
+        if (bot->HasAura(Id(SwpSpells::SPELL_BURN)))
         {
-            bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_BURN));
+            bot->RemoveAura(Id(SwpSpells::SPELL_BURN));
             didSomething = true;
         }
 
@@ -65,14 +61,16 @@ bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
         if (isMechanicTracker && brutallusRangedAssignments.erase(instanceId) > 0)
             didSomething = true;
 
+        if (isMechanicTracker && brutallusMeleeAssignments.erase(instanceId) > 0)
+            didSomething = true;
+
         if (isMechanicTracker && brutallusRangedBurnPadAssignments.erase(instanceId) > 0)
             didSomething = true;
 
         if (PlayerbotAI::IsTank(bot))
         {
-            Action* brutallusAction = botAI->GetAiObjectContext()->GetAction(
-                "brutallus tanks handle boss");
-            if (brutallusAction && static_cast<BrutallusTanksHandleBossAction*>(
+            Action* brutallusAction = context->GetAction("brutallus tanks position and swap");
+            if (brutallusAction && static_cast<BrutallusTanksPositionAndSwapAction*>(
                     brutallusAction)->ResetInitialPositionReached())
             {
                 didSomething = true;
@@ -91,13 +89,13 @@ bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
         if (eredarTwinsIncomingConflagrationStates.erase(instanceId) > 0)
             didSomething = true;
 
-        if (eredarTwinsDpsHoldTimer.erase(instanceId) > 0)
+        if (eredarTwinsDpsHoldStartMs.erase(instanceId) > 0)
             didSomething = true;
     }
 
     if (PlayerbotAI::IsTank(bot) && !AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
     {
-        Action* twinsAction = botAI->GetAiObjectContext()->GetAction(
+        Action* twinsAction = context->GetAction(
             "eredar twins first assist tank move out of blaze");
         if (twinsAction && static_cast<EredarTwinsFirstAssistTankMoveOutOfBlazeAction*>(
                 twinsAction)->ResetAlythessTankStep())
@@ -137,12 +135,12 @@ bool SunwellPlateauRemoveProtectiveAuraAction::Execute(Event /*event*/)
 {
     if (bot->getClass() == CLASS_MAGE)
     {
-        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_ICE_BLOCK));
+        bot->RemoveAura(Id(SwpSpells::SPELL_ICE_BLOCK));
         return true;
     }
     else if (bot->getClass() == CLASS_PALADIN)
     {
-        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_DIVINE_SHIELD));
+        bot->RemoveAura(Id(SwpSpells::SPELL_DIVINE_SHIELD));
         return true;
     }
 
@@ -152,8 +150,8 @@ bool SunwellPlateauRemoveProtectiveAuraAction::Execute(Event /*event*/)
 bool VolatileFiendKeepEnemyAwayFromGroupAction::Execute(Event /*event*/)
 {
     constexpr float searchRadius = 25.0f;
-    Unit* volatileFiend = bot->FindNearestCreature(
-        static_cast<uint32>(SwpNpcs::NPC_VOLATILE_FIEND), searchRadius, true);
+    Creature* volatileFiend = bot->FindNearestCreature(
+        Id(SwpNpcs::NPC_VOLATILE_FIEND), searchRadius, true);
     if (!volatileFiend)
         return false;
 
@@ -168,7 +166,7 @@ bool VolatileFiendKeepEnemyAwayFromGroupAction::Execute(Event /*event*/)
         float const currentDistance = bot->GetDistance(volatileFiend);
         if (currentDistance < safeDistance)
         {
-            botAI->InterruptSpell();
+            bot->CastStop();
             return MoveAway(volatileFiend, safeDistance - currentDistance);
         }
     }
@@ -182,12 +180,12 @@ bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
     constexpr float searchRadius = 40.0f;
     std::list<Creature*> apocalypseGuards;
     bot->GetCreatureListWithEntryInGrid(
-        apocalypseGuards, static_cast<uint32>(SwpNpcs::NPC_APOCALYPSE_GUARD), searchRadius);
+        apocalypseGuards, Id(SwpNpcs::NPC_APOCALYPSE_GUARD), searchRadius);
 
     for (Creature* apocalypseGuard : apocalypseGuards)
     {
         if (!apocalypseGuard || !apocalypseGuard->IsAlive() ||
-            !apocalypseGuard->HasAura(static_cast<uint32>(SwpSpells::SPELL_INFERNAL_DEFENSE)))
+            !apocalypseGuard->HasAura(Id(SwpSpells::SPELL_INFERNAL_DEFENSE)))
         {
             continue;
         }
@@ -196,8 +194,8 @@ bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
             target = apocalypseGuard;
     }
 
-    if (bot->HasAura(static_cast<uint32>(SwpSpells::SPELL_SHADOWFORM)))
-        bot->RemoveAura(static_cast<uint32>(SwpSpells::SPELL_SHADOWFORM));
+    if (bot->HasAura(Id(SwpSpells::SPELL_SHADOWFORM)))
+        bot->RemoveAura(Id(SwpSpells::SPELL_SHADOWFORM));
 
     return botAI->CanCastSpell("smite", target) && botAI->CastSpell("smite", target);
 }

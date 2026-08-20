@@ -9,8 +9,9 @@
 #include "Playerbots.h"
 #include "PlayerbotTextMgr.h"
 #include "RaidBossHelpers.h"
-#include "TargetValue.h"
+#include "SWPData.h"
 #include <algorithm>
+#include <string>
 #include <map>
 
 using namespace SwpHelpers;
@@ -51,18 +52,21 @@ bool KalecgosAnnounceBossHealthAction::Execute(Event /*event*/)
 
         state.spectralHealthAnnounced = true;
 
+        std::string const sathrovarrHealth = std::to_string(
+            static_cast<uint32>(sathrovarr->GetHealthPct()));
+
         text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "sathrovarr_health_when_kalecgos_below_twenty_percent_health",
             "Sathrovarr's health is at %sathrovarrHealth%! "
             "Don't forget that we need to defeat them at about the same time!",
             std::map<std::string, std::string>{
-                {"%sathrovarrHealth", std::to_string(static_cast<uint32>(sathrovarr->GetHealthPct()))}});
+                {"%sathrovarrHealth", sathrovarrHealth}});
     }
 
     return botAI->SayToRaid(text);
 }
 
-bool KalecgosTankPositionBossAction::Execute(Event event)
+bool KalecgosSurfaceTankPositionDragonAction::Execute(Event event)
 {
     Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
     if (!kalecgos)
@@ -112,7 +116,7 @@ bool KalecgosEnterSpectralRiftAction::Execute(Event /*event*/)
 
     constexpr float searchRadius = 75.0f;
     GameObject* rift = bot->FindNearestGameObject(
-        static_cast<uint32>(SwpObjects::GO_SPECTRAL_RIFT), searchRadius, true);
+        Id(SwpObjects::GO_SPECTRAL_RIFT), searchRadius, true);
     if (!rift)
         return false;
 
@@ -142,18 +146,11 @@ bool KalecgosEnterSpectralRiftAction::ShouldTankEnter()
     if (!surfaceTank)
         return false;
 
+    // The current tank cannot enter a portal until the next tank takes over. If the designated
+    // tank is still this bot, nobody has taken over yet.
     if (surfaceTank == bot)
-    {
-        KalecgosEncounterState& state = kalecgosEncounterStates[kalecgos->GetInstanceId()];
-        surfaceTank = GetNextSurfaceTankInOrder(
-            bot->GetGroup(), state.tankAssignmentGuids,
-            state.currentTankGuid, ObjectGuid::Empty, true);
+        return false;
 
-        if (!surfaceTank)
-            return false;
-    }
-
-    // The current tank cannot enter a portal until the next tank takes over
     Position const& position = KALECGOS_TANK_POSITION;
     if (surfaceTank->GetExactDist2d(position) > 3.0f || kalecgos->GetVictim() != surfaceTank)
         return false;
@@ -188,13 +185,11 @@ bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
     }
 
     constexpr float safeDistFromPlayer = 6.0f;
-    if (Player* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistFromPlayer))
-    {
-        constexpr uint32 minInterval = 1000;
-        return FleePosition(nearestPlayer->GetPosition(), safeDistFromPlayer, minInterval);
-    }
+    Player* nearestPlayer = GetNearestPlayerInRadius(bot, safeDistFromPlayer);
+    if (!nearestPlayer)
+        return false;
 
-    return false;
+    return FleePosition(nearestPlayer->GetPosition(), safeDistFromPlayer);
 }
 
 bool KalecgosRemoveArcaneBuffetAction::Execute(Event /*event*/)
@@ -202,16 +197,16 @@ bool KalecgosRemoveArcaneBuffetAction::Execute(Event /*event*/)
     switch (bot->getClass())
     {
         case CLASS_MAGE:
-            return botAI->CanCastSpell("ice block", bot) &&
-                botAI->CastSpell("ice block", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_ICE_BLOCK), bot);
 
         case CLASS_PALADIN:
-            return botAI->CanCastSpell("divine shield", bot) &&
-                botAI->CastSpell("divine shield", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_DIVINE_SHIELD), bot);
 
         case CLASS_ROGUE:
-            return botAI->CanCastSpell("cloak of shadows", bot) &&
-                botAI->CastSpell("cloak of shadows", bot);
+            return botAI->CanCastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot) &&
+                botAI->CastSpell(Id(SwpSpells::SPELL_CLOAK_OF_SHADOWS), bot);
 
         default:
             return false;
@@ -225,9 +220,7 @@ bool KalecgosSathrovarrTankStandWithKalecAction::Execute(Event /*event*/)
         return false;
 
     constexpr float searchRadius = 20.0f;
-    Unit* kalec = bot->FindNearestCreature(
-        static_cast<uint32>(SwpNpcs::NPC_KALECGOS_HUMANOID), searchRadius);
-
+    Creature* kalec = bot->FindNearestCreature(Id(SwpNpcs::NPC_KALECGOS_HUMANOID), searchRadius);
     if (!kalec || sathrovarr->GetVictim() != kalec)
         return false;
 
@@ -242,7 +235,9 @@ bool KalecgosSathrovarrTankStandWithKalecAction::Execute(Event /*event*/)
 
 bool KalecgosReturnToSpectralRealmGroundAction::Execute(Event /*event*/)
 {
-    return bot->TeleportTo(
-        SWP_MAP_ID, bot->GetPositionX(), bot->GetPositionY(),
-        KALECGOS_SPECTRAL_REALM_Z, bot->GetOrientation());
+    bot->NearTeleportTo(
+        bot->GetPositionX(), bot->GetPositionY(), KALECGOS_SPECTRAL_REALM_Z, bot->GetOrientation());
+
+    constexpr float zTolerance = 1.0f;
+    return std::fabs(bot->GetPositionZ() - KALECGOS_SPECTRAL_REALM_Z) <= zTolerance;
 }

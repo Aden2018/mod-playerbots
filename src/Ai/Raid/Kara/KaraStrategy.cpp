@@ -8,7 +8,6 @@
 #include "AiObjectContext.h"
 #include "KaraHelpers.h"
 #include "KaraMultipliers.h"
-#include "PlayerbotAI.h"
 #include "Playerbots.h"
 
 void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
@@ -82,7 +81,7 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("the curator position boss", ACTION_RAID) }
     ));
     triggers.push_back(new TriggerNode("the curator boss engaged by ranged",
-        { NextAction("the curator spread ranged to mitigate arcane sear", ACTION_RAID) }
+        { NextAction("the curator spread ranged", ACTION_RAID) }
     ));
 
     // Terestian Illhoof
@@ -172,7 +171,7 @@ void RaidKarazhanStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers
     multipliers.push_back(new ShadeOfAranFlameWreathDisableMovementMultiplier(botAI));
     multipliers.push_back(new NetherspiteKeepBlockingBeamMultiplier(botAI));
     multipliers.push_back(new NetherspiteWaitForDpsMultiplier(botAI));
-    multipliers.push_back(new PrinceMalchezaarEnfeebleKeepDistanceMultiplier(botAI));
+    multipliers.push_back(new PrinceMalchezaarEnfeebleMultiplier(botAI));
     multipliers.push_back(new PrinceMalchezaarDelayBloodlustAndHeroismMultiplier(botAI));
     multipliers.push_back(new NightbaneDisablePetsMultiplier(botAI));
     multipliers.push_back(new NightbaneWaitForDpsMultiplier(botAI));

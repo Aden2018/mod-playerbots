@@ -4,7 +4,7 @@
  */
 
 #include "LootAction.h"
-
+#include "BroadcastHelper.h"
 #include "ChatHelper.h"
 #include "Event.h"
 #include "GuildMgr.h"
@@ -15,8 +15,6 @@
 #include "PlayerbotAIConfig.h"
 #include "Playerbots.h"
 #include "ServerFacade.h"
-#include "GuildMgr.h"
-#include "BroadcastHelper.h"
 
 bool LootAction::Execute(Event /*event*/)
 {
@@ -35,9 +33,8 @@ bool LootAction::Execute(Event /*event*/)
         // bot->GetSession()->HandleLootReleaseOpcode(packet);
     }
 
-    // Provide a system to check if the game object id is disallowed in the user configurable list or not.
-    // Check if the game object id is disallowed in the user configurable list or not.
-    if (sPlayerbotAIConfig.disallowedGameObjects.find(lootObject.guid.GetEntry()) != sPlayerbotAIConfig.disallowedGameObjects.end())
+    if (lootObject.guid.IsGameObject() &&
+        sPlayerbotAIConfig.disallowedGameObjects.contains(lootObject.guid.GetEntry()))
     {
         return false;  // Game object ID is disallowed, so do not proceed
     }
@@ -51,7 +48,7 @@ bool LootAction::Execute(Event /*event*/)
 bool LootAction::isUseful()
 {
     if (sPlayerbotAIConfig.freeMethodLoot || !bot->GetGroup() ||
-        bot->GetGroup()->GetLootMethod() != FREE_FOR_ALL || botAI->IsRealPlayer())
+        bot->GetGroup()->GetLootMethod() != FREE_FOR_ALL || IsSelfBot(bot))
     {
         return true;
     }
@@ -414,7 +411,7 @@ bool StoreLootAction::Execute(Event event)
         if (!proto)
             continue;
 
-        if (!botAI->HasActivePlayerMaster() && AI_VALUE(uint8, "bag space") > 80)
+        if (!IsRealPlayer(botAI->GetMaster()) && AI_VALUE(uint8, "bag space") > 80)
         {
             uint32 maxStack = proto->GetMaxStackSize();
             if (maxStack == 1)
@@ -506,7 +503,7 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         Group* group = bot->GetGroup();
 
         // If sync quest with player is enabled, check if any real player in group also needs this item
-        if (group && !botAI->IsRealPlayer() && sPlayerbotAIConfig.syncQuestWithPlayer)
+        if (group && !IsRealPlayer(bot) && sPlayerbotAIConfig.syncQuestWithPlayer)
         {
             for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
             {
@@ -529,7 +526,7 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
     //{
 
     bool canLoot = lootStrategy->CanLoot(proto, context);
-    // if (canLoot && proto->Bonding == BIND_WHEN_PICKED_UP && botAI->HasActivePlayerMaster())
+    // if (canLoot && proto->Bonding == BIND_WHEN_PICKED_UP && IsRealPlayer(botAI->GetMaster()))
     // canLoot = sPlayerbotAIConfig.IsInRandomAccountList(botAI->GetBot()->GetSession()->GetAccountId());
 
     return canLoot;

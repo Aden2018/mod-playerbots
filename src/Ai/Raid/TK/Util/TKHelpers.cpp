@@ -9,6 +9,8 @@
 #include "Playerbots.h"
 #include "RaidBossHelpers.h"
 #include "TKActions.h"
+#include <limits>
+#include <list>
 
 namespace TkHelpers
 {
@@ -20,10 +22,10 @@ std::pair<Unit*, Unit*> GetTargetUnitPair(PlayerbotAI* botAI, uint32 entry)
     Unit* lowest = nullptr;
     Unit* highest = nullptr;
 
-    for (auto const& guid :
-        botAI->GetAiObjectContext()->GetValue<GuidVector>("possible targets no los")->Get())
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    for (auto const& targetGuid : AI_VALUE(GuidVector, "possible targets no los"))
     {
-        Unit* unit = botAI->GetUnit(guid);
+        Unit* unit = botAI->GetUnit(targetGuid);
         if (unit && unit->GetEntry() == entry)
         {
             if (!lowest || unit->GetGUID().GetRawValue() < lowest->GetGUID().GetRawValue())
@@ -49,7 +51,7 @@ Player* GetNearestNonTankPlayerInRadius(Player* bot, float radius)
     for (GroupReference* ref = group->GetFirstMember(); ref != nullptr; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || member == bot || PlayerbotAI::IsTank(member))
+        if (!member || member == bot || !member->IsAlive() || PlayerbotAI::IsTank(member))
             continue;
 
         float distance = bot->GetExactDist2d(member);
@@ -83,20 +85,23 @@ Position FindSafestNearbyPosition(
 {
     constexpr float searchStep = M_PI / 12.0f;
     constexpr float minDistance = 2.0f;
-    constexpr float maxDistance = 30.0f;
     constexpr float distanceStep = 1.0f;
+    constexpr uint8 numAngles = 24;
+    constexpr uint8 numDistSteps = 28;
 
-    Position bestPos;
+    Position const searchCenter = center ? *center : bot->GetPosition();
+    Position bestPos = bot->GetPosition();
     float minMoveDistance = std::numeric_limits<float>::max();
     bool foundSafe = false;
 
-    for (float distance = minDistance; distance <= maxDistance; distance += distanceStep)
+    for (uint8 i = 0; i <= numDistSteps; ++i)
     {
-        for (float angle = 0.0f; angle < 2 * M_PI; angle += searchStep)
+        float const distance = minDistance + i * distanceStep;
+        for (uint8 j = 0; j < numAngles; ++j)
         {
-            Position const searchCenter = center ? *center : bot->GetPosition();
-            float x = searchCenter.GetPositionX() + distance * std::cos(angle);
-            float y = searchCenter.GetPositionY() + distance * std::sin(angle);
+            float const angle = j * searchStep;
+            float const x = searchCenter.GetPositionX() + distance * std::cos(angle);
+            float const y = searchCenter.GetPositionY() + distance * std::sin(angle);
 
             bool isSafe = true;
             for (Unit* hazard : hazards)
@@ -166,51 +171,25 @@ bool IsPathSafeFromHazards(
 
 // Al'ar <Phoenix God>
 
-Position const ALAR_PLATFORM_0 = { 335.638f,  59.4879f, 17.9319f }; // West Platform
-Position const ALAR_PLATFORM_1 = { 388.751f,  31.7312f, 20.2636f }; // Northwest Platform
-Position const ALAR_PLATFORM_2 = { 388.791f, -33.1059f, 20.2636f }; // Northeast Platform
-Position const ALAR_PLATFORM_3 = { 332.723f,  -61.159f, 17.9791f }; // East Platform
-std::array<Position, 4> const PLATFORM_POSITIONS =
-{
-    ALAR_PLATFORM_0,
-    ALAR_PLATFORM_1,
-    ALAR_PLATFORM_2,
-    ALAR_PLATFORM_3,
-};
-std::array<Position, 4> const GROUND_POSITIONS =
-{{
-    { 336.439f,  48.181f, -2.389f }, // Ground counterpart to West Platform
-    { 379.122f,  25.146f, -2.385f }, // Ground counterpart to Northwest Platform
-    { 378.583f, -27.481f, -2.385f }, // Ground counterpart to Northeast Platform
-    { 331.631f, -49.716f, -2.389f }, // Ground counterpart to East Platform
-}};
-Position const ALAR_ROOM_CENTER =         { 330.611f,  -2.540f, -2.389f };
-Position const ALAR_POINT_QUILL_OR_DIVE = { 332.000f,   0.010f, 43.000f };
-Position const ALAR_POINT_MIDDLE =        { 331.000f,   0.010f, -2.380f };
-Position const ALAR_SE_RAMP_BASE =        { 281.064f, -36.590f, -2.389f };
-Position const ALAR_SW_RAMP_BASE =        { 281.064f,  36.590f, -2.389f };
-Position const ALAR_ROOM_S_CENTER =       { 281.064f,   0.000f, -2.389f };
-
 std::unordered_map<uint32, bool> lastRebirthState;
 std::unordered_map<uint32, bool> isAlarInPhase2;
 
-int8 GetAlarDestinationLocationIndex(Unit* alar, Position dest)
+bool IsAlarInPhase2(uint32 instanceId)
+{
+    auto const it = isAlarInPhase2.find(instanceId);
+    return it != isAlarInPhase2.end() && it->second;
+}
+
+int8 GetAlarCurrentLocationIndex(Unit* alar)
 {
     if (!alar)
         return LOCATION_NONE;
 
-    float x, y, z;
-    if (!alar->GetMotionMaster()->GetDestination(x, y, z))
-        return LOCATION_NONE;
-
-    dest.Relocate(x, y, z);
-
-    std::array<Position, 6> const locations =
-    {
-        ALAR_PLATFORM_0,
-        ALAR_PLATFORM_1,
-        ALAR_PLATFORM_2,
-        ALAR_PLATFORM_3,
+    static std::array const locations = {
+        ALAR_LANDING_PLATFORM_0,
+        ALAR_LANDING_PLATFORM_1,
+        ALAR_LANDING_PLATFORM_2,
+        ALAR_LANDING_PLATFORM_3,
         ALAR_POINT_QUILL_OR_DIVE,
         ALAR_POINT_MIDDLE,
     };
@@ -219,10 +198,10 @@ int8 GetAlarDestinationLocationIndex(Unit* alar, Position dest)
     int8 locationIndex = LOCATION_NONE;
     for (int8 i = 0; i < TOTAL_ALAR_LOCATIONS; ++i)
     {
-        float dist = dest.GetExactDist2d(&locations[i]);
-        if (dist < minDist)
+        float distToLocation = alar->GetPosition().GetExactDist2d(&locations[i]);
+        if (distToLocation < minDist)
         {
-            minDist = dist;
+            minDist = distToLocation;
             locationIndex = i;
         }
     }
@@ -233,17 +212,22 @@ int8 GetAlarDestinationLocationIndex(Unit* alar, Position dest)
     return locationIndex;
 }
 
-int8 GetAlarCurrentLocationIndex(Unit* alar)
+int8 GetAlarDestinationLocationIndex(Unit* alar)
 {
     if (!alar)
         return LOCATION_NONE;
 
-    std::array<Position, 6> const locations =
-    {
-        ALAR_PLATFORM_0,
-        ALAR_PLATFORM_1,
-        ALAR_PLATFORM_2,
-        ALAR_PLATFORM_3,
+    float x, y, z;
+    if (!alar->GetMotionMaster()->GetDestination(x, y, z))
+        return LOCATION_NONE;
+
+    Position dest(x, y, z);
+
+    static std::array const locations = {
+        ALAR_LANDING_PLATFORM_0,
+        ALAR_LANDING_PLATFORM_1,
+        ALAR_LANDING_PLATFORM_2,
+        ALAR_LANDING_PLATFORM_3,
         ALAR_POINT_QUILL_OR_DIVE,
         ALAR_POINT_MIDDLE,
     };
@@ -252,15 +236,27 @@ int8 GetAlarCurrentLocationIndex(Unit* alar)
     int8 locationIndex = LOCATION_NONE;
     for (int8 i = 0; i < TOTAL_ALAR_LOCATIONS; ++i)
     {
-        float dist = alar->GetPosition().GetExactDist2d(&locations[i]);
-        if (dist < minDist)
+        float distToLocation = dest.GetExactDist2d(&locations[i]);
+        if (distToLocation < minDist)
         {
-            minDist = dist;
+            minDist = distToLocation;
             locationIndex = i;
         }
     }
 
     if (minDist > 0.1f)
+        return LOCATION_NONE;
+
+    return locationIndex;
+}
+
+int8 GetAlarPlatformIndex(Unit* alar)
+{
+    int8 locationIndex = GetAlarCurrentLocationIndex(alar);
+    if (locationIndex == LOCATION_NONE)
+        locationIndex = GetAlarDestinationLocationIndex(alar);
+
+    if (locationIndex < PLATFORM_0_IDX || locationIndex > PLATFORM_3_IDX)
         return LOCATION_NONE;
 
     return locationIndex;
@@ -272,17 +268,38 @@ void GetClosestPlatformAndGround(Position botPos, int8& closestPlatform, Positio
     closestPlatform = -1;
     for (int8 i = 0; i < 4; ++i)
     {
-        float dist = botPos.GetExactDist2d(&PLATFORM_POSITIONS[i]);
+        float dist = botPos.GetExactDist2d(&ALAR_LANDING_PLATFORM_POSITIONS[i]);
         if (dist < minDist)
         {
             minDist = dist;
             closestPlatform = i;
         }
     }
-    ground = GROUND_POSITIONS[closestPlatform];
+    ground = ALAR_GROUND_POSITIONS[closestPlatform];
 }
 
-Player* GetSecondEmberTank(Player* bot)
+// Main tank rotates between W (where Al'ar initially lands) and NE platforms in Phase 1
+// and starts on Al'ar in Phase 2
+bool IsFirstAlarTank(Player* bot)
+{
+    return PlayerbotAI::IsMainTank(bot);
+}
+
+// First assist tank rotates between NW and E platforms in Phase 1
+bool IsSecondAlarTank(Player* bot)
+{
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
+}
+
+// Second assist tank is the primary ember tank
+bool IsPrimaryEmberTank(Player* bot)
+{
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 1, false);
+}
+
+// When Al'ar melts the armor of whoever is tanking it, the other tank taunts, and the melted tank
+// picks up the 2nd Ember (the 2nd AT, who tanked Embers in phase 1, picks up the 1st Ember).
+Player* GetPhase2SecondEmberTank(Player* bot)
 {
     PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     Player* mainTank = GetGroupMainTank(botAI, bot);
@@ -291,60 +308,23 @@ Player* GetSecondEmberTank(Player* bot)
     if (!mainTank || !assistTank)
         return nullptr;
 
-    bool mainTankHasMelt = mainTank->HasAura(static_cast<uint32>(TkSpells::SPELL_MELT_ARMOR));
-    bool assistTankHasMelt = assistTank->HasAura(static_cast<uint32>(TkSpells::SPELL_MELT_ARMOR));
-
-    if (mainTankHasMelt)
+    if (mainTank->HasAura(Id(TkSpells::SPELL_MELT_ARMOR)))
         return mainTank;
 
-    if (assistTankHasMelt || (!mainTankHasMelt && !assistTankHasMelt))
-        return assistTank;
-
-    return nullptr;
+    return assistTank;
 }
 
 // Void Reaver
 
 std::unordered_map<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
-Position const VOID_REAVER_TANK_POSITION = { 423.845f, 371.733f, 14.897f };
 
 // High Astromancer Solarian
 bool HasWrathOfTheAstromancer(Player* bot)
 {
-    return bot->HasAura(static_cast<uint32>(TkSpells::SPELL_WRATH_OF_THE_ASTROMANCER));
-}
-
-Player* GetRangedLeader(Player* bot)
-{
-    Group* group = bot->GetGroup();
-    if (!group)
-        return nullptr;
-
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-    {
-        Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || member->GetMapId() != TK_MAP_ID ||
-            !GET_PLAYERBOT_AI(member) || HasWrathOfTheAstromancer(bot))
-        {
-            continue;
-        }
-
-        if (PlayerbotAI::IsRangedDps(member))
-            return member;
-    }
-
-    return nullptr;
+    return bot->HasAura(Id(TkSpells::SPELL_WRATH_OF_THE_ASTROMANCER));
 }
 
 // Kael'thas Sunstrider <Lord of the Blood Elves>
-
-Position const SANGUINAR_TANK_POSITION =    { 775.478f,  39.888f, 46.780f };
-Position const SANGUINAR_WAITING_POSITION = { 761.850f,  27.459f, 46.779f };
-Position const TELONICUS_TANK_POSITION =    { 773.717f,  44.091f, 46.780f };
-Position const TELONICUS_WAITING_POSITION = { 754.347f,  31.739f, 46.796f };
-Position const ADVISOR_HEAL_POSITION =      { 752.171f,  19.494f, 46.779f };
-Position const CAPERNIAN_WAITING_POSITION = { 743.897f, -11.575f, 46.779f };
-Position const KAELTHAS_TANK_POSITION =     { 799.390f,  -0.837f, 48.729f };
 
 std::unordered_map<uint32, time_t> advisorDpsWaitTimer;
 
@@ -361,8 +341,11 @@ Player* GetCapernianTank(Player* bot)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || member->getClass() != CLASS_WARLOCK)
+        if (!member || member->getClass() != CLASS_WARLOCK || !member->IsAlive() ||
+            member->GetMapId() != TK_MAP_ID)
+        {
             continue;
+        }
 
         if (group->IsAssistant(member->GetGUID()))
             return member;
@@ -374,10 +357,10 @@ Player* GetCapernianTank(Player* bot)
     return fallbackWarlock;
 }
 
-// One Hunter will start on Sanguinar in Phase 3 with Melee to apply Armor Disruption
+// One Hunter will start on Sanguinar in Phase 3 with melee to apply Armor Disruption
 // (1) First priority is an assistant Hunter (real player or bot)
 // (2) If no assistant Hunter, then look for any Hunter bot
-bool IsDebuffHunter(Player* bot)
+bool IsSanguinarDebuffHunter(Player* bot)
 {
     if (bot->getClass() != CLASS_HUNTER)
         return false;
@@ -391,8 +374,11 @@ bool IsDebuffHunter(Player* bot)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || member->getClass() != CLASS_HUNTER)
+        if (!member || member->getClass() != CLASS_HUNTER || !member->IsAlive() ||
+            member->GetMapId() != TK_MAP_ID)
+        {
             continue;
+        }
 
         if (group->IsAssistant(member->GetGUID()))
             return member == bot;
@@ -406,14 +392,12 @@ bool IsDebuffHunter(Player* bot)
 
 bool IsFeigningDeath(Unit* advisor)
 {
-    return advisor && advisor->HasAura(
-        static_cast<uint32>(TkSpells::SPELL_PERMANENT_FEIGN_DEATH));
+    return advisor && advisor->HasAura(Id(TkSpells::SPELL_PERMANENT_FEIGN_DEATH));
 }
 
 bool IsAnyLegendaryWeaponDead(Player* bot)
 {
-    static std::array<TkNpcs, 7> const weaponEntries =
-    {
+    static constexpr std::array weaponEntries = {
         TkNpcs::NPC_STAFF_OF_DISINTEGRATION,
         TkNpcs::NPC_COSMIC_INFUSER,
         TkNpcs::NPC_INFINITY_BLADES,
