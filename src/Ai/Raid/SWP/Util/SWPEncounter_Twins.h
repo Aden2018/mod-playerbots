@@ -9,9 +9,10 @@
 
 #include "ObjectGuid.h"
 #include "Position.h"
-#include "SWPData.h"
+#include "SWPSharedConstants.h"
 #include <array>
 #include <unordered_map>
+#include <vector>
 
 class Player;
 class PlayerbotAI;
@@ -33,8 +34,42 @@ struct EredarTwinsBlazeTargetState
     uint32 startMs = 0;
 };
 
+// Used to measure if a bot is on the balcony; deliberately a little below the actual balcony Z
 inline constexpr float EREDAR_TWINS_BALCONY_Z = 50.0f;
-inline constexpr uint8 ALYTHESS_TANK_POSITION_COUNT = 5;
+
+// Grace period for the tanks to build threat before the rest of the raid opens up
+inline constexpr uint32 EREDAR_TWINS_DPS_HOLD_MS = 8000;
+
+// Spell 45246, fired by the Blaze trap GO, deals damage in a 3 yard radius; the extra 1.5 is the
+// usual avoidance padding. The trap itself only activates within 2.5 yards.
+inline constexpr float EREDAR_TWINS_BLAZE_DANGER_RADIUS = 4.5f;
+inline constexpr float EREDAR_TWINS_BLAZE_SEARCH_RADIUS = 30.0f;
+
+// Deliberately wider than the danger radius: this asks "has a new Blaze appeared near me", so it
+// must not miss one that landed while the tank was still moving
+inline constexpr float EREDAR_TWINS_BLAZE_UNDERFOOT_RADIUS = 5.0f;
+
+inline constexpr float SACROLASH_THREAT_HOLD_RATIO = 0.8f;
+inline constexpr float ALYTHESS_THREAT_HOLD_RATIO = 0.9f;
+
+// DPS cooldowns are held until Sacrolash is at 80%. Eredar Twins is a very threat-sensitive fight
+// due to Sacrolash dropping threat on tanks and Alythess targeting Conflagration based on
+// Sacrolash's threat table.
+inline constexpr float EREDAR_TWINS_MAX_DPS_HP_PERCENT = 80.0f;
+
+inline constexpr float EREDAR_TWINS_CONFLAGRATION_SAFE_DISTANCE = 10.0f;
+
+inline constexpr uint32 EREDAR_TWINS_CONFLAGRATION_DELAY_MS = 300;
+inline constexpr uint32 EREDAR_TWINS_CONFLAGRATION_WINDOW_MS = 2000;
+inline constexpr uint32 EREDAR_TWINS_BLAZE_TARGET_WINDOW_MS = 2000;
+
+inline constexpr uint8 FLAME_TOUCHED_PROTECT_STACKS = 5;
+inline constexpr int32 FLAME_SEAR_PROTECT_WINDOW_MS = 2000;
+
+// Feeds the "eredar twins blaze" value. CalculatedValue reads any interval between 2 and 99 as
+// seconds, so this has to stay at or above 100 to mean milliseconds. Blaze is a GameObject and
+// cannot move once placed, so the only thing a stale window can miss is a spawn or a despawn.
+inline constexpr uint32 EREDAR_TWINS_BLAZE_CACHE_INTERVAL_MS = 200;
 
 inline Position const ALYTHESS_START_POSITION = { 1819.180f, 625.539f, 33.4038f };
 inline std::array const ALYTHESS_TANK_POSITIONS = {
@@ -45,13 +80,13 @@ inline std::array const ALYTHESS_TANK_POSITIONS = {
     Position{ 1830.007f, 620.924f, 33.404f }
 };
 
-// Phase 1 positions
+// Phase 1 positions (ranged up top, melee on Sacrolash)
 inline Position const SACROLASH_TANK_POSITION  =             { 1804.255f, 630.193f, 33.404f };
 inline Position const EREDAR_TWINS_P1_RANGED_POSITION =      { 1808.076f, 603.460f, 51.684f };
 inline Position const EREDAR_TWINS_MELEE_CONFLAG_POSITION =  { 1812.842f, 611.147f, 33.404f };
 inline Position const EREDAR_TWINS_RANGED_CONFLAG_POSITION = { 1801.133f, 584.456f, 50.696f };
 
-// Phase 2 positions
+// Phase 2 positions (everybody stack behind Alythess)
 inline Position const EREDAR_TWINS_P2_MELEE_POSITION =       { 1814.327f, 625.645f, 33.404f };
 inline Position const EREDAR_TWINS_P2_RANGED_POSITION =      { 1805.587f, 625.653f, 33.404f };
 
@@ -67,8 +102,10 @@ bool IsAnySacrolashTank(Player* bot);
 bool IsAlythessTank(Player* bot);
 bool ShouldHoldTwinThreat(
     Player* bot, Unit* boss, float threatHoldRatio, bool (*isTwinTank)(Player*));
-bool IsAlythessTankPositionSafe(Player* bot, Position const& position);
+std::vector<Position> FindEredarTwinsBlazePositions(Player* bot);
+bool IsAlythessTankPositionSafe(PlayerbotAI* botAI, Position const& position);
 bool ShouldAdvanceAlythessTankPosition(Unit* alythess, Player* bot);
+void RecordEredarTwinsDpsHoldStart(Player* bot);
 void RecordIncomingEredarTwinsConflagrationTarget(Player* target);
 Player* GetEredarTwinsConflagrationTarget(Player* bot);
 void RecordEredarTwinsBlazeTarget(Player* target);

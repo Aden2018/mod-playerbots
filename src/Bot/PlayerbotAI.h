@@ -11,6 +11,7 @@
 #include "ChatHelper.h"
 #include "CreatureData.h"
 #include "Event.h"
+#include "ForceRebuff.h"
 #include "Item.h"
 #include "NewRpgInfo.h"
 #include "NewRpgStrategy.h"
@@ -411,6 +412,7 @@ public:
     std::vector<std::string> GetStrategies(BotState type);
     Strategy* GetStrategy(std::string const name, BotState type);
     void ApplyInstanceStrategies(uint32 mapId, bool tellMaster = false);
+    bool IsInNonRaidDungeon() const;
     bool HasTargetExclusions() const;
     void EvaluateHealerDpsStrategy();
     bool ContainsStrategy(StrategyType type);
@@ -478,7 +480,6 @@ public:
 
     void SpellInterrupted(uint32 spellid);
     int32 CalculateGlobalCooldown(uint32 spellid);
-    void InterruptSpell();
     void RequestSpellInterrupt();
     void RemoveAura(std::string const name);
     void RemoveShapeshift();
@@ -605,6 +606,7 @@ public:
     NewRpgStatistic rpgStatistic;
     std::unordered_set<uint32> lowPriorityQuest;
     time_t bgReleaseAttemptTime = 0;
+    ForceRebuffState forceRebuff;
 
     // Schedules a callback to run once after <delayMs> milliseconds.
     void AddTimedEvent(std::function<void()> callback, uint32 delayMs);

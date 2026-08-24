@@ -10,12 +10,13 @@
 #include "Common.h"
 #include "ObjectGuid.h"
 #include "Position.h"
-#include <ctime>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 class Creature;
+class GameObject;
 class Map;
 class Player;
 class PlayerbotAI;
@@ -59,12 +60,6 @@ struct CubeInfo
     float x, y, z;
 };
 
-struct DebrisData
-{
-    Position position;
-    uint32 spawnTime;
-};
-
 inline constexpr uint32 MAG_MAP_ID                = 544;
 inline constexpr uint32 SOUTH_CHANNELER           = 90978;
 inline constexpr uint32 WEST_CHANNELER            = 90979;
@@ -83,20 +78,22 @@ inline Position const HEALER_SPREAD_POSITION =           {  -2.265f,   1.874f, -
 
 extern std::unordered_map<uint32, uint32> dpsWaitTimer;
 extern std::unordered_map<uint32, uint32> blastNovaTimer;
-extern std::unordered_map<uint32, bool> ceilingCollapseApplied;
+extern std::unordered_set<uint32> ceilingCollapseApplied;
 extern std::unordered_map<uint32, bool> lastBlastNovaState;
-extern std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>>
-    botToCubeAssignments;
-extern std::unordered_map<uint32, std::vector<DebrisData>> activeDebrisPositions;
+extern std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
 
 extern std::vector<uint32> const MANTICRON_CUBE_DB_GUIDS;
-std::vector<CubeInfo> GetAllCubeInfosByDbGuids(
-    Map* map, std::vector<uint32> const& cubeDbGuids);
+std::vector<CubeInfo> GetAllCubeInfosByDbGuids(Map* map, std::vector<uint32> const& cubeDbGuids);
 Creature* GetChanneler(Player* bot, uint32 dbGuid);
 bool IsMagtheridonActive(Unit* magtheridon);
 bool IsBlastNovaCasting(Unit* magtheridon);
 bool IsCubeClicker(Player* bot);
-bool IsPositionInActiveDebris(uint32 instanceId, float x, float y, float radius = 10.0f);
+inline constexpr float DEBRIS_HAZARD_RADIUS = 10.0f;
+inline constexpr float CONFLAGRATION_HAZARD_RADIUS = 5.0f;
+bool GetActiveDebrisPosition(Player* bot, Position& debris);
+std::vector<GameObject*> GetActiveConflagrations(PlayerbotAI* botAI);
+bool IsPositionInConflagration(std::vector<GameObject*> const& blazes, float x, float y);
+bool IsPositionInActiveDebris(Player* bot, float x, float y, float radius = DEBRIS_HAZARD_RADIUS);
 bool IsPositionInActiveConflagration(PlayerbotAI* botAI, float x, float y);
 
 }

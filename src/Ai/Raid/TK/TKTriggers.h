@@ -19,6 +19,14 @@ public:
     bool IsActive() override;
 };
 
+class TempestKeepBotIsStuckFallingTrigger : public Trigger
+{
+public:
+    TempestKeepBotIsStuckFallingTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "tempest keep bot is stuck falling") {}
+    bool IsActive() override;
+};
+
 // Trash
 
 class CrimsonHandCenturionCastsArcaneVolleyTrigger : public Trigger
@@ -34,8 +42,7 @@ public:
 class AlarPullingBossTrigger : public Trigger
 {
 public:
-    AlarPullingBossTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "al'ar pulling boss") {}
+    AlarPullingBossTrigger(PlayerbotAI* botAI) : Trigger(botAI, "al'ar pulling boss") {}
     bool IsActive() override;
 };
 
@@ -181,11 +188,11 @@ public:
     bool IsActive() override;
 };
 
-class KaelthasSunstriderSanguinarEngagedByMainTankTrigger : public Trigger
+class KaelthasSunstriderSanguinarOrTelonicusIsActiveTrigger : public Trigger
 {
 public:
-    KaelthasSunstriderSanguinarEngagedByMainTankTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kael'thas sunstrider sanguinar engaged by main tank") {}
+    KaelthasSunstriderSanguinarOrTelonicusIsActiveTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kael'thas sunstrider sanguinar or telonicus is active") {}
     bool IsActive() override;
 };
 
@@ -210,14 +217,6 @@ class KaelthasSunstriderCapernianBlowsUpNearAndFarTrigger : public Trigger
 public:
     KaelthasSunstriderCapernianBlowsUpNearAndFarTrigger(PlayerbotAI* botAI)
         : Trigger(botAI, "kael'thas sunstrider capernian blows up near and far") {}
-    bool IsActive() override;
-};
-
-class KaelthasSunstriderTelonicusEngagedByFirstAssistTankTrigger : public Trigger
-{
-public:
-    KaelthasSunstriderTelonicusEngagedByFirstAssistTankTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kael'thas sunstrider telonicus engaged by first assist tank") {}
     bool IsActive() override;
 };
 

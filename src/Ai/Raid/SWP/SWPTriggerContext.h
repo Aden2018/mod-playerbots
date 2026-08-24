@@ -33,6 +33,9 @@ public:
         creators["kalecgos should communicate boss health"] =
             &RaidSunwellTriggerContext::kalecgos_should_communicate_boss_health;
 
+        creators["kalecgos pulling boss"] =
+            &RaidSunwellTriggerContext::kalecgos_pulling_boss;
+
         creators["kalecgos boss requires tank rotation"] =
             &RaidSunwellTriggerContext::kalecgos_boss_requires_tank_rotation;
 
@@ -234,6 +237,9 @@ private:
     }
 
     // Kalecgos
+    static Trigger* kalecgos_pulling_boss(PlayerbotAI* botAI) {
+        return new KalecgosPullingBossTrigger(botAI);
+    }
     static Trigger* kalecgos_should_communicate_boss_health(PlayerbotAI* botAI) {
         return new KalecgosShouldCommunicateBossHealthTrigger(botAI);
     }
@@ -264,10 +270,10 @@ private:
         return new BrutallusBossEngagedByTanksTrigger(botAI);
     }
     static Trigger* brutallus_melee_should_stand_in_place(PlayerbotAI* botAI) {
-        return new BrutallusMeleeShouldStayInPlaceTrigger(botAI);
+        return new BrutallusMeleeShouldStandInPlaceTrigger(botAI);
     }
     static Trigger* brutallus_ranged_should_soak_meteor_slash(PlayerbotAI* botAI) {
-        return new BrutallusBossEngagedByRangedTrigger(botAI);
+        return new BrutallusRangedShouldSoakMeteorSlashTrigger(botAI);
     }
     static Trigger* brutallus_bot_is_burning(PlayerbotAI* botAI) {
         return new BrutallusBotIsBurningTrigger(botAI);

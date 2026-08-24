@@ -10,74 +10,73 @@
 #include "Action.h"
 #include "AttackAction.h"
 #include "MovementActions.h"
+#include <string>
+
+// General
+
+class ZulamanMisdirectBossToMainTankAction : public Action
+{
+public:
+    ZulamanMisdirectBossToMainTankAction(
+        PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
+        : Action(botAI, name), _bossName(bossName) {}
+    bool Execute(Event event) override;
+
+private:
+    std::string const _bossName;
+};
 
 // Trash
 
 class AmanishiMedicineManMarkWardAction : public Action
 {
 public:
-    AmanishiMedicineManMarkWardAction(
-        PlayerbotAI* botAI, std::string const name = "amani'shi medicine man mark ward") : Action(botAI, name) {}
+    AmanishiMedicineManMarkWardAction(PlayerbotAI* botAI)
+        : Action(botAI, "amani'shi medicine man mark ward") {}
     bool Execute(Event event) override;
 };
 
 // Akil'zon <Eagle Avatar>
 
-class AkilzonMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    AkilzonMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "akil'zon misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class AkilzonTanksPositionBossAction : public AttackAction
 {
 public:
-    AkilzonTanksPositionBossAction(
-        PlayerbotAI* botAI, std::string const name = "akil'zon tanks position boss") : AttackAction(botAI, name) {}
+    AkilzonTanksPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "akil'zon tanks position boss") {}
     bool Execute(Event event) override;
 };
 
 class AkilzonSpreadRangedAction : public MovementAction
 {
 public:
-    AkilzonSpreadRangedAction(
-        PlayerbotAI* botAI, std::string const name = "akil'zon spread ranged") : MovementAction(botAI, name) {}
+    AkilzonSpreadRangedAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "akil'zon spread ranged") {}
     bool Execute(Event event) override;
 };
 
 class AkilzonMoveToEyeOfTheStormAction : public MovementAction
 {
 public:
-    AkilzonMoveToEyeOfTheStormAction(
-        PlayerbotAI* botAI, std::string const name = "akil'zon move to eye of the storm") : MovementAction(botAI, name) {}
+    AkilzonMoveToEyeOfTheStormAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "akil'zon move to eye of the storm") {}
     bool Execute(Event event) override;
 };
 
 class AkilzonManageElectricalStormTimerAction : public Action
 {
 public:
-    AkilzonManageElectricalStormTimerAction(
-        PlayerbotAI* botAI, std::string const name = "akil'zon manage electrical storm timer") : Action(botAI, name) {}
+    AkilzonManageElectricalStormTimerAction(PlayerbotAI* botAI)
+        : Action(botAI, "akil'zon manage electrical storm timer") {}
     bool Execute(Event event) override;
 };
 
 // Nalorakk <Bear Avatar>
 
-class NalorakkMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    NalorakkMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "nalorakk misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class NalorakkTanksPositionBossAction : public AttackAction
 {
 public:
-    NalorakkTanksPositionBossAction(
-        PlayerbotAI* botAI, std::string const name = "nalorakk tanks position boss") : AttackAction(botAI, name) {}
+    NalorakkTanksPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "nalorakk tanks position boss") {}
     bool Execute(Event event) override;
 
 private:
@@ -88,166 +87,135 @@ private:
 class NalorakkSpreadRangedAction : public MovementAction
 {
 public:
-    NalorakkSpreadRangedAction(
-        PlayerbotAI* botAI, std::string const name = "nalorakk spread ranged") : MovementAction(botAI, name) {}
+    NalorakkSpreadRangedAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "nalorakk spread ranged") {}
     bool Execute(Event event) override;
 };
 
 // Jan'alai <Dragonhawk Avatar>
 
-class JanalaiMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    JanalaiMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "jan'alai misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class JanalaiTanksPositionBossAction : public AttackAction
 {
 public:
-    JanalaiTanksPositionBossAction(
-        PlayerbotAI* botAI, std::string const name = "jan'alai tanks position boss") : AttackAction(botAI, name) {}
+    JanalaiTanksPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "jan'alai tanks position boss") {}
     bool Execute(Event event) override;
 };
 
 class JanalaiSpreadRangedInCircleAction : public MovementAction
 {
 public:
-    JanalaiSpreadRangedInCircleAction(
-        PlayerbotAI* botAI, std::string const name = "jan'alai spread ranged in circle") : MovementAction(botAI, name) {}
+    JanalaiSpreadRangedInCircleAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "jan'alai spread ranged in circle") {}
     bool Execute(Event event) override;
 };
 
 class JanalaiAvoidFireBombsAction : public MovementAction
 {
 public:
-    JanalaiAvoidFireBombsAction(PlayerbotAI* botAI, std::string const name = "jan'alai avoid fire bombs") : MovementAction(botAI, name) {}
+    JanalaiAvoidFireBombsAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "jan'alai avoid fire bombs") {}
     bool Execute(Event event) override;
 };
 
 class JanalaiMarkAmanishiHatchersAction : public Action
 {
 public:
-    JanalaiMarkAmanishiHatchersAction(
-        PlayerbotAI* botAI, std::string const name = "jan'alai mark amani'shi hatchers") : Action(botAI, name) {}
+    JanalaiMarkAmanishiHatchersAction(PlayerbotAI* botAI)
+        : Action(botAI, "jan'alai mark amani'shi hatchers") {}
     bool Execute(Event event) override;
 };
 
 // Halazzi <Lynx Avatar>
 
-class HalazziMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    HalazziMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "halazzi misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class HalazziMainTankPositionBossAction : public AttackAction
 {
 public:
-    HalazziMainTankPositionBossAction(
-        PlayerbotAI* botAI, std::string const name = "halazzi main tank position boss") : AttackAction(botAI, name) {}
+    HalazziMainTankPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "halazzi main tank position boss") {}
     bool Execute(Event event) override;
 };
 
 class HalazziFirstAssistTankAttackSpiritLynxAction : public AttackAction
 {
 public:
-    HalazziFirstAssistTankAttackSpiritLynxAction(
-        PlayerbotAI* botAI, std::string const name = "halazzi first assist tank attack spirit lynx") : AttackAction(botAI, name) {}
+    HalazziFirstAssistTankAttackSpiritLynxAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "halazzi first assist tank attack spirit lynx") {}
     bool Execute(Event event) override;
 };
 
 class HalazziAssignDpsPriorityAction : public AttackAction
 {
 public:
-    HalazziAssignDpsPriorityAction(
-        PlayerbotAI* botAI, std::string const name = "halazzi assign dps priority") : AttackAction(botAI, name) {}
+    HalazziAssignDpsPriorityAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "halazzi assign dps priority") {}
     bool Execute(Event event) override;
 };
 
 // Hex Lord Malacrass
 
-class HexLordMalacrassMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    HexLordMalacrassMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "hex lord malacrass misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class HexLordMalacrassAssignDpsPriorityAction : public AttackAction
 {
 public:
-    HexLordMalacrassAssignDpsPriorityAction(
-        PlayerbotAI* botAI, std::string const name = "hex lord malacrass assign dps priority") : AttackAction(botAI, name) {}
+    HexLordMalacrassAssignDpsPriorityAction(PlayerbotAI* botAI)
+        : AttackAction(botAI,  "hex lord malacrass assign dps priority") {}
     bool Execute(Event event) override;
 };
 
 class HexLordMalacrassRunAwayFromWhirlwindAction : public MovementAction
 {
 public:
-    HexLordMalacrassRunAwayFromWhirlwindAction(
-        PlayerbotAI* botAI, std::string const name = "hex lord malacrass run away from whirlwind") : MovementAction(botAI, name) {}
+    HexLordMalacrassRunAwayFromWhirlwindAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "hex lord malacrass run away from whirlwind") {}
     bool Execute(Event event) override;
 };
 
 class HexLordMalacrassCastersStopAttackingAction : public Action
 {
 public:
-    HexLordMalacrassCastersStopAttackingAction(
-        PlayerbotAI* botAI, std::string const name = "hex lord malacrass casters stop attacking") : Action(botAI, name) {}
+    HexLordMalacrassCastersStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "hex lord malacrass casters stop attacking") {}
     bool Execute(Event event) override;
 };
 
 class HexLordMalacrassMoveAwayFromFreezingTrapAction : public MovementAction
 {
 public:
-    HexLordMalacrassMoveAwayFromFreezingTrapAction(
-        PlayerbotAI* botAI, std::string const name = "hex lord malacrass move away from freezing trap") : MovementAction(botAI, name) {}
+    HexLordMalacrassMoveAwayFromFreezingTrapAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "hex lord malacrass move away from freezing trap") {}
     bool Execute(Event event) override;
 };
 
 // Zul'jin
-
-class ZuljinMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    ZuljinMisdirectBossToMainTankAction(
-        PlayerbotAI* botAI, std::string const name = "zul'jin misdirect boss to main tank") : AttackAction(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class ZuljinTanksPositionBossAction : public AttackAction
 {
 public:
-    ZuljinTanksPositionBossAction(
-        PlayerbotAI* botAI, std::string const name = "zul'jin tanks position boss") : AttackAction(botAI, name) {}
+    ZuljinTanksPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "zul'jin tanks position boss") {}
     bool Execute(Event event) override;
 };
 
 class ZuljinRunAwayFromWhirlwindAction : public MovementAction
 {
 public:
-    ZuljinRunAwayFromWhirlwindAction(
-        PlayerbotAI* botAI, std::string const name = "zul'jin run away from whirlwind") : MovementAction(botAI, name) {}
+    ZuljinRunAwayFromWhirlwindAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "zul'jin run away from whirlwind") {}
     bool Execute(Event event) override;
 };
 
 class ZuljinAvoidCyclonesAction : public MovementAction
 {
 public:
-    ZuljinAvoidCyclonesAction(PlayerbotAI* botAI, std::string const name = "zul'jin avoid cyclones") : MovementAction(botAI, name) {}
+    ZuljinAvoidCyclonesAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "zul'jin avoid cyclones") {}
     bool Execute(Event event) override;
 };
 
 class ZuljinSpreadRangedAction : public MovementAction
 {
 public:
-    ZuljinSpreadRangedAction(
-        PlayerbotAI* botAI, std::string const name = "zul'jin spread ranged") : MovementAction(botAI, name) {}
+    ZuljinSpreadRangedAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "zul'jin spread ranged") {}
     bool Execute(Event event) override;
 };
 

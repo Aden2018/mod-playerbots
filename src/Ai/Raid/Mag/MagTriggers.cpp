@@ -5,11 +5,12 @@
  */
 
 #include "MagTriggers.h"
+#include "EncounterHelpers.h"
 #include "MagHelpers.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
 
 using namespace MagHelpers;
+using namespace EncounterHelpers;
 
 bool MagtheridonFirstThreeChannelersEngagedByMainTankTrigger::IsActive()
 {
@@ -95,7 +96,7 @@ bool MagtheridonBossEngagedByRangedTrigger::IsActive()
         return false;
 
     constexpr uint32 dpsWaitMs = 6 * IN_MILLISECONDS;
-    auto it = dpsWaitTimer.find(magtheridon->GetMap()->GetInstanceId());
+    auto it = dpsWaitTimer.find(magtheridon->GetInstanceId());
     if (it == dpsWaitTimer.end() || getMSTimeDiff(it->second, getMSTime()) < dpsWaitMs)
         return false;
 
@@ -107,8 +108,7 @@ bool MagtheridonStandingInDebrisTrigger::IsActive()
     if (!AI_VALUE2(Unit*, "find target", "magtheridon"))
         return false;
 
-    return IsPositionInActiveDebris(
-        bot->GetMap()->GetInstanceId(), bot->GetPositionX(), bot->GetPositionY());
+    return IsPositionInActiveDebris(bot, bot->GetPositionX(), bot->GetPositionY());
 }
 
 bool MagtheridonIncomingBlastNovaTrigger::IsActive()

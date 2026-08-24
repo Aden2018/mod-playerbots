@@ -8,7 +8,7 @@
 #include "AiObjectContext.h"
 #include "PlayerbotAI.h"
 #include "Playerbots.h"
-#include "SWPData.h"
+#include "SWPSharedConstants.h"
 #include "SWPEncounter_Felmyst.h"
 #include "SWPEncounter_Muru.h"
 #include "SWPEncounter_Twins.h"
@@ -33,6 +33,9 @@ void RaidSunwellStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     // Kalecgos
     triggers.push_back(new TriggerNode("kalecgos should communicate boss health", {
         NextAction("kalecgos announce boss health", ACTION_RAID + 1) }));
+
+    triggers.push_back(new TriggerNode("kalecgos pulling boss", {
+        NextAction("kalecgos misdirect boss to main tank", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("kalecgos boss requires tank rotation", {
         NextAction("kalecgos surface tank position dragon", ACTION_RAID) }));
@@ -105,8 +108,8 @@ void RaidSunwellStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("felmyst player is charmed by fog", {
         NextAction("felmyst kill charmed player", ACTION_EMERGENCY + 9) }));
 
-    triggers.push_back(new TriggerNode("felmyst manage landing dps timer", {
-        NextAction("felmyst should hold dps while landing", ACTION_EMERGENCY + 8) }));
+    triggers.push_back(new TriggerNode("felmyst should hold dps while landing", {
+        NextAction("felmyst manage landing dps timer", ACTION_EMERGENCY + 8) }));
 
     // Eredar Twins
     triggers.push_back(new TriggerNode("eredar twins melee is at balcony", {
@@ -305,10 +308,14 @@ void AppendMuruTankExclusions(PlayerbotAI* botAI, AiObjectContext* context, Guid
         return;
 
     Unit* muru = AI_VALUE2(Unit*, "find target", "m'uru");
-    if (!muru || muru->GetHealth() <= 1)
+    if (!IsMuruPhaseActive(muru))
         return;
 
-    constexpr float maxTargetDistFromStack = 25.0f;
+    // Loop invariant: while darkness is out the sentinel tank chases whatever it likes, so only
+    // M'uru itself stays excluded
+    bool const distanceUnrestricted = PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) &&
+        TryGetMuruDarknessActiveState(bot, muru);
+    ObjectGuid const muruGuid = muru->GetGUID();
 
     for (auto const& guid : AI_VALUE(GuidVector, "attackers"))
     {
@@ -316,19 +323,16 @@ void AppendMuruTankExclusions(PlayerbotAI* botAI, AiObjectContext* context, Guid
         if (!attacker || attacker->GetEntry() == Id(SwpNpcs::NPC_VOID_SENTINEL))
             continue;
 
-        if (guid == muru->GetGUID())
+        if (guid == muruGuid)
         {
             exclusions.insert(guid);
             continue;
         }
 
-        if (PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) &&
-            TryGetMuruDarknessActiveState(bot, muru))
-        {
+        if (distanceUnrestricted)
             continue;
-        }
 
-        if (attacker->GetExactDist2d(MURU_STACK_POSITION) > maxTargetDistFromStack)
+        if (attacker->GetExactDist2d(MURU_STACK_POSITION) > MURU_MAX_TARGET_DIST_FROM_STACK)
             exclusions.insert(guid);
     }
 }

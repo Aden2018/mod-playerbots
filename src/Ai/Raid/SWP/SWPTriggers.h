@@ -55,6 +55,13 @@ public:
     bool IsActive() override;
 };
 
+class KalecgosPullingBossTrigger : public Trigger
+{
+public:
+    KalecgosPullingBossTrigger(PlayerbotAI* botAI) : Trigger(botAI, "kalecgos pulling boss") {}
+    bool IsActive() override;
+};
+
 class KalecgosBossRequiresTankRotationTrigger : public Trigger
 {
 public:
@@ -108,8 +115,7 @@ public:
 class BrutallusPullingBossTrigger : public Trigger
 {
 public:
-    BrutallusPullingBossTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "brutallus pulling boss") {}
+    BrutallusPullingBossTrigger(PlayerbotAI* botAI) : Trigger(botAI, "brutallus pulling boss") {}
     bool IsActive() override;
 };
 
@@ -121,18 +127,18 @@ public:
     bool IsActive() override;
 };
 
-class BrutallusMeleeShouldStayInPlaceTrigger : public Trigger
+class BrutallusMeleeShouldStandInPlaceTrigger : public Trigger
 {
 public:
-    BrutallusMeleeShouldStayInPlaceTrigger(PlayerbotAI* botAI)
+    BrutallusMeleeShouldStandInPlaceTrigger(PlayerbotAI* botAI)
         : Trigger(botAI, "brutallus melee should stand in place") {}
     bool IsActive() override;
 };
 
-class BrutallusBossEngagedByRangedTrigger : public Trigger
+class BrutallusRangedShouldSoakMeteorSlashTrigger : public Trigger
 {
 public:
-    BrutallusBossEngagedByRangedTrigger(PlayerbotAI* botAI)
+    BrutallusRangedShouldSoakMeteorSlashTrigger(PlayerbotAI* botAI)
         : Trigger(botAI, "brutallus ranged should soak meteor slash") {}
     bool IsActive() override;
 };
@@ -140,8 +146,7 @@ public:
 class BrutallusBotIsBurningTrigger : public Trigger
 {
 public:
-    BrutallusBotIsBurningTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "brutallus bot is burning") {}
+    BrutallusBotIsBurningTrigger(PlayerbotAI* botAI) : Trigger(botAI, "brutallus bot is burning") {}
     bool IsActive() override;
 };
 
@@ -150,8 +155,7 @@ public:
 class FelmystPullingBossTrigger : public Trigger
 {
 public:
-    FelmystPullingBossTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "felmyst pulling boss") {}
+    FelmystPullingBossTrigger(PlayerbotAI* botAI) : Trigger(botAI, "felmyst pulling boss") {}
     bool IsActive() override;
 };
 
@@ -402,8 +406,7 @@ public:
 class MuruDarknessIsComingTrigger : public Trigger
 {
 public:
-    MuruDarknessIsComingTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "m'uru darkness is coming") {}
+    MuruDarknessIsComingTrigger(PlayerbotAI* botAI) : Trigger(botAI, "m'uru darkness is coming") {}
     bool IsActive() override;
 };
 

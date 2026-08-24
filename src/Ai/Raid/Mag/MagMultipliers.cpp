@@ -8,6 +8,7 @@
 #include "ChooseTargetActions.h"
 #include "DKActions.h"
 #include "DruidBearActions.h"
+#include "EncounterHelpers.h"
 #include "FollowActions.h"
 #include "GenericSpellActions.h"
 #include "HunterActions.h"
@@ -17,13 +18,12 @@
 #include "MovementActions.h"
 #include "PaladinActions.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
 #include "ReachTargetActions.h"
 #include "WarriorActions.h"
 #include "WipeAction.h"
-#include <unordered_map>
 
 using namespace MagHelpers;
+using namespace EncounterHelpers;
 
 // When a cube clicker is in the handling phase (waiting near cube or moving
 // to use), suppress movement actions that would pull them away from the cube
@@ -45,14 +45,11 @@ float MagtheridonUseManticronCubeMultiplier::GetValue(Action* action)
     if (!IsCubeClicker(bot))
         return 1.0f;
 
-    auto timerIt = blastNovaTimer.find(bot->GetMap()->GetInstanceId());
-    if (timerIt != blastNovaTimer.end() &&
-        getMSTimeDiff(timerIt->second, getMSTime()) >= BLAST_NOVA_INTERIM_MS)
-    {
+    auto timerIt = blastNovaTimer.find(bot->GetInstanceId());
+    if (timerIt != blastNovaTimer.end())
         return 0.0f;
-    }
 
-    return 1.0f;
+    return getMSTimeDiff(timerIt->second, getMSTime()) >= BLAST_NOVA_INTERIM_MS ? 0.0f : 1.0f;
 }
 
 // Wait for 6 seconds after Magtheridon becomes attackable before engaging
@@ -75,11 +72,11 @@ float MagtheridonWaitToAttackMultiplier::GetValue(Action* action)
         return 1.0f;
 
     constexpr uint32 dpsWaitMs = 6 * IN_MILLISECONDS;
-    auto it = dpsWaitTimer.find(magtheridon->GetMap()->GetInstanceId());
-    if (it == dpsWaitTimer.end() || getMSTimeDiff(it->second, getMSTime()) <= dpsWaitMs)
+    auto it = dpsWaitTimer.find(magtheridon->GetInstanceId());
+    if (it == dpsWaitTimer.end())
         return 0.0f;
 
-    return 1.0f;
+    return getMSTimeDiff(it->second, getMSTime()) <= dpsWaitMs ? 0.0f : 1.0f;
 }
 
 float MagtheridonControlTankActionsMultiplier::GetValue(Action* action)
@@ -90,14 +87,13 @@ float MagtheridonControlTankActionsMultiplier::GetValue(Action* action)
     if (!PlayerbotAI::IsTank(bot))
         return 1.0f;
 
-    bool const isTaunt = IsTauntAction(bot, action);
     bool const isAvoidAoe = dynamic_cast<AvoidAoeAction*>(action);
     bool const isReachTargetSpell =
         dynamic_cast<CastReachTargetSpellAction*>(action);
 
-    if (!isTaunt && !isAvoidAoe && !isReachTargetSpell &&
-        !dynamic_cast<CombatFormationMoveAction*>(action) &&
-        !dynamic_cast<TankAssistAction*>(action))
+    if (!isAvoidAoe && !isReachTargetSpell && !IsTauntAction(bot, action) &&
+        !dynamic_cast<TankAssistAction*>(action) &&
+        !dynamic_cast<CombatFormationMoveAction*>(action))
     {
         return 1.0f;
     }
@@ -112,13 +108,10 @@ float MagtheridonControlTankActionsMultiplier::GetValue(Action* action)
     if (isReachTargetSpell && !PlayerbotAI::IsMainTank(bot))
         return 1.0f;
 
-    if (GetChanneler(bot, NORTHWEST_CHANNELER) ||
-        GetChanneler(bot, NORTHEAST_CHANNELER))
-    {
+    if (GetChanneler(bot, NORTHWEST_CHANNELER))
         return 0.0f;
-    }
 
-    return 1.0f;
+    return GetChanneler(bot, NORTHEAST_CHANNELER) ? 0.0f : 1.0f;
 }
 
 float MagtheridonDebrisDangerMultiplier::GetValue(Action* action)
@@ -134,8 +127,7 @@ float MagtheridonDebrisDangerMultiplier::GetValue(Action* action)
 
     constexpr float debrisSuppressionZone = 15.0f;
     if (IsPositionInActiveDebris(
-            bot->GetMap()->GetInstanceId(), bot->GetPositionX(),
-            bot->GetPositionY(), debrisSuppressionZone))
+            bot, bot->GetPositionX(), bot->GetPositionY(), debrisSuppressionZone))
     {
         return 0.0f;
     }

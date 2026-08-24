@@ -4,13 +4,15 @@
 */
 
 #include "HFRMultipliers.h"
+#include "ChooseTargetActions.h"
+#include "EncounterHelpers.h"
 #include "HFRActions.h"
 #include "HFRTriggers.h"
-#include "ChooseTargetActions.h"
 #include "MovementActions.h"
 #include "ReachTargetActions.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
+
+using namespace EncounterHelpers;
 
 // Omor the Unscarred
 
@@ -38,7 +40,7 @@ float OmorTreacheryAuraFleeFromTankMultiplier::GetValue(Action* action)
     if (!omor)
         return 1.0f;
 
-    Player* tank = GetGroupMainTank(botAI, bot);
+    Player* tank = GetGroupMainTank(bot);
     if (!tank)
         return 1.0f;
 

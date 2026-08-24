@@ -4,9 +4,11 @@
 */
 
 #include "Playerbots.h"
+#include "EncounterHelpers.h"
 #include "HFRTriggers.h"
 #include "HFRActions.h"
-#include "RaidBossHelpers.h"
+
+using namespace EncounterHelpers;
 
 constexpr uint32 HFR_MAP_ID = 543;
 
@@ -68,7 +70,7 @@ bool OmorMarkFiendishHoundAction::Execute(Event /*event*/)
 // Nearby bots should flee 15 yards from the tank if it has Treacherous Aura or Bane of Treachery
 bool OmorTreacheryAuraFleeFromTankAction::Execute(Event /*event*/)
 {
-    Player* tank = GetGroupMainTank(botAI, bot);
+    Player* tank = GetGroupMainTank(bot);
     if (!tank)
         return false;
 

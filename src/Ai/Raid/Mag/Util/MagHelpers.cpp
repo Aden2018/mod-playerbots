@@ -6,27 +6,27 @@
 
 #include "MagHelpers.h"
 #include "Creature.h"
+#include "EncounterHelpers.h"
 #include "GameObject.h"
 #include "Map.h"
 #include "ObjectGuid.h"
 #include "Playerbots.h"
+
+using namespace EncounterHelpers;
 
 namespace MagHelpers
 {
 
 std::unordered_map<uint32, uint32> blastNovaTimer;
 std::unordered_map<uint32, uint32> dpsWaitTimer;
-std::unordered_map<uint32, bool> ceilingCollapseApplied;
+std::unordered_set<uint32> ceilingCollapseApplied;
 std::unordered_map<uint32, bool> lastBlastNovaState;
-std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>>
-    botToCubeAssignments;
-std::unordered_map<uint32, std::vector<DebrisData>> activeDebrisPositions;
+std::unordered_map<uint32, std::unordered_map<ObjectGuid, CubeInfo>> botToCubeAssignments;
 
 std::vector<uint32> const MANTICRON_CUBE_DB_GUIDS = { 43157, 43158, 43159, 43160, 43161 };
 
 // Get the positions of all Manticron Cubes by their database GUIDs
-std::vector<CubeInfo> GetAllCubeInfosByDbGuids(
-    Map* map, std::vector<uint32> const& cubeDbGuids)
+std::vector<CubeInfo> GetAllCubeInfosByDbGuids(Map* map, std::vector<uint32> const& cubeDbGuids)
 {
     std::vector<CubeInfo> cubes;
     if (!map)
@@ -78,34 +78,56 @@ bool IsMagtheridonActive(Unit* magtheridon)
 
 bool IsBlastNovaCasting(Unit* magtheridon)
 {
-    return magtheridon &&
-        magtheridon->FindCurrentSpellBySpellId(Id(MagSpells::SPELL_BLAST_NOVA));
+    return magtheridon && magtheridon->FindCurrentSpellBySpellId(Id(MagSpells::SPELL_BLAST_NOVA));
 }
 
 bool IsCubeClicker(Player* bot)
 {
-    auto mapIt = botToCubeAssignments.find(bot->GetMap()->GetInstanceId());
+    auto mapIt = botToCubeAssignments.find(bot->GetInstanceId());
     return mapIt != botToCubeAssignments.end() &&
         mapIt->second.find(bot->GetGUID()) != mapIt->second.end();
 }
 
-bool IsPositionInActiveDebris(uint32 instanceId, float x, float y, float radius)
+bool GetActiveDebrisPosition(Player* bot, Position& debris)
 {
-    constexpr uint32 maxAgeMs = 8000;
-
-    auto it = activeDebrisPositions.find(instanceId);
-    if (it == activeDebrisPositions.end())
+    constexpr float searchRadius = 150.0f;
+    std::vector<Position> const debrisPositions = GetDynamicObjectPositions(
+        bot, searchRadius, Id(MagSpells::SPELL_DEBRIS_SPAWN));
+    if (debrisPositions.empty())
         return false;
 
-    uint32 const now = getMSTime();
-    for (DebrisData const& debris : it->second)
+    debris = debrisPositions.front();
+    return true;
+}
+
+bool IsPositionInActiveDebris(Player* bot, float x, float y, float radius)
+{
+    Position debris;
+    return GetActiveDebrisPosition(bot, debris) && debris.GetExactDist2d(x, y) <= radius;
+}
+
+std::vector<GameObject*> GetActiveConflagrations(PlayerbotAI* botAI)
+{
+    std::vector<GameObject*> blazes;
+    auto const& gameObjects =
+        botAI->GetAiObjectContext()->GetValue<GuidVector>("nearest game objects")->Get();
+    for (auto const& goGuid : gameObjects)
     {
-        if (getMSTimeDiff(debris.spawnTime, now) > maxAgeMs)
+        GameObject* go = botAI->GetGameObject(goGuid);
+        if (!go || !go->isSpawned() || go->GetEntry() != Id(MagObjs::GO_BLAZE))
             continue;
 
-        float dx = x - debris.position.GetPositionX();
-        float dy = y - debris.position.GetPositionY();
-        if ((dx * dx + dy * dy) < (radius * radius))
+        blazes.push_back(go);
+    }
+
+    return blazes;
+}
+
+bool IsPositionInConflagration(std::vector<GameObject*> const& blazes, float x, float y)
+{
+    for (GameObject* blaze : blazes)
+    {
+        if (blaze->GetDistance2d(x, y) < CONFLAGRATION_HAZARD_RADIUS)
             return true;
     }
 
@@ -114,20 +136,7 @@ bool IsPositionInActiveDebris(uint32 instanceId, float x, float y, float radius)
 
 bool IsPositionInActiveConflagration(PlayerbotAI* botAI, float x, float y)
 {
-    constexpr float conflagrationHazardRadius = 5.0f;
-    GuidVector const& gameObjects =
-        botAI->GetAiObjectContext()->GetValue<GuidVector>("nearest game objects")->Get();
-    for (auto const& goGuid : gameObjects)
-    {
-        GameObject* go = botAI->GetGameObject(goGuid);
-        if (!go || !go->isSpawned() || go->GetEntry() != Id(MagObjs::GO_BLAZE))
-            continue;
-
-        if (go->GetDistance2d(x, y) < conflagrationHazardRadius)
-            return true;
-    }
-
-    return false;
+    return IsPositionInConflagration(GetActiveConflagrations(botAI), x, y);
 }
 
 }

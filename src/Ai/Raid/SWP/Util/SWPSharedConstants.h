@@ -4,8 +4,8 @@
  * or (at your option) any later version.
  */
 
-#ifndef PLAYERBOTS_SWPDATA_H
-#define PLAYERBOTS_SWPDATA_H
+#ifndef PLAYERBOTS_SWPSHAREDCONSTANTS_H
+#define PLAYERBOTS_SWPSHAREDCONSTANTS_H
 
 #include "Common.h"
 #include <type_traits>
@@ -34,8 +34,8 @@ enum class SwpSpells : uint32
     SPELL_SPECTRAL_REALM               = 46021,
 
     // Brutallus
-    SPELL_METEOR_SLASH                 = 45150,
-    SPELL_BURN                         = 46394,
+    SPELL_METEOR_SLASH                 = 45150, // 120° cone
+    SPELL_BURN                         = 46394, // Spread radius is 2y, no CombatReaches added
 
     // Felmyst
     SPELL_SUMMON_DEMONIC_VAPOR         = 45391,
@@ -57,6 +57,7 @@ enum class SwpSpells : uint32
     // M'uru
     SPELL_DARKNESS                     = 45996,
     SPELL_DARKNESS_PRE_EFFECT          = 45999,
+    SPELL_ENTROPIUS_DARKNESS           = 46269,
     SPELL_SHADOW_BOLT_VOLLEY           = 46082,
     SPELL_FEL_FIREBALL                 = 46101,
     SPELL_SPELL_FURY                   = 46102,
@@ -108,7 +109,7 @@ enum class SwpNpcs : uint32
 
     // Felmyst
     NPC_FELMYST                  = 25038,
-    NPC_DEMONIC_VAPOR            = 25265,
+    NPC_DEMONIC_VAPOR            = 25265, // The vapor "head" that chases a player
     NPC_DEMONIC_VAPOR_TRAIL      = 25267,
 
     // Eredar Twins
@@ -149,6 +150,15 @@ enum class SwpObjects : uint32
 };
 
 inline constexpr uint32 SWP_MAP_ID = 580;
+inline constexpr float SWP_PULL_COMPLETE_HP_PERCENT = 95.0f;
+
+// Shared by the trigger and the action so the two cannot drift apart
+inline constexpr float SWP_VOLATILE_FIEND_SEARCH_RADIUS = 25.0f;
+
+// Feeds the "swp volatile fiend" value. Nothing scopes the trash triggers to a trash pull, so this
+// search also runs through every boss fight, where it can only ever miss - and a miss costs the
+// full grid visit.
+inline constexpr uint32 SWP_VOLATILE_FIEND_CACHE_INTERVAL_MS = 200;
 
 }
 

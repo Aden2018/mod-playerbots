@@ -5,28 +5,30 @@
  */
 
 #include "HyjalHelpers.h"
+#include "EncounterHelpers.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
 #include "Timer.h"
 #include <algorithm>
 #include <cmath>
 #include <list>
+#include <string>
+
+using namespace EncounterHelpers;
 
 namespace HyjalHelpers
 {
 
-// General
-
-// Every ground hazard here is read through a cached value rather than searched for directly. The
-// cache is keyed per bot and refreshed on its own interval, so the several triggers, multipliers
-// and actions that all ask about the same pool each tick share one grid search between them
-static std::vector<Position> const& GetCachedHazardPositions(Player* bot, std::string const& value)
+namespace
 {
-    static std::vector<Position> const none;
-    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
-    return botAI ? botAI->GetAiObjectContext()->GetValue<std::vector<Position>>(value)->RefGet()
-                 : none;
+// Every ground hazard is read through a cached value rather than searched for directly.
+std::vector<Position> const& GetCachedHazardPositions(PlayerbotAI* botAI, std::string const& value)
+{
+    return botAI->GetAiObjectContext()->GetValue<std::vector<Position>>(value)->RefGet();
 }
+
+}
+
+// General
 
 bool GetHazardBlockedArc(
     Position const& ringCenter, float ringRadius, Position const& hazard,
@@ -35,14 +37,12 @@ bool GetHazardBlockedArc(
     float const centerToHazard =
         hazard.GetExactDist2d(ringCenter.GetPositionX(), ringCenter.GetPositionY());
 
-    // Sitting on the ring centre it either swallows the whole ring or none of it
     if (centerToHazard <= 0.0f)
     {
         arc = { 0.0f, static_cast<float>(M_PI) };
         return ringRadius < hazardRadius;
     }
 
-    // Cosine of the half-angle it blocks, by the law of cosines on the ring centre
     float const cosHalfWidth =
         (centerToHazard * centerToHazard + ringRadius * ringRadius - hazardRadius * hazardRadius) /
         (2.0f * centerToHazard * ringRadius);
@@ -87,8 +87,6 @@ bool FindNearestUnblockedAngle(
         return true;
     }
 
-    // The nearest unblocked angle always lies on the edge of one of the blocked arcs, so testing
-    // every edge finds it without having to merge the arcs into their union first
     constexpr float edgeNudge = 0.01f;
     bool found = false;
     float bestOffset = 0.0f;
@@ -116,82 +114,40 @@ bool FindNearestUnblockedAngle(
 
 bool FindStepToCircle(
     Player* bot, Position const& center, float radius, float preferredAngle, float moveDist,
-    float& stepX, float& stepY, float& stepZ,
-    std::function<bool(float, float)> const& isAcceptable, float* chosenX, float* chosenY,
-    bool allowUnvalidatedFallback)
+    float& stepX, float& stepY, float& stepZ, std::function<bool(float, float)> const& isAcceptable,
+    float* chosenX, float* chosenY)
 {
     float const centerX = center.GetPositionX();
     float const centerY = center.GetPositionY();
 
-    // Counted rather than accumulated, so the sweep always reaches exactly 180 degrees instead of
-    // depending on where eight roundings of an inexact step happen to land
     constexpr uint8 fanSteps = 8;
     constexpr float fanStep = static_cast<float>(M_PI) / fanSteps;
 
-    // Two sweeps at most. The first asks whether each step can actually be taken, which is the
-    // only place in Hyjal that does: a refusal costs nothing here because there are sixteen more
-    // angles, and without it the bot commits to the first whatever is in the way--a rise too steep
-    // for the navmesh, the foot of a small hill, leaves MoveTo with no path at all.
-    //
-    // The second sweep runs only for callers that would rather move badly than not move, and drops
-    // the check while keeping the caller's own predicate. MovementAction::MoveAway does the same
-    // thing: a failed collision check downgrades how it moves rather than whether it moves
-    uint8 const sweeps = allowUnvalidatedFallback ? 2 : 1;
-    for (uint8 sweep = 0; sweep < sweeps; ++sweep)
+    for (uint8 step = 0; step <= fanSteps; ++step)
     {
-        bool const validate = (sweep == 0);
-
-        for (uint8 step = 0; step <= fanSteps; ++step)
+        float const delta = fanStep * step;
+        uint8 const candidates = (step == 0) ? 1 : 2;
+        for (uint8 i = 0; i < candidates; ++i)
         {
-            float const delta = fanStep * step;
-            // Both offsets are the same angle at zero, so only try it once
-            uint8 const candidates = (step == 0) ? 1 : 2;
-            for (uint8 i = 0; i < candidates; ++i)
-            {
-                float const angle = preferredAngle + (i == 0 ? delta : -delta);
-                float const targetX = centerX + std::cos(angle) * radius;
-                float const targetY = centerY + std::sin(angle) * radius;
+            float const angle = preferredAngle + (i == 0 ? delta : -delta);
+            float const targetX = centerX + std::cos(angle) * radius;
+            float const targetY = centerY + std::sin(angle) * radius;
 
-                // Kept in both sweeps. Whatever a caller rules out is a rule about the fight, not
-                // about the ground, and giving up on the ground is no reason to break it
-                if (isAcceptable && !isAcceptable(targetX, targetY))
-                    continue;
+            if (isAcceptable && !isAcceptable(targetX, targetY))
+                continue;
 
-                if (validate)
-                {
-                    if (!CanTakeStepTowards(bot, targetX, targetY, moveDist, stepX, stepY, stepZ))
-                        continue;
-                }
-                else
-                {
-                    float const botX = bot->GetPositionX();
-                    float const botY = bot->GetPositionY();
-                    float const distance = bot->GetExactDist2d(targetX, targetY);
+            if (!CanTakeStepTowards(bot, targetX, targetY, moveDist, stepX, stepY, stepZ))
+                continue;
 
-                    constexpr float minStepDistance = 0.5f;
-                    if (distance < minStepDistance)
-                        continue;
+            if (isAcceptable && !isAcceptable(stepX, stepY))
+                continue;
 
-                    float const stepDistance = std::min(moveDist, distance);
-                    stepX = botX + ((targetX - botX) / distance) * stepDistance;
-                    stepY = botY + ((targetY - botY) / distance) * stepDistance;
-                    stepZ = bot->GetPositionZ();
-                }
+            if (chosenX)
+                *chosenX = targetX;
+            if (chosenY)
+                *chosenY = targetY;
 
-                // The step is where the bot actually stops, and that is not the target whenever the
-                // target lies further off than moveDist. A caller's rule has to hold where it comes
-                // to rest, not only where it was heading, or a heading cleared on the strength of
-                // its endpoint parks the bot somewhere the caller had ruled out
-                if (isAcceptable && !isAcceptable(stepX, stepY))
-                    continue;
-
-                if (chosenX)
-                    *chosenX = targetX;
-                if (chosenY)
-                    *chosenY = targetY;
-
-                return true;
-            }
+            return true;
         }
     }
 
@@ -207,16 +163,11 @@ bool GetHazardEscapeStep(
     float escapeAngle =
         std::atan2(bot->GetPositionY() - centerY, bot->GetPositionX() - centerX);
 
-    // Dead centre gives no direction of its own, so take the bot's own facing
     if (bot->GetExactDist2d(centerX, centerY) <= 0.1f)
         escapeAngle = bot->GetOrientation();
 
-    // Standing in a hazard is worse than walking into something, so if nothing validates, go
-    // anyway. It is often not futile either: the navmesh holds no gameobjects at all, so a step
-    // refused for scenery may still find a path straight through where that scenery stands
     return FindStepToCircle(
-        bot, hazard, escapeRadius, escapeAngle, moveDist, stepX, stepY, stepZ, isAcceptable,
-        nullptr, nullptr, true);
+        bot, hazard, escapeRadius, escapeAngle, moveDist, stepX, stepY, stepZ, isAcceptable);
 }
 
 RangedGroups GetRangedGroups(Player* bot)
@@ -252,9 +203,10 @@ std::pair<size_t, size_t> GetBotCircleIndexAndCount(Player* bot, RangedGroups co
 
 // Rage Winterchill
 
-bool GetDeathAndDecayPosition(Player* bot, Position& deathAndDecay)
+bool GetDeathAndDecayPosition(PlayerbotAI* botAI, Position& deathAndDecay)
 {
-    std::vector<Position> const& positions = GetCachedHazardPositions(bot, "hyjal death and decay");
+    std::vector<Position> const& positions =
+        GetCachedHazardPositions(botAI, "hyjal death and decay");
     if (positions.empty())
         return false;
 
@@ -262,16 +214,16 @@ bool GetDeathAndDecayPosition(Player* bot, Position& deathAndDecay)
     return true;
 }
 
-bool IsNearDeathAndDecay(Player* bot, float radius)
+bool IsNearDeathAndDecay(PlayerbotAI* botAI, float radius)
 {
     Position deathAndDecay;
-    return GetDeathAndDecayPosition(bot, deathAndDecay) &&
-        bot->GetExactDist2d(deathAndDecay) < radius;
+    return GetDeathAndDecayPosition(botAI, deathAndDecay) &&
+        botAI->GetBot()->GetExactDist2d(deathAndDecay) < radius;
 }
 
-bool IsInDeathAndDecay(Player* bot)
+bool IsInDeathAndDecay(PlayerbotAI* botAI)
 {
-    return IsNearDeathAndDecay(bot, DEATH_AND_DECAY_RADIUS);
+    return IsNearDeathAndDecay(botAI, DEATH_AND_DECAY_RADIUS);
 }
 
 // Anetheron
@@ -323,7 +275,6 @@ GuidVector const& GetInfernalGuids(PlayerbotAI* botAI)
 
 Unit* GetFocusedInfernal(PlayerbotAI* botAI)
 {
-    // Already alive-filtered and ordered oldest first, so the first one that still resolves wins
     for (ObjectGuid const guid : GetInfernalGuids(botAI))
     {
         if (Unit* infernal = botAI->GetUnit(guid))
@@ -333,14 +284,13 @@ Unit* GetFocusedInfernal(PlayerbotAI* botAI)
     return nullptr;
 }
 
-Unit* GetLooseInfernal(PlayerbotAI* botAI, Player* bot)
+Unit* GetLooseInfernal(Player* bot)
 {
-    // Loose is only meaningful against a tank to be loose from. Without one the comparison below
-    // would invert, passing over an Infernal that has taken nobody at all as though it were held
     Player* infernalTank = GetInfernalTank(bot);
     if (!infernalTank)
         return nullptr;
 
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     for (ObjectGuid const guid : GetInfernalGuids(botAI))
     {
         Unit* infernal = botAI->GetUnit(guid);
@@ -351,8 +301,9 @@ Unit* GetLooseInfernal(PlayerbotAI* botAI, Player* bot)
     return nullptr;
 }
 
-Unit* GetNearestInfernal(PlayerbotAI* botAI, Player* bot)
+Unit* GetNearestInfernal(Player* bot)
 {
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     Unit* nearest = nullptr;
     float nearestDistance = 0.0f;
     for (ObjectGuid const guid : GetInfernalGuids(botAI))
@@ -372,8 +323,9 @@ Unit* GetNearestInfernal(PlayerbotAI* botAI, Player* bot)
     return nearest;
 }
 
-Unit* GetInfernalTargetingBot(PlayerbotAI* botAI, Player* bot)
+Unit* GetInfernalTargetingBot(Player* bot)
 {
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     for (ObjectGuid const guid : GetInfernalGuids(botAI))
     {
         Unit* infernal = botAI->GetUnit(guid);
@@ -407,7 +359,6 @@ Player* GetInfernalTank(Player* bot)
 
 Position const& GetInfernalTankPosition(Player* bot)
 {
-    // Without a tank there is nobody to converge on, so the asking bot answers for itself
     Player* infernalTank = GetInfernalTank(bot);
     Player* from = infernalTank ? infernalTank : bot;
 
@@ -427,8 +378,15 @@ float GetKazrogalRangedArcRadius(Unit* kazrogal)
         ? KAZROGAL_RANGED_ARC_APPROACH_RADIUS : KAZROGAL_RANGED_ARC_RADIUS;
 }
 
-bool IsKazrogalManaUser(PlayerbotAI* botAI, Player* bot)
+float GetKazrogalRangedArcSpan(float radius)
 {
+    float const ratio = KAZROGAL_RANGED_ARC_HALF_WIDTH / radius;
+    return 2.0f * std::asin(ratio < 1.0f ? ratio : 1.0f);
+}
+
+bool IsKazrogalManaUser(Player* bot)
+{
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
     switch (bot->getClass())
     {
         case CLASS_WARRIOR:
@@ -452,21 +410,19 @@ bool HasMarkOfKazrogal(Player* bot)
 
 // Azgalor
 
-// Each Rain of Fire is its own dynamic object that expires after 10s on its own, so nothing has
-// to be recorded to know whether one is still active. Azgalor casts on a timer that lets two
-// overlap, so callers have to weigh all of them rather than just the nearest
-std::vector<Position> GetRainOfFirePositions(Player* bot)
+// Each Rain of Fire is its own dynamic object that expires after 10s; there can be 2 up at a time
+std::vector<Position> GetRainOfFirePositions(PlayerbotAI* botAI)
 {
-    return GetCachedHazardPositions(bot, "hyjal rain of fire");
+    return GetCachedHazardPositions(botAI, "hyjal rain of fire");
 }
 
-// Fleeing the nearest can walk a bot into a second pool, which then becomes the nearest and is
-// fled in turn. That resolves itself a step at a time and is no worse than standing in the first
-bool GetNearestRainOfFirePosition(Player* bot, Position& pool)
+
+bool GetNearestRainOfFirePosition(PlayerbotAI* botAI, Position& pool)
 {
+    Player* bot = botAI->GetBot();
     bool found = false;
     float nearestDistance = 0.0f;
-    for (Position const& position : GetCachedHazardPositions(bot, "hyjal rain of fire"))
+    for (Position const& position : GetCachedHazardPositions(botAI, "hyjal rain of fire"))
     {
         float const distance = bot->GetExactDist2d(position);
         if (!found || distance < nearestDistance)
@@ -480,9 +436,10 @@ bool GetNearestRainOfFirePosition(Player* bot, Position& pool)
     return found;
 }
 
-bool IsNearRainOfFire(Player* bot, float radius)
+bool IsNearRainOfFire(PlayerbotAI* botAI, float radius)
 {
-    for (Position const& position : GetCachedHazardPositions(bot, "hyjal rain of fire"))
+    Player* bot = botAI->GetBot();
+    for (Position const& position : GetCachedHazardPositions(botAI, "hyjal rain of fire"))
     {
         if (bot->GetExactDist2d(position) < radius)
             return true;
@@ -491,9 +448,9 @@ bool IsNearRainOfFire(Player* bot, float radius)
     return false;
 }
 
-bool IsInRainOfFire(Player* bot)
+bool IsInRainOfFire(PlayerbotAI* botAI)
 {
-    return IsNearRainOfFire(bot, RAIN_OF_FIRE_RADIUS);
+    return IsNearRainOfFire(botAI, RAIN_OF_FIRE_RADIUS);
 }
 
 bool IsDoomed(Player* bot)
@@ -501,9 +458,7 @@ bool IsDoomed(Player* bot)
     return bot->HasAura(Id(HyjalSpells::SPELL_DOOM));
 }
 
-// Standing behind Azgalor is immune at any range, which is where melee want to be anyway. The
-// range clause only matters for anyone who has to pass through his front
-bool IsDoomguardTank(PlayerbotAI* botAI, Player* bot)
+bool IsDoomguardTank(Player* bot)
 {
     if (!PlayerbotAI::IsTank(bot))
         return false;
@@ -514,9 +469,9 @@ bool IsDoomguardTank(PlayerbotAI* botAI, Player* bot)
     if (!PlayerbotAI::IsAssistTankOfIndex(bot, 1, true))
         return false;
 
-    // The second assist tank takes over only once the first is Doomed. A first tank that has died
-    // needs no handover: the indices compact, so the second has already become index 0 above
-    Player* firstAssistTank = GetGroupAssistTank(botAI, bot, 0);
+    // The second assist tank takes over if the first assist tank is Doomed. GetGroupAssistTank()
+    // requires a live tank, so if the first dies, the second becomes the Doomguard tank.
+    Player* firstAssistTank = GetGroupAssistTank(bot, 0);
     return !firstAssistTank || IsDoomed(firstAssistTank);
 }
 
@@ -558,17 +513,15 @@ bool HasProtectionOfElune(Player* bot)
     return bot->HasAura(Id(HyjalSpells::SPELL_PROTECTION_OF_ELUNE));
 }
 
-std::vector<Position> GetDoomfirePositions(Player* bot)
+std::vector<Position> GetDoomfirePositions(PlayerbotAI* botAI)
 {
-    return GetCachedHazardPositions(bot, "hyjal doomfire trail");
+    return GetCachedHazardPositions(botAI, "hyjal doomfire trail");
 }
 
-// Centre to centre, as every other hazard test here measures. This used to lean on the grid
-// search's own range check, which quietly pads by both object sizes--so the radius handed in
-// reached about two yards further than it said, and disagreed with IsPositionNearDoomfire below
-bool IsNearDoomfire(Player* bot, float radius)
+bool IsNearDoomfire(PlayerbotAI* botAI, float radius)
 {
-    for (Position const& patch : GetCachedHazardPositions(bot, "hyjal doomfire trail"))
+    Player* bot = botAI->GetBot();
+    for (Position const& patch : GetCachedHazardPositions(botAI, "hyjal doomfire trail"))
     {
         if (bot->GetExactDist2d(patch) < radius)
             return true;
@@ -577,9 +530,9 @@ bool IsNearDoomfire(Player* bot, float radius)
     return false;
 }
 
-bool IsPositionNearDoomfire(Player* bot, float x, float y, float radius)
+bool IsPositionNearDoomfire(PlayerbotAI* botAI, float x, float y, float radius)
 {
-    for (Position const& patch : GetCachedHazardPositions(bot, "hyjal doomfire trail"))
+    for (Position const& patch : GetCachedHazardPositions(botAI, "hyjal doomfire trail"))
     {
         if (patch.GetExactDist2d(x, y) < radius)
             return true;
@@ -588,21 +541,22 @@ bool IsPositionNearDoomfire(Player* bot, float x, float y, float radius)
     return false;
 }
 
-AirBurstData* GetPendingAirBurstCast(uint32 instanceId)
+bool GetPendingAirBurstCast(uint32 instanceId, AirBurstData& airBurst)
 {
     auto instanceIt = archimondeAirBurstTargets.find(instanceId);
     if (instanceIt == archimondeAirBurstTargets.end())
-        return nullptr;
+        return false;
 
     constexpr uint32 airBurstReactionWindow = 2000;
     uint32 const now = getMSTime();
     if (getMSTimeDiff(instanceIt->second.castTime, now) >= airBurstReactionWindow)
     {
         archimondeAirBurstTargets.erase(instanceIt);
-        return nullptr;
+        return false;
     }
 
-    return &instanceIt->second;
+    airBurst = instanceIt->second;
+    return true;
 }
 
 }

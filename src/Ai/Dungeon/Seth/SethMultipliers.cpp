@@ -5,18 +5,19 @@
  */
 
 #include "SethMultipliers.h"
+#include "EncounterHelpers.h"
 #include "FollowActions.h"
 #include "GenericSpellActions.h"
 #include "HunterActions.h"
 #include "MageActions.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
 #include "ReachTargetActions.h"
 #include "SethActions.h"
-#include "SethData.h"
+#include "SethShared.h"
 #include "ShamanActions.h"
 
-using namespace SethData;
+using namespace SethShared;
+using namespace EncounterHelpers;
 
 float SethekkProphetSetTremorTotemMultiplier::GetValue(Action* action)
 {
@@ -52,7 +53,7 @@ float AnzuControlSpellCastingWithSpellBombMultiplier::GetValue(Action* action)
         return 0.0f;
 
     // For healer
-    Player* mainTank = GetGroupMainTank(botAI, bot);
+    Player* mainTank = GetGroupMainTank(bot);
     if (!mainTank)
         return 1.0f;
 

@@ -5,18 +5,19 @@
  */
 
 #include "ZATriggers.h"
+#include "EncounterHelpers.h"
 #include "Playerbots.h"
-#include "RaidBossHelpers.h"
-#include "ZAActions.h"
 #include "ZAHelpers.h"
 
-using namespace ZulAmanHelpers;
+using namespace ZaHelpers;
+using namespace EncounterHelpers;
 
 // Trash
 
 bool AmanishiMedicineManSummonedWardTrigger::IsActive()
 {
-    return AI_VALUE2(Unit*, "find target", "amani'shi medicine man");
+    return IsMechanicTrackerBot(bot, ZA_MAP_ID) &&
+        AI_VALUE2(Unit*, "find target", "amani'shi medicine man");
 }
 
 // Akil'zon <Eagle Avatar>
@@ -27,13 +28,15 @@ bool AkilzonPullingBossTrigger::IsActive()
         return false;
 
     Unit* akilzon = AI_VALUE2(Unit*, "find target", "akil'zon");
-    return akilzon && akilzon->GetHealthPct() > 95.0f;
+    return akilzon && akilzon->GetHealthPct() > ZA_PULL_COMPLETE_HP_PERCENT;
 }
 
 bool AkilzonBossEngagedByTanksTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot) ||
-        !AI_VALUE2(Unit*, "find target", "akil'zon"))
+    if (!PlayerbotAI::IsTank(bot))
+        return false;
+
+    if (!AI_VALUE2(Unit*, "find target", "akil'zon"))
         return false;
 
     return !GetElectricalStormTarget(bot);
@@ -41,11 +44,13 @@ bool AkilzonBossEngagedByTanksTrigger::IsActive()
 
 bool AkilzonBossCastsStaticDisruptionTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot) ||
-        !AI_VALUE2(Unit*, "find target", "akil'zon"))
+    if (!PlayerbotAI::IsRanged(bot))
         return false;
 
-    auto it = akilzonStormTimer.find(bot->GetMap()->GetInstanceId());
+    if (!AI_VALUE2(Unit*, "find target", "akil'zon"))
+        return false;
+
+    auto it = akilzonStormTimer.find(bot->GetInstanceId());
     if (it == akilzonStormTimer.end())
         return true;
 
@@ -57,7 +62,7 @@ bool AkilzonElectricalStormIncomingTrigger::IsActive()
     if (!AI_VALUE2(Unit*, "find target", "akil'zon"))
         return false;
 
-    auto it = akilzonStormTimer.find(bot->GetMap()->GetInstanceId());
+    auto it = akilzonStormTimer.find(bot->GetInstanceId());
     if (it == akilzonStormTimer.end())
         return false;
 
@@ -66,7 +71,7 @@ bool AkilzonElectricalStormIncomingTrigger::IsActive()
 
 bool AkilzonBotsNeedToPrepareForElectricalStormTrigger::IsActive()
 {
-    return IsMechanicTrackerBot(bot, ZULAMAN_MAP_ID);
+    return IsMechanicTrackerBot(bot, ZA_MAP_ID);
 }
 
 // Nalorakk <Bear Avatar>
@@ -77,19 +82,20 @@ bool NalorakkPullingBossTrigger::IsActive()
         return false;
 
     Unit* nalorakk = AI_VALUE2(Unit*, "find target", "nalorakk");
-    return nalorakk && nalorakk->GetHealthPct() > 95.0f;
+    return nalorakk && nalorakk->GetHealthPct() > ZA_PULL_COMPLETE_HP_PERCENT;
 }
 
 bool NalorakkBossSwitchesFormsTrigger::IsActive()
 {
-    return (botAI->IsMainTank(bot) || botAI->IsAssistTankOfIndex(bot, 0, true)) &&
-           AI_VALUE2(Unit*, "find target", "nalorakk");
+    if (!AI_VALUE2(Unit*, "find target", "nalorakk"))
+        return false;
+
+    return PlayerbotAI::IsMainTank(bot) || PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
 }
 
 bool NalorakkBossCastsSurgeTrigger::IsActive()
 {
-    return botAI->IsRanged(bot) &&
-           AI_VALUE2(Unit*, "find target", "nalorakk");
+    return PlayerbotAI::IsRanged(bot) && AI_VALUE2(Unit*, "find target", "nalorakk");
 }
 
 // Jan'alai <Dragonhawk Avatar>
@@ -100,13 +106,15 @@ bool JanalaiPullingBossTrigger::IsActive()
         return false;
 
     Unit* janalai = AI_VALUE2(Unit*, "find target", "jan'alai");
-    return janalai && janalai->GetHealthPct() > 95.0f;
+    return janalai && janalai->GetHealthPct() > ZA_PULL_COMPLETE_HP_PERCENT;
 }
 
 bool JanalaiBossEngagedByTanksTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot) ||
-        !AI_VALUE2(Unit*, "find target", "jan'alai"))
+    if (!PlayerbotAI::IsTank(bot))
+        return false;
+
+    if (!AI_VALUE2(Unit*, "find target", "jan'alai"))
         return false;
 
     return !HasFireBombNearby(bot);
@@ -114,9 +122,13 @@ bool JanalaiBossEngagedByTanksTrigger::IsActive()
 
 bool JanalaiBossCastsFlameBreathTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot) ||
-        !AI_VALUE2(Unit*, "find target", "jan'alai") ||
-        AI_VALUE2(Unit*, "find target", "amani dragonhawk hatchling"))
+    if (!PlayerbotAI::IsRanged(bot))
+        return false;
+
+    if (!AI_VALUE2(Unit*, "find target", "jan'alai"))
+        return false;
+
+    if (AI_VALUE2(Unit*, "find target", "amani dragonhawk hatchling"))
         return false;
 
     return !HasFireBombNearby(bot);
@@ -124,18 +136,19 @@ bool JanalaiBossCastsFlameBreathTrigger::IsActive()
 
 bool JanalaiBossSummoningFireBombsTrigger::IsActive()
 {
-    return AI_VALUE2(Unit*, "find target", "jan'alai") &&
-           HasFireBombNearby(bot);
+    return AI_VALUE2(Unit*, "find target", "jan'alai") && HasFireBombNearby(bot);
 }
 
 bool JanalaiAmanishiHatchersSpawnedTrigger::IsActive()
 {
-    if (!botAI->IsRangedDps(bot) ||
-        !AI_VALUE2(Unit*, "find target", "jan'alai"))
+    if (!PlayerbotAI::IsRangedDps(bot))
         return false;
 
-    return bot->FindNearestCreature(
-               static_cast<uint32>(ZulAmanNPCs::NPC_AMANISHI_HATCHER), 40.0f);
+    if (!AI_VALUE2(Unit*, "find target", "jan'alai"))
+        return false;
+
+    constexpr float searchRadius = 40.0f;
+    return bot->FindNearestCreature(Id(ZaNpcs::NPC_AMANISHI_HATCHER), searchRadius);
 }
 
 // Halazzi <Lynx Avatar>
@@ -146,25 +159,23 @@ bool HalazziPullingBossTrigger::IsActive()
         return false;
 
     Unit* halazzi = AI_VALUE2(Unit*, "find target", "halazzi");
-    return halazzi && halazzi->GetHealthPct() > 95.0f;
+    return halazzi && halazzi->GetHealthPct() > ZA_PULL_COMPLETE_HP_PERCENT;
 }
 
 bool HalazziBossEngagedByMainTankTrigger::IsActive()
 {
-    return botAI->IsMainTank(bot) &&
-           AI_VALUE2(Unit*, "find target", "halazzi");
+    return PlayerbotAI::IsMainTank(bot) && AI_VALUE2(Unit*, "find target", "halazzi");
 }
 
 bool HalazziBossSummonsSpiritLynxTrigger::IsActive()
 {
-    return botAI->IsAssistTankOfIndex(bot, 0, true) &&
-           AI_VALUE2(Unit*, "find target", "halazzi");
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) &&
+        AI_VALUE2(Unit*, "find target", "halazzi");
 }
 
 bool HalazziDeterminingDpsTargetTrigger::IsActive()
 {
-    return botAI->IsDps(bot) &&
-           AI_VALUE2(Unit*, "find target", "halazzi");
+    return PlayerbotAI::IsDps(bot) && AI_VALUE2(Unit*, "find target", "halazzi");
 }
 
 // Hex Lord Malacrass
@@ -175,40 +186,39 @@ bool HexLordMalacrassPullingBossTrigger::IsActive()
         return false;
 
     Unit* malacrass = AI_VALUE2(Unit*, "find target", "hex lord malacrass");
-    return malacrass && malacrass->GetHealthPct() > 95.0f;
+    return malacrass && malacrass->GetHealthPct() > ZA_PULL_COMPLETE_HP_PERCENT;
 }
 
 bool HexLordMalacrassDeterminingKillOrderTrigger::IsActive()
 {
-    return botAI->IsDps(bot) &&
-           AI_VALUE2(Unit*, "find target", "hex lord malacrass");
+    return PlayerbotAI::IsDps(bot) && AI_VALUE2(Unit*, "find target", "hex lord malacrass");
 }
 
 bool HexLordMalacrassBossIsChannelingWhirlwindTrigger::IsActive()
 {
     Unit* malacrass = AI_VALUE2(Unit*, "find target", "hex lord malacrass");
-    if (!malacrass ||
-        !malacrass->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_HEX_LORD_WHIRLWIND)))
+    if (!malacrass || !malacrass->HasAura(Id(ZaSpells::SPELL_HEX_LORD_WHIRLWIND)))
         return false;
 
-    return !(botAI->IsTank(bot) && malacrass->GetVictim() == bot);
+    return !(PlayerbotAI::IsTank(bot) && malacrass->GetVictim() == bot);
 }
 
 bool HexLordMalacrassBossHasSpellReflectionTrigger::IsActive()
 {
-    if (!botAI->IsCaster(bot))
+    if (!PlayerbotAI::IsCaster(bot))
         return false;
 
     Unit* malacrass = AI_VALUE2(Unit*, "find target", "hex lord malacrass");
-    return malacrass &&
-           malacrass->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_HEX_LORD_SPELL_REFLECTION));
+    return malacrass && malacrass->HasAura(Id(ZaSpells::SPELL_HEX_LORD_SPELL_REFLECTION));
 }
 
 bool HexLordMalacrassBossPlacedFreezingTrapTrigger::IsActive()
 {
-    return AI_VALUE2(Unit*, "find target", "hex lord malacrass") &&
-           bot->FindNearestGameObject(
-               static_cast<uint32>(ZulAmanObjects::GO_FREEZING_TRAP), 20.0f, true);
+    if (!AI_VALUE2(Unit*, "find target", "hex lord malacrass"))
+        return false;
+
+    return bot->FindNearestGameObject(
+        Id(ZaObjects::GO_FREEZING_TRAP), ZA_FREEZING_TRAP_SEARCH_RADIUS, true);
 }
 
 // Zul'jin
@@ -224,49 +234,46 @@ bool ZuljinMainTankNeedsAggroUponPullOrPhaseChangeTrigger::IsActive()
 
     float hp = zuljin->GetHealthPct();
 
-    return (hp <= 100.0f && hp > 95.0f) ||
+    return (hp <= 100.0f && hp > ZA_PULL_COMPLETE_HP_PERCENT) ||
            (hp <= 80.0f && hp > 75.0f &&
-            zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_BEAR))) ||
+            zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_BEAR))) ||
            (hp <= 40.0f && hp > 35.0f &&
-            zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_LYNX))) ||
+            zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_LYNX))) ||
            (hp <= 20.0f && hp > 15.0f &&
-            zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK)));
+            zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK)));
 }
 
 bool ZuljinBossEngagedByTanksTrigger::IsActive()
 {
-    if (!botAI->IsTank(bot))
+    if (!PlayerbotAI::IsTank(bot))
         return false;
 
     Unit* zuljin = AI_VALUE2(Unit*, "find target", "zul'jin");
     return zuljin &&
-           !zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_EAGLE)) &&
-           !zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK));
+           !zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_EAGLE)) &&
+           !zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK));
 }
 
 bool ZuljinBossIsChannelingWhirlwindInTrollFormTrigger::IsActive()
 {
     Unit* zuljin = AI_VALUE2(Unit*, "find target", "zul'jin");
-    if (!zuljin ||
-        !zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_ZULJIN_WHIRLWIND)))
+    if (!zuljin || !zuljin->HasAura(Id(ZaSpells::SPELL_ZULJIN_WHIRLWIND)))
         return false;
 
-    return !(botAI->IsTank(bot) && zuljin->GetVictim() == bot);
+    return !(PlayerbotAI::IsTank(bot) && zuljin->GetVictim() == bot);
 }
 
 bool ZuljinBossIsSummoningCyclonesInEagleFormTrigger::IsActive()
 {
     Unit* zuljin = AI_VALUE2(Unit*, "find target", "zul'jin");
-    return zuljin &&
-           zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_EAGLE));
+    return zuljin && zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_EAGLE));
 }
 
 bool ZuljinBossCastsAoeAbilitiesInDragonhawkFormTrigger::IsActive()
 {
-    if (!botAI->IsRanged(bot))
+    if (!PlayerbotAI::IsRanged(bot))
         return false;
 
     Unit* zuljin = AI_VALUE2(Unit*, "find target", "zul'jin");
-    return zuljin &&
-           zuljin->HasAura(static_cast<uint32>(ZulAmanSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK));
+    return zuljin && zuljin->HasAura(Id(ZaSpells::SPELL_SHAPE_OF_THE_DRAGONHAWK));
 }

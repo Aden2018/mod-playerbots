@@ -5,39 +5,18 @@
  */
 
 #include "SWPActions.h"
-#include "SWPEncounter_Felmyst.h"
+#include "EncounterHelpers.h"
 #include "Playerbots.h"
 #include "PlayerbotTextMgr.h"
-#include "RaidBossHelpers.h"
 #include "RtiTargetValue.h"
-#include "SWPData.h"
+#include "SWPEncounter_Felmyst.h"
+#include "SWPSharedConstants.h"
 #include "Timer.h"
 #include <cmath>
 #include <string>
 
 using namespace SwpHelpers;
-
-bool FelmystMisdirectBossToMainTankAction::Execute(Event /*event*/)
-{
-    Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
-    if (!felmyst)
-        return false;
-
-    Player* mainTank = GetGroupMainTank(botAI, bot);
-    if (!mainTank)
-        return false;
-
-    if (botAI->CanCastSpell("misdirection", mainTank))
-        return botAI->CastSpell("misdirection", mainTank);
-
-    if (bot->HasAura(Id(SwpSpells::SPELL_MISDIRECTION)) &&
-        botAI->CanCastSpell("steady shot", felmyst))
-    {
-        return botAI->CastSpell("steady shot", felmyst);
-    }
-
-    return false;
-}
+using namespace EncounterHelpers;
 
 bool FelmystMainTankPositionBossOnGroundAction::Execute(Event /*event*/)
 {
@@ -474,8 +453,7 @@ bool FelmystMoveToSafeFogLaneAction::TryTeleportStuckBotOntoCrate(
     }
 
     uint32 const now = getMSTime();
-    float const distToDestination = bot->GetExactDist(
-        destination.GetPositionX(), destination.GetPositionY(), destination.GetPositionZ());
+    float const distToDestination = bot->GetExactDist(destination);
 
     if (!_fogCrateStuckSampleMs || _fogCrateStuckDestination.GetExactDist(destination) >
         FELMYST_LOCATION_MATCH_DISTANCE)
@@ -525,10 +503,10 @@ bool FelmystKillCharmedPlayerAction::Execute(Event /*event*/)
         return false;
 
     Player* charmedPlayer = GetFelmystCharmedTarget(bot, felmyst);
-    if (!charmedPlayer || AI_VALUE(Unit*, "current target") == charmedPlayer)
+    if (!charmedPlayer)
         return false;
 
-    return Attack(charmedPlayer);
+    return AI_VALUE(Unit*, "current target") != charmedPlayer && Attack(charmedPlayer);
 }
 
 bool FelmystManageLandingDpsTimerAction::Execute(Event /*event*/)
@@ -537,7 +515,7 @@ bool FelmystManageLandingDpsTimerAction::Execute(Event /*event*/)
     if (!felmyst)
         return false;
 
-    uint32 const instanceId = felmyst->GetMap()->GetInstanceId();
+    uint32 const instanceId = felmyst->GetInstanceId();
     auto& state = felmystEncounterStates[instanceId];
 
     if (felmyst->IsFlying() && IsFelmystLanding(felmyst))

@@ -5,9 +5,9 @@
  */
 
 #include "AllSpellScript.h"
+#include "DynamicObject.h"
+#include "DynamicObjectScript.h"
 #include "MagHelpers.h"
-#include "ObjectAccessor.h"
-#include "Player.h"
 #include "Playerbots.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
@@ -15,61 +15,56 @@
 
 using namespace MagHelpers;
 
-class MagtheridonBotSpellScript : public AllSpellScript
+class MagtheridonQuakeSpellListenerScript : public AllSpellScript
 {
 public:
-    MagtheridonBotSpellScript() : AllSpellScript("MagtheridonBotSpellScript") {}
+    MagtheridonQuakeSpellListenerScript() : AllSpellScript("MagtheridonQuakeSpellListenerScript") {}
 
     void OnSpellCast(
         Spell* /*spell*/, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
-        if (spellInfo->Id == Id(MagSpells::SPELL_DEBRIS_SPAWN))
+        if (spellInfo->Id != static_cast<uint32>(MagSpells::SPELL_QUAKE))
+            return;
+
+        // To account for Blast Nova delay caused by Quake's DelayAll(6999ms)
+        auto it = blastNovaTimer.find(caster->GetInstanceId());
+        if (it != blastNovaTimer.end())
+            it->second += 7 * IN_MILLISECONDS;
+    }
+};
+
+class MagtheridonDebrisDynamicObjectScript : public DynamicObjectScript
+{
+public:
+    MagtheridonDebrisDynamicObjectScript() :
+        DynamicObjectScript("MagtheridonDebrisDynamicObjectScript") {}
+
+    void OnUpdate(DynamicObject* debris, uint32 /*diff*/) override
+    {
+        if (debris->GetSpellId() != Id(MagSpells::SPELL_DEBRIS_SPAWN))
+            return;
+
+        Map::PlayerList const& players = debris->GetMap()->GetPlayers();
+        for (Map::PlayerList::const_iterator it = players.begin(); it != players.end(); ++it)
         {
-            // Debris is a one-shot that has no prior warning other than a visual effect,
-            // which necessitates this spell hook to track debris spawn positions
-            uint32 const instanceId = caster->GetMap()->GetInstanceId();
-            uint32 const now = getMSTime();
+            Player* player = it->GetSource();
+            if (!player || !player->IsAlive())
+                continue;
 
-            activeDebrisPositions[instanceId].push_back({ caster->GetPosition(), now });
-
-            constexpr uint32 debrisLifetimeMs = 10000;
-            auto& positions = activeDebrisPositions[instanceId];
-            positions.erase(std::remove_if(positions.begin(), positions.end(),
-                [now](DebrisData const& d) {
-                    return getMSTimeDiff(d.spawnTime, now) > debrisLifetimeMs;
-                }),
-                positions.end());
-
-            // Interrupt casts for bots that could be standing in incoming debris
-            Map::PlayerList const& players = caster->GetMap()->GetPlayers();
-            for (Map::PlayerList::const_iterator it = players.begin(); it != players.end(); ++it)
+            PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
+            if (!botAI || !botAI->HasStrategy("magtheridon", BOT_STATE_COMBAT) ||
+                debris->GetExactDist2d(player) > DEBRIS_HAZARD_RADIUS)
             {
-                Player* player = it->GetSource();
-                if (!player || !player->IsAlive())
-                    continue;
-
-                PlayerbotAI* botAI = GET_PLAYERBOT_AI(player);
-                if (!botAI || !botAI->HasStrategy("magtheridon", BOT_STATE_COMBAT))
-                    continue;
-
-                if (IsPositionInActiveDebris(
-                        instanceId, player->GetPositionX(), player->GetPositionY()))
-                {
-                    botAI->RequestSpellInterrupt();
-                }
+                continue;
             }
-        }
-        else if (spellInfo->Id == static_cast<uint32>(MagSpells::SPELL_QUAKE))
-        {
-            // To account for Blast Nova delay caused by Quake's DelayAll(6999ms)
-            auto it = blastNovaTimer.find(caster->GetMap()->GetInstanceId());
-            if (it != blastNovaTimer.end())
-                it->second += 7 * IN_MILLISECONDS;
+
+            botAI->RequestSpellInterrupt();
         }
     }
 };
 
 void AddSC_MagtheridonBotScripts()
 {
-    new MagtheridonBotSpellScript();
+    new MagtheridonQuakeSpellListenerScript();
+    new MagtheridonDebrisDynamicObjectScript();
 }
