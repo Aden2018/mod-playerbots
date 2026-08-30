@@ -16,11 +16,11 @@ public:
     RaidSunwellTriggerContext()
     {
         // General
-        creators["sunwell plateau bot is not in combat"] =
-            &RaidSunwellTriggerContext::sunwell_plateau_bot_is_not_in_combat;
+        creators["sunwell plateau no encounter in progress"] =
+            &RaidSunwellTriggerContext::sunwell_plateau_no_encounter_in_progress;
 
-        creators["sunwell plateau bot has protective aura"] =
-            &RaidSunwellTriggerContext::sunwell_plateau_bot_has_protective_aura;
+        creators["sunwell plateau bot has aura to remove"] =
+            &RaidSunwellTriggerContext::sunwell_plateau_bot_has_aura_to_remove;
 
         // Trash
         creators["volatile fiend self destructs when near"] =
@@ -36,8 +36,8 @@ public:
         creators["kalecgos pulling boss"] =
             &RaidSunwellTriggerContext::kalecgos_pulling_boss;
 
-        creators["kalecgos boss requires tank rotation"] =
-            &RaidSunwellTriggerContext::kalecgos_boss_requires_tank_rotation;
+        creators["kalecgos requires tank rotation"] =
+            &RaidSunwellTriggerContext::kalecgos_requires_tank_rotation;
 
         creators["kalecgos spectral rift is open"] =
             &RaidSunwellTriggerContext::kalecgos_spectral_rift_is_open;
@@ -45,8 +45,8 @@ public:
         creators["kalecgos bots take splash damage"] =
             &RaidSunwellTriggerContext::kalecgos_bots_take_splash_damage;
 
-        creators["kalecgos bot has too many arcane buffet stacks"] =
-            &RaidSunwellTriggerContext::kalecgos_bot_has_too_many_arcane_buffet_stacks;
+        creators["kalecgos too many arcane buffet stacks"] =
+            &RaidSunwellTriggerContext::kalecgos_too_many_arcane_buffet_stacks;
 
         creators["kalecgos humanoid kalec tanks sathrovarr"] =
             &RaidSunwellTriggerContext::kalecgos_humanoid_kalec_tanks_sathrovarr;
@@ -58,8 +58,8 @@ public:
         creators["brutallus pulling boss"] =
             &RaidSunwellTriggerContext::brutallus_pulling_boss;
 
-        creators["brutallus boss engaged by tanks"] =
-            &RaidSunwellTriggerContext::brutallus_boss_engaged_by_tanks;
+        creators["brutallus requires two tanks"] =
+            &RaidSunwellTriggerContext::brutallus_requires_two_tanks;
 
         creators["brutallus melee should stand in place"] =
             &RaidSunwellTriggerContext::brutallus_melee_should_stand_in_place;
@@ -74,11 +74,11 @@ public:
         creators["felmyst pulling boss"] =
             &RaidSunwellTriggerContext::felmyst_pulling_boss;
 
-        creators["felmyst boss engaged by main tank on ground"] =
-            &RaidSunwellTriggerContext::felmyst_boss_engaged_by_main_tank_on_ground;
+        creators["felmyst ground phase should be tanked"] =
+            &RaidSunwellTriggerContext::felmyst_ground_phase_should_be_tanked;
 
-        creators["felmyst ranged should split in three"] =
-            &RaidSunwellTriggerContext::felmyst_ranged_should_split_in_three;
+        creators["felmyst ranged should position to dispel and flee"] =
+            &RaidSunwellTriggerContext::felmyst_ranged_should_position_to_dispel_and_flee;
 
         creators["felmyst melee should stay together"] =
             &RaidSunwellTriggerContext::felmyst_melee_should_stay_together;
@@ -101,8 +101,8 @@ public:
         creators["felmyst fog of corruption is active"] =
             &RaidSunwellTriggerContext::felmyst_fog_of_corruption_is_active;
 
-        creators["felmyst melee cannot reach boss"] =
-            &RaidSunwellTriggerContext::felmyst_melee_cannot_reach_boss;
+        creators["felmyst melee cannot reach flying boss"] =
+            &RaidSunwellTriggerContext::felmyst_melee_cannot_reach_flying_boss;
 
         creators["felmyst player is charmed by fog"] =
             &RaidSunwellTriggerContext::felmyst_player_is_charmed_by_fog;
@@ -117,26 +117,26 @@ public:
         creators["eredar twins pulling bosses"] =
             &RaidSunwellTriggerContext::eredar_twins_pulling_bosses;
 
-        creators["eredar twins sacrolash engaged by two tanks"] =
-            &RaidSunwellTriggerContext::eredar_twins_sacrolash_engaged_by_two_tanks;
+        creators["eredar twins sacrolash requires two tanks"] =
+            &RaidSunwellTriggerContext::eredar_twins_sacrolash_requires_two_tanks;
 
         creators["eredar twins alythess casts blaze on tank"] =
             &RaidSunwellTriggerContext::eredar_twins_alythess_casts_blaze_on_tank;
 
-        creators["eredar twins bosses engaged by ranged"] =
-            &RaidSunwellTriggerContext::eredar_twins_bosses_engaged_by_ranged;
+        creators["eredar twins ranged needs los"] =
+            &RaidSunwellTriggerContext::eredar_twins_ranged_needs_los;
 
-        creators["eredar twins only one boss remains"] =
-            &RaidSunwellTriggerContext::eredar_twins_only_one_boss_remains;
+        creators["eredar twins only alythess remains"] =
+            &RaidSunwellTriggerContext::eredar_twins_only_alythess_remains;
 
-        creators["eredar twins bot has too many flame touched stacks"] =
-            &RaidSunwellTriggerContext::eredar_twins_bot_has_too_many_flame_touched_stacks;
+        creators["eredar twins too many flame touched stacks"] =
+            &RaidSunwellTriggerContext::eredar_twins_too_many_flame_touched_stacks;
 
-        creators["eredar twins determining dps priority"] =
-            &RaidSunwellTriggerContext::eredar_twins_determining_dps_priority;
+        creators["eredar twins should focus dps"] =
+            &RaidSunwellTriggerContext::eredar_twins_should_focus_dps;
 
-        creators["eredar twins bot has conflagration"] =
-            &RaidSunwellTriggerContext::eredar_twins_bot_has_conflagration;
+        creators["eredar twins active conflagration target"] =
+            &RaidSunwellTriggerContext::eredar_twins_active_conflagration_target;
 
         creators["eredar twins sacrolash victim has conflagration"] =
             &RaidSunwellTriggerContext::eredar_twins_sacrolash_victim_has_conflagration;
@@ -148,8 +148,8 @@ public:
         creators["m'uru boss transformed into entropius"] =
             &RaidSunwellTriggerContext::muru_boss_transformed_into_entropius;
 
-        creators["m'uru bosses engaged by ranged"] =
-            &RaidSunwellTriggerContext::muru_bosses_engaged_by_ranged;
+        creators["m'uru ranged should stack or spread"] =
+            &RaidSunwellTriggerContext::muru_ranged_should_stack_or_spread;
 
         creators["m'uru determining dps priority"] =
             &RaidSunwellTriggerContext::muru_determining_dps_priority;
@@ -163,14 +163,8 @@ public:
         creators["m'uru dark fiends spawned"] =
             &RaidSunwellTriggerContext::muru_dark_fiends_spawned;
 
-        creators["m'uru entropius spawns darkness pools"] =
-            &RaidSunwellTriggerContext::muru_entropius_spawns_darkness_pools;
-
         creators["m'uru darkness is coming"] =
             &RaidSunwellTriggerContext::muru_darkness_is_coming;
-
-        creators["m'uru the singularity is near"] =
-            &RaidSunwellTriggerContext::muru_the_singularity_is_near;
 
         creators["m'uru berserker is buffed with flurry"] =
             &RaidSunwellTriggerContext::muru_berserker_is_buffed_with_flurry;
@@ -187,15 +181,21 @@ public:
         creators["m'uru warlock has enslaved void spawn"] =
             &RaidSunwellTriggerContext::muru_warlock_has_enslaved_void_spawn;
 
+        creators["m'uru entropius darkness pools spawn dark fiends"] =
+            &RaidSunwellTriggerContext::muru_entropius_darkness_pools_spawn_dark_fiends;
+
+        creators["m'uru the singularity is near"] =
+            &RaidSunwellTriggerContext::muru_the_singularity_is_near;
+
         // Kil'jaeden <The Deceiver>
-        creators["kil'jaeden encounter has begun"] =
-            &RaidSunwellTriggerContext::kiljaeden_encounter_has_begun;
+        creators["kil'jaeden should coordinate orb use"] =
+            &RaidSunwellTriggerContext::kiljaeden_should_coordinate_orb_use;
 
         creators["kil'jaeden hands of the deceiver are active"] =
             &RaidSunwellTriggerContext::kiljaeden_hands_of_the_deceiver_are_active;
 
-        creators["kil'jaeden boss engaged by tanks"] =
-            &RaidSunwellTriggerContext::kiljaeden_boss_engaged_by_tanks;
+        creators["kil'jaeden tanks should hold boss and reflections"] =
+            &RaidSunwellTriggerContext::kiljaeden_tanks_should_hold_boss_and_reflections;
 
         creators["kil'jaeden boss engaged by melee"] =
             &RaidSunwellTriggerContext::kiljaeden_boss_engaged_by_melee;
@@ -221,11 +221,11 @@ public:
 
 private:
     // General
-    static Trigger* sunwell_plateau_bot_is_not_in_combat(PlayerbotAI* botAI) {
-        return new SunwellPlateauBotIsNotInCombatTrigger(botAI);
+    static Trigger* sunwell_plateau_no_encounter_in_progress(PlayerbotAI* botAI) {
+        return new SunwellPlateauNoEncounterInProgressTrigger(botAI);
     }
-    static Trigger* sunwell_plateau_bot_has_protective_aura(PlayerbotAI* botAI) {
-        return new SunwellPlateauBotHasProtectiveAuraTrigger(botAI);
+    static Trigger* sunwell_plateau_bot_has_aura_to_remove(PlayerbotAI* botAI) {
+        return new SunwellPlateauBotHasAuraToRemoveTrigger(botAI);
     }
 
     // Trash
@@ -243,8 +243,8 @@ private:
     static Trigger* kalecgos_should_communicate_boss_health(PlayerbotAI* botAI) {
         return new KalecgosShouldCommunicateBossHealthTrigger(botAI);
     }
-    static Trigger* kalecgos_boss_requires_tank_rotation(PlayerbotAI* botAI) {
-        return new KalecgosBossRequiresTankRotationTrigger(botAI);
+    static Trigger* kalecgos_requires_tank_rotation(PlayerbotAI* botAI) {
+        return new KalecgosRequiresTankRotationTrigger(botAI);
     }
     static Trigger* kalecgos_spectral_rift_is_open(PlayerbotAI* botAI) {
         return new KalecgosSpectralRiftIsOpenTrigger(botAI);
@@ -255,8 +255,8 @@ private:
     static Trigger* kalecgos_humanoid_kalec_tanks_sathrovarr(PlayerbotAI* botAI) {
         return new KalecgosHumanoidKalecTanksSathrovarrTrigger(botAI);
     }
-    static Trigger* kalecgos_bot_has_too_many_arcane_buffet_stacks(PlayerbotAI* botAI) {
-        return new KalecgosBotHasTooManyArcaneBuffetStacksTrigger(botAI);
+    static Trigger* kalecgos_too_many_arcane_buffet_stacks(PlayerbotAI* botAI) {
+        return new KalecgosTooManyArcaneBuffetStacksTrigger(botAI);
     }
     static Trigger* kalecgos_bots_dont_observe_gravity(PlayerbotAI* botAI) {
         return new KalecgosBotsDontObserveGravityTrigger(botAI);
@@ -266,8 +266,8 @@ private:
     static Trigger* brutallus_pulling_boss(PlayerbotAI* botAI) {
         return new BrutallusPullingBossTrigger(botAI);
     }
-    static Trigger* brutallus_boss_engaged_by_tanks(PlayerbotAI* botAI) {
-        return new BrutallusBossEngagedByTanksTrigger(botAI);
+    static Trigger* brutallus_requires_two_tanks(PlayerbotAI* botAI) {
+        return new BrutallusRequiresTwoTanksTrigger(botAI);
     }
     static Trigger* brutallus_melee_should_stand_in_place(PlayerbotAI* botAI) {
         return new BrutallusMeleeShouldStandInPlaceTrigger(botAI);
@@ -283,11 +283,11 @@ private:
     static Trigger* felmyst_pulling_boss(PlayerbotAI* botAI) {
         return new FelmystPullingBossTrigger(botAI);
     }
-    static Trigger* felmyst_boss_engaged_by_main_tank_on_ground(PlayerbotAI* botAI) {
-        return new FelmystBossEngagedByMainTankOnGroundTrigger(botAI);
+    static Trigger* felmyst_ground_phase_should_be_tanked(PlayerbotAI* botAI) {
+        return new FelmystGroundPhaseShouldBeTankedTrigger(botAI);
     }
-    static Trigger* felmyst_ranged_should_split_in_three(PlayerbotAI* botAI) {
-        return new FelmystRangedShouldSplitInThreeTrigger(botAI);
+    static Trigger* felmyst_ranged_should_position_to_dispel_and_flee(PlayerbotAI* botAI) {
+        return new FelmystRangedShouldPositionToDispelAndFleeTrigger(botAI);
     }
     static Trigger* felmyst_melee_should_stay_together(PlayerbotAI* botAI) {
         return new FelmystMeleeShouldStayTogetherTrigger(botAI);
@@ -310,8 +310,8 @@ private:
     static Trigger* felmyst_fog_of_corruption_is_active(PlayerbotAI* botAI) {
         return new FelmystFogOfCorruptionIsActiveTrigger(botAI);
     }
-    static Trigger* felmyst_melee_cannot_reach_boss(PlayerbotAI* botAI) {
-        return new FelmystMeleeCannotReachBossTrigger(botAI);
+    static Trigger* felmyst_melee_cannot_reach_flying_boss(PlayerbotAI* botAI) {
+        return new FelmystMeleeCannotReachFlyingBossTrigger(botAI);
     }
     static Trigger* felmyst_player_is_charmed_by_fog(PlayerbotAI* botAI) {
         return new FelmystPlayerIsCharmedByFogTrigger(botAI);
@@ -327,26 +327,26 @@ private:
     static Trigger* eredar_twins_pulling_bosses(PlayerbotAI* botAI) {
         return new EredarTwinsPullingBossesTrigger(botAI);
     }
-    static Trigger* eredar_twins_sacrolash_engaged_by_two_tanks(PlayerbotAI* botAI) {
-        return new EredarTwinsSacrolashEngagedByTwoTanksTrigger(botAI);
+    static Trigger* eredar_twins_sacrolash_requires_two_tanks(PlayerbotAI* botAI) {
+        return new EredarTwinsSacrolashRequiresTwoTanksTrigger(botAI);
     }
     static Trigger* eredar_twins_alythess_casts_blaze_on_tank(PlayerbotAI* botAI) {
         return new EredarTwinsAlythessCastsBlazeOnTankTrigger(botAI);
     }
-    static Trigger* eredar_twins_bosses_engaged_by_ranged(PlayerbotAI* botAI) {
-        return new EredarTwinsBossesEngagedByRangedTrigger(botAI);
+    static Trigger* eredar_twins_ranged_needs_los(PlayerbotAI* botAI) {
+        return new EredarTwinsRangedNeedsLosTrigger(botAI);
     }
-    static Trigger* eredar_twins_only_one_boss_remains(PlayerbotAI* botAI) {
-        return new EredarTwinsOnlyOneBossRemainsTrigger(botAI);
+    static Trigger* eredar_twins_only_alythess_remains(PlayerbotAI* botAI) {
+        return new EredarTwinsOnlyAlythessRemainsTrigger(botAI);
     }
-    static Trigger* eredar_twins_bot_has_too_many_flame_touched_stacks(PlayerbotAI* botAI) {
-        return new EredarTwinsBotHasTooManyFlameTouchedStacksTrigger(botAI);
+    static Trigger* eredar_twins_too_many_flame_touched_stacks(PlayerbotAI* botAI) {
+        return new EredarTwinsTooManyFlameTouchedStacksTrigger(botAI);
     }
-    static Trigger* eredar_twins_determining_dps_priority(PlayerbotAI* botAI) {
-        return new EredarTwinsDeterminingDpsPriorityTrigger(botAI);
+    static Trigger* eredar_twins_should_focus_dps(PlayerbotAI* botAI) {
+        return new EredarTwinsShouldFocusDpsTrigger(botAI);
     }
-    static Trigger* eredar_twins_bot_has_conflagration(PlayerbotAI* botAI) {
-        return new EredarTwinsBotHasConflagrationTrigger(botAI);
+    static Trigger* eredar_twins_active_conflagration_target(PlayerbotAI* botAI) {
+        return new EredarTwinsActiveConflagrationTargetTrigger(botAI);
     }
     static Trigger* eredar_twins_sacrolash_victim_has_conflagration(PlayerbotAI* botAI) {
         return new EredarTwinsSacrolashVictimHasConflagrationTrigger(botAI);
@@ -359,8 +359,8 @@ private:
     static Trigger* muru_boss_transformed_into_entropius(PlayerbotAI* botAI) {
         return new MuruBossTransformedIntoEntropiusTrigger(botAI);
     }
-    static Trigger* muru_bosses_engaged_by_ranged(PlayerbotAI* botAI) {
-        return new MuruBossesEngagedByRangedTrigger(botAI);
+    static Trigger* muru_ranged_should_stack_or_spread(PlayerbotAI* botAI) {
+        return new MuruRangedShouldStackOrSpreadTrigger(botAI);
     }
     static Trigger* muru_determining_dps_priority(PlayerbotAI* botAI) {
         return new MuruDeterminingDpsPriorityTrigger(botAI);
@@ -374,14 +374,8 @@ private:
     static Trigger* muru_dark_fiends_spawned(PlayerbotAI* botAI) {
         return new MuruDarkFiendsSpawnedTrigger(botAI);
     }
-    static Trigger* muru_entropius_spawns_darkness_pools(PlayerbotAI* botAI) {
-        return new MuruEntropiusSpawnsDarknessPoolsTrigger(botAI);
-    }
     static Trigger* muru_darkness_is_coming(PlayerbotAI* botAI) {
         return new MuruDarknessIsComingTrigger(botAI);
-    }
-    static Trigger* muru_the_singularity_is_near(PlayerbotAI* botAI) {
-        return new MuruTheSingularityIsNearTrigger(botAI);
     }
     static Trigger* muru_berserker_is_buffed_with_flurry(PlayerbotAI* botAI) {
         return new MuruBerserkerIsBuffedWithFlurryTrigger(botAI);
@@ -398,16 +392,22 @@ private:
     static Trigger* muru_warlock_has_enslaved_void_spawn(PlayerbotAI* botAI) {
         return new MuruWarlockHasEnslavedVoidSpawnTrigger(botAI);
     }
+    static Trigger* muru_entropius_darkness_pools_spawn_dark_fiends(PlayerbotAI* botAI) {
+        return new MuruEntropiusDarknessPoolsSpawnDarkFiendsTrigger(botAI);
+    }
+    static Trigger* muru_the_singularity_is_near(PlayerbotAI* botAI) {
+        return new MuruTheSingularityIsNearTrigger(botAI);
+    }
 
     // Kil'jaeden <The Deceiver>
-    static Trigger* kiljaeden_encounter_has_begun(PlayerbotAI* botAI) {
-        return new KiljaedenEncounterHasBegunTrigger(botAI);
+    static Trigger* kiljaeden_should_coordinate_orb_use(PlayerbotAI* botAI) {
+        return new KiljaedenShouldCoordinateOrbUseTrigger(botAI);
     }
     static Trigger* kiljaeden_hands_of_the_deceiver_are_active(PlayerbotAI* botAI) {
         return new KiljaedenHandsOfTheDeceiverAreActiveTrigger(botAI);
     }
-    static Trigger* kiljaeden_boss_engaged_by_tanks(PlayerbotAI* botAI) {
-        return new KiljaedenBossEngagedByTanksTrigger(botAI);
+    static Trigger* kiljaeden_tanks_should_hold_boss_and_reflections(PlayerbotAI* botAI) {
+        return new KiljaedenTanksShouldHoldBossAndReflectionsTrigger(botAI);
     }
     static Trigger* kiljaeden_boss_engaged_by_melee(PlayerbotAI* botAI) {
         return new KiljaedenBossEngagedByMeleeTrigger(botAI);

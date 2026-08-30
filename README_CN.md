@@ -8,16 +8,16 @@
 
 ## 安装
 
-请注意，此模块需要对AzerothCore进行特定的自定义更改。为了确保兼容性，您必须使用我fork的自定义分支来编译它，可以在这里找到：[Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots/tree/Playerbot](https://github.com/mod-playerbots/azerothcore-wotlk/tree/Playerbot)。
+请注意，此模块需要对AzerothCore进行特定的自定义更改。为了确保兼容性，您必须使用我fork的自定义分支来编译它，可以在这里找到：[mod-playerbots/azerothcore-wotlk/tree/Playerbot](https://github.com/mod-playerbots/azerothcore-wotlk/tree/Playerbot)。
 
 要安装此模块，请参考AzerothCore Wiki的详细说明：[AzerothCore安装指南](https://www.azerothcore.org/wiki/installation)。
 
 我们提供了一个简单的方法来克隆该模块：
 
 ```bash
-git clone https://github.com/Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots.git --branch=Playerbot
+git clone https://github.com/mod-playerbots/azerothcore-wotlk.git --branch=Playerbot
 cd azerothcore-wotlk/modules
-git clone https://github.com/Aden2018/mod-playerbots.git --branch=master
+git clone https://github.com/mod-playerbots/mod-playerbots.git --branch=master
 ```
 
 ## 快速开始与文档
@@ -69,7 +69,3 @@ git clone https://github.com/Aden2018/mod-playerbots.git --branch=master
 该模块的代码来自[ZhengPeiRu21/mod-playerbots](https://github.com/ZhengPeiRu21/mod-playerbots)和[celguar/mangosbot-bots](https://github.com/celguar/mangosbot-bots)。我们衷心感谢@ZhengPeiRu21和@celguar对维护该模块的持续努力。
 
 我们还要向所有为playerbot开发做出贡献的个人表示诚挚的感谢。您的奉献和努力对塑造这个项目至关重要，我们对您的贡献表示感谢。
-
-<a href="https://github.com/Aden2018/mod-playerbots/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Aden2018/mod-playerbots" />
-</a>

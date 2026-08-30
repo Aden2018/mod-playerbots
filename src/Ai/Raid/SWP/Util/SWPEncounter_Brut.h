@@ -11,7 +11,6 @@
 #include "Position.h"
 #include "SWPSharedConstants.h"
 #include <array>
-#include <cmath>
 #include <unordered_map>
 
 class Player;
@@ -59,7 +58,7 @@ inline constexpr uint8 METEOR_SLASH_SWAP_STACKS = 3;
 inline constexpr float BRUTALLUS_SHARED_SAFE_MELEE_ARC_WIDTH = M_PI / 3.0f;
 
 // Concentric arcs behind the boss, innermost first. The spacing is what keeps Burn from
-// spreading between neighbours, so melee hold these positions rather than moving when burning.
+// spreading between neighbors, so melee hold these positions rather than moving when burning.
 inline constexpr std::array BRUTALLUS_MELEE_RING_LAYOUTS = {
     BrutallusMeleeRingLayout{ 4.0f, 2 },
     BrutallusMeleeRingLayout{ 8.0f, 3 },
@@ -76,6 +75,7 @@ constexpr uint8 GetBrutallusTotalMeleePositions()
     return total;
 }
 
+// Melee double up if every slot is taken (unlikely since there are 14 and TBC hates melee).
 inline constexpr uint8 BRUTALLUS_TOTAL_MELEE_POSITIONS = GetBrutallusTotalMeleePositions();
 
 inline constexpr float BRUTALLUS_RANGED_TANK_OFFSET = 10.0f;
@@ -84,6 +84,7 @@ inline constexpr uint8 BRUTALLUS_RANGED_POSITIONS_PER_GROUP = 10;
 inline constexpr uint8 BRUTALLUS_BURN_PADS_PER_GROUP = 4;
 inline constexpr float BRUTALLUS_LANE_OFFSET = 5.0f;
 
+// Ranged double up if every slot is taken (unlikely even though TBC hates melee, as there are 20).
 inline constexpr uint8 BRUTALLUS_TOTAL_RANGED_POSITIONS = BRUTALLUS_RANGED_POSITIONS_PER_GROUP * 2;
 inline constexpr uint8 BRUTALLUS_TOTAL_BURN_PADS = BRUTALLUS_BURN_PADS_PER_GROUP * 2;
 inline constexpr float BRUTALLUS_NORMAL_RANGED_RADIUS =
@@ -111,6 +112,7 @@ bool TryGetBrutallusLaneTraversalPosition(
     Player* bot, Unit* brutallus, float targetX, float targetY, float radius,
     float currentX, float currentY, Position& position);
 bool ReleaseBrutallusBurnPad(Player* bot);
+bool HasBrutallusBurn(Player* bot);
 
 }
 

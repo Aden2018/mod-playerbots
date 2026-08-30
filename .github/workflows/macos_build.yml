@@ -1,9 +1,9 @@
 name: macos-build
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master", "test-staging" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "master", "test-staging" ]
 
 concurrency:
   group: "macos-build-${{ github.event.pull_request.number }}"
@@ -22,12 +22,12 @@ jobs:
       - name: Checkout AzerothCore
         uses: actions/checkout@v4
         with:
-          repository: 'Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots'
-          ref: ${{ (github.base_ref || github.ref_name) == 'Playerbot' && 'Playerbot' || 'Playerbot' }}
+          repository: 'mod-playerbots/azerothcore-wotlk'
+          ref: ${{ (github.base_ref || github.ref_name) == 'test-staging' && 'test-staging' || 'Playerbot' }}
       - name: Checkout Playerbot Module
         uses: actions/checkout@v4
         with:
-          repository: 'Aden2018/mod-playerbots'
+          repository: 'mod-playerbots/mod-playerbots'
           path: 'modules/mod-playerbots'
       - name: Cache
         uses: actions/cache@v4

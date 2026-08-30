@@ -6,11 +6,21 @@
 
 #include "MagTriggers.h"
 #include "EncounterHelpers.h"
+#include "InstanceScript.h"
 #include "MagHelpers.h"
 #include "Playerbots.h"
 
 using namespace MagHelpers;
 using namespace EncounterHelpers;
+
+bool MagtheridonNoEncounterInProgressTrigger::IsActive()
+{
+    if (!IsMechanicTrackerBot(bot, MAG_MAP_ID))
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    return instance && !instance->IsEncounterInProgress();
+}
 
 bool MagtheridonFirstThreeChannelersEngagedByMainTankTrigger::IsActive()
 {
@@ -121,11 +131,4 @@ bool MagtheridonNeedToManageTimersAndAssignmentsTrigger::IsActive()
 {
     return IsMechanicTrackerBot(bot, MAG_MAP_ID) &&
         AI_VALUE2(Unit*, "find target", "magtheridon");
-}
-
-bool MagtheridonBotIsNotInCombatTrigger::IsActive()
-{
-    return bot->GetMapId() == MAG_MAP_ID && !AI_VALUE2(bool, "combat", "self target") &&
-        !AI_VALUE2(Unit*, "find target", "magtheridon") &&
-        !AI_VALUE2(Unit*, "find target", "hellfire channeler");
 }

@@ -11,11 +11,11 @@
 
 // General
 
-class SerpentShrineCavernBotIsNotInCombatTrigger : public Trigger
+class SerpentShrineCavernNoEncounterInProgressTrigger : public Trigger
 {
 public:
-    SerpentShrineCavernBotIsNotInCombatTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "serpent shrine cavern bot is not in combat") {}
+    SerpentShrineCavernNoEncounterInProgressTrigger(
+        PlayerbotAI* botAI) : Trigger(botAI, "serpent shrine cavern no encounter in progress") {}
     bool IsActive() override;
 };
 
@@ -382,14 +382,6 @@ class LadyVashjTaintedCoreWasLootedTrigger : public Trigger
 public:
     LadyVashjTaintedCoreWasLootedTrigger(
         PlayerbotAI* botAI) : Trigger(botAI, "lady vashj tainted core was looted") {}
-    bool IsActive() override;
-};
-
-class LadyVashjTaintedCoreIsUnusableTrigger : public Trigger
-{
-public:
-    LadyVashjTaintedCoreIsUnusableTrigger(
-        PlayerbotAI* botAI) : Trigger(botAI, "lady vashj tainted core is unusable") {}
     bool IsActive() override;
 };
 

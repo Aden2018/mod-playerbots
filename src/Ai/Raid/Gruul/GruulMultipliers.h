@@ -25,11 +25,11 @@ public:
     float GetValue(Action* action) override;
 };
 
-class HighKingMaulgarDontTauntKigglerMultiplier : public Multiplier
+class HighKingMaulgarRestrictTauntingMultiplier : public Multiplier
 {
 public:
-    HighKingMaulgarDontTauntKigglerMultiplier(PlayerbotAI* botAI)
-        : Multiplier(botAI, "high king maulgar don't taunt kiggler") {}
+    HighKingMaulgarRestrictTauntingMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "high king maulgar restrict taunting") {}
     float GetValue(Action* action) override;
 };
 
@@ -78,6 +78,14 @@ class GruulTheDragonkillerStaySpreadForShatterMultiplier : public Multiplier
 public:
     GruulTheDragonkillerStaySpreadForShatterMultiplier(PlayerbotAI* botAI)
         : Multiplier(botAI, "gruul the dragonkiller stay spread for shatter") {}
+    float GetValue(Action* action) override;
+};
+
+class GruulTheDragonkillerHoldWhileSnaredMultiplier : public Multiplier
+{
+public:
+    GruulTheDragonkillerHoldWhileSnaredMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "gruul the dragonkiller hold while snared") {}
     float GetValue(Action* action) override;
 };
 

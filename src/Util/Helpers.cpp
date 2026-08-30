@@ -25,14 +25,14 @@ char* strstri(char const* haystack, char const* needle)
 
     for (; *haystack; ++haystack)
     {
-        if (std::tolower(static_cast<unsigned char>(*haystack)) == std::tolower(static_cast<unsigned char>(*needle)))
+        if (tolower(*haystack) == tolower(*needle))
         {
             char const* h = haystack;
             char const* n = needle;
 
             for (; *h && *n; ++h, ++n)
             {
-                if (std::tolower(static_cast<unsigned char>(*h)) != std::tolower(static_cast<unsigned char>(*n)))
+                if (tolower(*h) != tolower(*n))
                 {
                     break;
                 }
@@ -53,7 +53,7 @@ char* strstri(char const* haystack, char const* needle)
  */
 std::string& ltrim(std::string& s)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isspace(c); }));
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int c) { return !std::isspace(c); }));
     return s;
 }
 
@@ -62,7 +62,7 @@ std::string& ltrim(std::string& s)
  */
 std::string& rtrim(std::string& s)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), s.end());
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](int c) { return !std::isspace(c); }).base(), s.end());
     return s;
 }
 

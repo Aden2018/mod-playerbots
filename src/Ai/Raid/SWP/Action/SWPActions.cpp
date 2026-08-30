@@ -5,16 +5,17 @@
  */
 
 #include "SWPActions.h"
-#include "CreatureAI.h"
 #include "EncounterHelpers.h"
+#include "InstanceScript.h"
 #include "Playerbots.h"
-#include "SWPSharedConstants.h"
+#include "RtiTargetValue.h"
 #include "SWPEncounter_Brut.h"
 #include "SWPEncounter_Felmyst.h"
 #include "SWPEncounter_Kalec.h"
 #include "SWPEncounter_KJ.h"
 #include "SWPEncounter_Muru.h"
 #include "SWPEncounter_Twins.h"
+#include "SWPSharedConstants.h"
 #include <list>
 
 using namespace SwpHelpers;
@@ -24,101 +25,98 @@ bool SunwellPlateauResetEncounterStatesAction::Execute(Event /*event*/)
 {
     ObjectGuid const guid = bot->GetGUID();
     uint32 const instanceId = bot->GetInstanceId();
-    bool const isMechanicTracker = IsMechanicTrackerBot(bot, SWP_MAP_ID);
 
-    bool didSomething = false;
+    bool reset = false;
 
-    if (!AI_VALUE2(Unit*, "find target", "kalecgos") &&
-        !AI_VALUE2(Unit*, "find target", "sathrovarr the corruptor"))
+    // Kalecgos
+    Action* kalecAction = context->GetAction("kalecgos disperse ranged");
+    if (kalecAction && static_cast<KalecgosDisperseRangedAction*>(
+            kalecAction)->ResetInitialRangedPositionReached())
     {
-        didSomething |= isMechanicTracker && kalecgosEncounterStates.erase(instanceId) > 0;
-
-        Action* kalecAction = context->GetAction("kalecgos disperse ranged");
-        if (kalecAction && static_cast<KalecgosDisperseRangedAction*>(
-                kalecAction)->ResetInitialRangedPositionReached())
-        {
-            didSomething = true;
-        }
+        reset = true;
     }
 
-    if (!AI_VALUE2(Unit*, "find target", "brutallus"))
+    // Brutallus
+    auto const brutallusItr = brutallusEncounterStates.find(instanceId);
+    if (brutallusItr != brutallusEncounterStates.end())
+        reset |= brutallusItr->second.rangedBurnStates.erase(guid) > 0;
+
+    reset |= ReleaseBrutallusBurnPad(bot);
+
+    Action* brutallusAction = context->GetAction("brutallus tanks position and swap");
+    if (brutallusAction && static_cast<BrutallusTanksPositionAndSwapAction*>(
+            brutallusAction)->ResetInitialPositionReached())
     {
-        if (bot->HasAura(Id(SwpSpells::SPELL_BURN)))
-        {
-            bot->RemoveAura(Id(SwpSpells::SPELL_BURN));
-            didSomething = true;
-        }
-
-        auto const stateItr = brutallusEncounterStates.find(instanceId);
-        if (stateItr != brutallusEncounterStates.end())
-            didSomething |= stateItr->second.rangedBurnStates.erase(guid) > 0;
-
-        didSomething |= ReleaseBrutallusBurnPad(bot);
-
-        if (isMechanicTracker)
-            didSomething |= brutallusEncounterStates.erase(instanceId) > 0;
-
-        Action* brutallusAction = context->GetAction("brutallus tanks position and swap");
-        if (brutallusAction && static_cast<BrutallusTanksPositionAndSwapAction*>(
-                brutallusAction)->ResetInitialPositionReached())
-        {
-            didSomething = true;
-        }
+        reset = true;
     }
 
-    if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "felmyst"))
-        didSomething |= felmystEncounterStates.erase(instanceId) > 0;
-
-    if (!AI_VALUE2(Unit*, "find target", "grand warlock alythess"))
+    // Eredar Twins
+    Action* twinsAction = context->GetAction("eredar twins alythess tank move out of blaze");
+    if (twinsAction && static_cast<EredarTwinsAlythessTankMoveOutOfBlazeAction*>(
+            twinsAction)->ResetAlythessTankStep())
     {
-        if (isMechanicTracker)
-        {
-            didSomething |= eredarTwinsIncomingConflagrationStates.erase(instanceId) > 0;
-            didSomething |= eredarTwinsBlazeTargetStates.erase(instanceId) > 0;
-            didSomething |= eredarTwinsDpsHoldStartMs.erase(instanceId) > 0;
-        }
-
-        Action* twinsAction = context->GetAction(
-            "eredar twins first assist tank move out of blaze");
-        if (twinsAction && static_cast<EredarTwinsFirstAssistTankMoveOutOfBlazeAction*>(
-                twinsAction)->ResetAlythessTankStep())
-        {
-            didSomething = true;
-        }
+        reset = true;
     }
 
-    if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "m'uru"))
+    // M'uru
+    Action* muruAction = context->GetAction("m'uru position ranged by phase");
+    if (muruAction && static_cast<MuruPositionRangedByPhaseAction*>(
+            muruAction)->ResetEntropiusRangedPositionReached())
     {
-        didSomething |= muruDarknessStates.erase(instanceId) > 0;
-        didSomething |= muruVoidSentinelTankAssignments.erase(instanceId) > 0;
+        reset = true;
     }
 
-    if (!AI_VALUE2(Unit*, "find target", "kil'jaeden"))
-    {
-        didSomething |= kiljaedenDragonOrbUseTimes.erase(guid.GetCounter()) > 0;
+    // Kil'jaeden
+    reset |= kiljaedenDragonOrbUseTimes.erase(guid.GetCounter()) > 0;
 
-        if (isMechanicTracker)
-            didSomething |= kiljaedenEncounterStates.erase(instanceId) > 0;
-    }
+    // Records shared across the raid, so one bot clears them all
+    if (!IsMechanicTrackerBot(bot, SWP_MAP_ID))
+        return reset;
 
-    if (isMechanicTracker && !AI_VALUE2(Unit*, "find target", "hand of the deceiver"))
-    {
-        didSomething |= ResetKiljaedenDragonOrbUserAnnouncement(instanceId);
-        didSomething |= kiljaedenHandTankAssignments.erase(instanceId) > 0;
-    }
+    if (!AI_VALUE2(bool, "combat", "self target"))
+        reset |= ClearTargetIcon(bot, RtiTargetValue::skullIndex);
 
-    return didSomething;
+    reset |= kalecgosEncounterStates.erase(instanceId) > 0;
+    reset |= brutallusEncounterStates.erase(instanceId) > 0;
+    reset |= felmystEncounterStates.erase(instanceId) > 0;
+    reset |= eredarTwinsIncomingConflagrationStates.erase(instanceId) > 0;
+    reset |= eredarTwinsBlazeTargetStates.erase(instanceId) > 0;
+    reset |= eredarTwinsDpsHoldStartMs.erase(instanceId) > 0;
+    reset |= muruDarknessStates.erase(instanceId) > 0;
+    reset |= muruVoidSentinelTankAssignments.erase(instanceId) > 0;
+    reset |= kiljaedenEncounterStates.erase(instanceId) > 0;
+    reset |= ResetKiljaedenDragonOrbUserAnnouncement(instanceId);
+    reset |= kiljaedenHandControlClaims.erase(instanceId) > 0;
+
+    return reset;
 }
 
-bool SunwellPlateauRemoveProtectiveAuraAction::Execute(Event /*event*/)
+bool SunwellPlateauRemoveAuraAction::Execute(Event /*event*/)
 {
-    if (bot->getClass() == CLASS_MAGE)
+    if (bot->getClass() == CLASS_MAGE && bot->HasAura(Id(SwpSpells::SPELL_ICE_BLOCK)))
     {
         bot->RemoveAura(Id(SwpSpells::SPELL_ICE_BLOCK));
         return true;
     }
 
-    bot->RemoveAura(Id(SwpSpells::SPELL_DIVINE_SHIELD));
+    if (bot->getClass() == CLASS_PALADIN && !PlayerbotAI::IsHeal(bot) &&
+        bot->HasAura(Id(SwpSpells::SPELL_DIVINE_SHIELD)))
+    {
+        bot->RemoveAura(Id(SwpSpells::SPELL_DIVINE_SHIELD));
+        return true;
+    }
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance || instance->IsEncounterInProgress())
+        return false;
+
+    // It is Blizzlike for Burn to persist after the kill, but bots will murder the raid without
+    // a dedicated non-combat strategy for it. It's no fun to do that and wait around for expiry
+    // so I'm just wiping the aura after the encounter.
+    if (!HasBrutallusBurn(bot))
+        return false;
+
+    bot->RemoveAura(Id(SwpSpells::SPELL_BURN));
     return true;
 }
 
@@ -128,7 +126,7 @@ namespace SwpHelpers
 ObjectGuid FindSwpVolatileFiendGuid(Player* bot)
 {
     Creature* fiend = bot->FindNearestCreature(
-        Id(SwpNpcs::NPC_VOLATILE_FIEND), SWP_VOLATILE_FIEND_SEARCH_RADIUS, true);
+        Id(SwpNpcs::NPC_VOLATILE_FIEND), VOLATILE_FIEND_SEARCH_RADIUS, true);
 
     return fiend ? fiend->GetGUID() : ObjectGuid::Empty;
 }
@@ -153,6 +151,7 @@ bool VolatileFiendKeepEnemyAwayFromGroupAction::Execute(Event /*event*/)
     return MoveAway(volatileFiend, safeDistance - currentDistance);
 }
 
+// At low health, Infernal Defense is cast, granting immunity to all damage but holy
 bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
 {
     Unit* target = nullptr;

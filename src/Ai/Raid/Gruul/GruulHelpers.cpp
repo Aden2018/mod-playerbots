@@ -6,7 +6,6 @@
 
 #include "GruulHelpers.h"
 #include "AiFactory.h"
-#include "GroupReference.h"
 #include "Playerbots.h"
 
 namespace GruulHelpers
@@ -14,7 +13,10 @@ namespace GruulHelpers
 
 bool IsMaulgarTank(Player* bot)
 {
-    return PlayerbotAI::IsMainTank(bot);
+    // Note: IsMainTank() is not necessarily a tank (by either strategy or spec). It can be anybody
+    // with the main tank flag. Raid strategies will have problems with non-tank main tanks so this
+    // assumes you are using a real tank for your main tank.
+    return PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot);
 }
 
 bool IsOlmTank(Player* bot)
@@ -24,7 +26,7 @@ bool IsOlmTank(Player* bot)
 
 bool IsBlindeyeTank(Player* bot)
 {
-    return PlayerbotAI::IsAssistTankOfIndex(bot, 1, false);
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 1, true);
 }
 
 Player* GetKroshMageTank(Player* bot)
@@ -64,13 +66,16 @@ Player* GetKroshMageTank(Player* bot)
     return highestHpBotMage;
 }
 
+bool IsKroshMageTank(Player* bot)
+{
+    return bot->getClass() == CLASS_MAGE && GetKroshMageTank(bot) == bot;
+}
+
 Player* GetKigglerMoonkinTank(Player* bot)
 {
     Group* group = bot->GetGroup();
     if (!group)
         return nullptr;
-
-    uint8 const tab = AiFactory::GetPlayerSpecTab(bot);
 
     // If an assistant Balance Druid (player or bot) is found, return immediately.
     // Otherwise, return the bot Balance Druid with the highest HP as fallback.
@@ -81,7 +86,8 @@ Player* GetKigglerMoonkinTank(Player* bot)
     {
         Player* member = ref->GetSource();
         if (!member || !member->IsAlive() || member->GetMapId() != GRUUL_MAP_ID ||
-            member->getClass() != CLASS_DRUID || tab != DRUID_TAB_BALANCE)
+            member->getClass() != CLASS_DRUID ||
+            AiFactory::GetPlayerSpecTab(member) != DRUID_TAB_BALANCE)
         {
             continue;
         }
@@ -101,6 +107,17 @@ Player* GetKigglerMoonkinTank(Player* bot)
     }
 
     return highestHpBotMoonkin;
+}
+
+bool IsKigglerMoonkinTank(Player* bot)
+{
+    return bot->getClass() == CLASS_DRUID && GetKigglerMoonkinTank(bot) == bot;
+}
+
+bool HasGroundSlam(Player* bot)
+{
+    return bot->HasAura(Id(GruulSpells::SPELL_GROUND_SLAM_1)) ||
+        bot->HasAura(Id(GruulSpells::SPELL_GROUND_SLAM_2));
 }
 
 }

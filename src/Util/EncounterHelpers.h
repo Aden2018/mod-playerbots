@@ -20,12 +20,18 @@ class Unit;
 namespace EncounterHelpers
 {
 
-// Answers whether the bot can take one short step towards a destination, and where that step
-// lands. It says nothing about the destination itself--only about the next hop. stepX/Y/Z are
-// written on success and left untouched on failure
+// Cheap, rough proxies for how far along an encounter is. 95% HP means the boss and raid are
+// positioned, the tank has threat, and the fight proper has started, so it's time to use cooldowns.
+// 10% means the boss is almost dead, so ignore adds and finish off the boss.
+inline constexpr float BOSS_ENGAGED_HEALTH_PCT = 95.0f;
+inline constexpr float BOSS_BURN_HEALTH_PCT = 10.0f;
+
 bool CanTakeStepTowards(
     Player* bot, float destinationX, float destinationY, float moveDist,
     float& stepX, float& stepY, float& stepZ);
+bool GetTankPositionStep(
+    Player* bot, Position const& position, float arrivalDist, Unit* facing, float& stepX,
+    float& stepY, bool& backwards);
 bool MarkTargetWithIcon(Player* bot, Unit* target, uint8 iconId);
 bool MarkTargetWithSkull(Player* bot, Unit* target);
 bool MarkTargetWithSquare(Player* bot, Unit* target);

@@ -6,31 +6,17 @@
 
 #include "SWPEncounter_Muru.h"
 #include "AiObjectContext.h"
-#include "CharmInfo.h"
 #include "Playerbots.h"
 #include <algorithm>
+#include <limits>
 #include <list>
-
-// Note: M'uru goes invisible during the Entropius phase but remains on player threat lists
 
 namespace SwpHelpers
 {
 
-std::unordered_map<uint32, MuruDarknessState> muruDarknessStates;
-std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>> muruVoidSentinelTankAssignments;
-
-bool IsMuruPhaseActive(Unit* muru)
-{
-    // DamageTaken caps M'uru at exactly 1 health when it transitions, and it is invisible and
-    // unselectable from then on, so the health is the phase
-    return muru && muru->GetHealth() > 1;
-}
-
 namespace
 {
 
-// Stamped separately from the answer so every bot in the tick agrees whichever aura it happened to
-// observe, and so the handover from pre-effect to zone leaves no seam.
 void StampMuruDarknessWindow(
     MuruDarknessState& state, uint32 now, uint32 elapsedMs, uint32 remainingMs)
 {
@@ -42,85 +28,12 @@ void StampMuruDarknessWindow(
     state.expireMs = std::max(state.expireMs, now + remainingMs);
 }
 
-} // end anonymous namespace
-
-bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru)
-{
-    if (!muru)
-        return false;
-
-    uint32 const instanceId = bot->GetInstanceId();
-    uint32 const now = getMSTime();
-
-    if (Aura* darkness = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS)))
-    {
-        // 45996 lands on M'uru as well as on the ground, so its remaining duration is the exact
-        // remaining danger - nothing here is modelled
-        int32 const remainingMs = std::max(darkness->GetDuration(), 0);
-        int32 const elapsedZoneMs = std::max(darkness->GetMaxDuration() - remainingMs, 0);
-
-        StampMuruDarknessWindow(
-            muruDarknessStates[instanceId], now,
-            MURU_DARKNESS_PRE_EFFECT_MS + static_cast<uint32>(elapsedZoneMs),
-            static_cast<uint32>(remainingMs));
-    }
-    else if (Aura* preEffect = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS_PRE_EFFECT)))
-    {
-        // The zone does not exist yet, so the telegraph runs on the estimate
-        int32 const duration = preEffect->GetDuration();
-        uint32 const remainingPreEffectMs = duration < 0 ?
-            MURU_DARKNESS_PRE_EFFECT_MS :
-            std::min(static_cast<uint32>(duration), MURU_DARKNESS_PRE_EFFECT_MS);
-
-        StampMuruDarknessWindow(
-            muruDarknessStates[instanceId], now,
-            MURU_DARKNESS_PRE_EFFECT_MS - remainingPreEffectMs,
-            remainingPreEffectMs + MURU_DARKNESS_AURA_MS);
-    }
-
-    // Looked up rather than default-constructed: with neither aura up this is by far the common
-    // path, and operator[] would allocate and free a node on every call from every trigger,
-    // multiplier and exclusion pass that asks.
-    auto const stateItr = muruDarknessStates.find(instanceId);
-    if (stateItr == muruDarknessStates.end())
-        return false;
-
-    uint32 const expireMs = stateItr->second.expireMs;
-    if (expireMs > now + MURU_DARKNESS_RUN_BACK_ALLOWANCE_MS)
-        return true;
-
-    // Only the answer comes early; the record stays until the zone is genuinely gone so a late
-    // caller cannot restamp a window that has already been released
-    if (expireMs <= now)
-        muruDarknessStates.erase(stateItr);
-
-    return false;
-}
-
-bool TryGetMuruDarknessEarlyState(Player* bot, Unit* muru, uint32 earlyWindowMs)
-{
-    if (!TryGetMuruDarknessActiveState(bot, muru))
-        return false;
-
-    auto const stateItr = muruDarknessStates.find(bot->GetInstanceId());
-    if (stateItr == muruDarknessStates.end())
-        return false;
-
-    uint32 const now = getMSTime();
-    return stateItr->second.startMs < now && now - stateItr->second.startMs < earlyWindowMs;
-}
-
-namespace
-{
-
 MuruEncounterGuids const& GetCachedMuruEncounterGuids(PlayerbotAI* botAI)
 {
     return botAI->GetAiObjectContext()
         ->GetValue<MuruEncounterGuids>("muru encounter targets")->RefGet();
 }
 
-// The guid list is only refreshed once an interval, so anything on it can have died since. Every
-// consumer wants the living, and one of them takes the first candidate before checking.
 Unit* ResolveLivingUnit(PlayerbotAI* botAI, ObjectGuid const& guid)
 {
     Unit* unit = botAI->GetUnit(guid);
@@ -137,9 +50,6 @@ void ResolveLivingUnits(PlayerbotAI* botAI, GuidVector const& guids, std::vector
     }
 }
 
-// Reach of the furthest ability the class brings to each job, or 0 when it brings none. Selection
-// and the triggers both go through these, so the class lists cannot drift from the switches in
-// MuruCastStunOnShadowswordBerserkerAction and MuruInterruptFelFireballAction.
 float GetBerserkerStunReach(Player* bot)
 {
     switch (bot->getClass())
@@ -203,8 +113,6 @@ bool IsSpellFuryBuffedFuryMage(Unit* furyMage)
     return furyMage->HasAura(Id(SwpSpells::SPELL_SPELL_FURY));
 }
 
-// The current target wins outright when it qualifies: it is already faced and in reach, so nothing
-// has to move, and it stops the pick flipping between equally valid adds on consecutive ticks.
 Unit* SelectNearestQualifying(
     PlayerbotAI* botAI, GuidVector const& candidates, float reach, bool (*qualifies)(Unit*))
 {
@@ -238,6 +146,73 @@ Unit* SelectNearestQualifying(
 }
 
 } // end anonymous namespace
+
+std::unordered_map<uint32, MuruDarknessState> muruDarknessStates;
+std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>> muruVoidSentinelTankAssignments;
+
+bool IsMuruPhaseActive(Unit* muru)
+{
+    // DamageTaken caps M'uru at exactly 1 health when phase 2 activates, and from then on M'uru
+    // is invisible but remains on players' threat lists.
+    return muru && muru->GetHealth() > 1;
+}
+
+bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru)
+{
+    if (!muru)
+        return false;
+
+    uint32 const instanceId = bot->GetInstanceId();
+    uint32 const now = getMSTime();
+
+    if (Aura* darkness = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS)))
+    {
+        int32 const remainingMs = std::max(darkness->GetDuration(), 0);
+        int32 const elapsedZoneMs = std::max(darkness->GetMaxDuration() - remainingMs, 0);
+
+        StampMuruDarknessWindow(
+            muruDarknessStates[instanceId], now,
+            DARKNESS_PRE_EFFECT_MS + static_cast<uint32>(elapsedZoneMs),
+            static_cast<uint32>(remainingMs));
+    }
+    else if (Aura* preEffect = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS_PRE_EFFECT)))
+    {
+        int32 const duration = preEffect->GetDuration();
+        uint32 const remainingPreEffectMs = duration < 0 ?
+            DARKNESS_PRE_EFFECT_MS :
+            std::min(static_cast<uint32>(duration), DARKNESS_PRE_EFFECT_MS);
+
+        StampMuruDarknessWindow(
+            muruDarknessStates[instanceId], now, DARKNESS_PRE_EFFECT_MS - remainingPreEffectMs,
+            remainingPreEffectMs + DARKNESS_AURA_MS);
+    }
+
+    auto const stateItr = muruDarknessStates.find(instanceId);
+    if (stateItr == muruDarknessStates.end())
+        return false;
+
+    uint32 const expireMs = stateItr->second.expireMs;
+    if (expireMs > now)
+        return true;
+
+    if (expireMs <= now)
+        muruDarknessStates.erase(stateItr);
+
+    return false;
+}
+
+bool TryGetMuruDarknessEarlyState(Player* bot, Unit* muru, uint32 earlyWindowMs)
+{
+    if (!TryGetMuruDarknessActiveState(bot, muru))
+        return false;
+
+    auto const stateItr = muruDarknessStates.find(bot->GetInstanceId());
+    if (stateItr == muruDarknessStates.end())
+        return false;
+
+    uint32 const now = getMSTime();
+    return stateItr->second.startMs < now && now - stateItr->second.startMs < earlyWindowMs;
+}
 
 MuruEncounterGuids FindMuruEncounterGuids(PlayerbotAI* botAI)
 {
@@ -297,9 +272,6 @@ void GatherMuruEncounterTargets(PlayerbotAI* botAI, MuruEncounterTargets& target
     ResolveLivingUnits(botAI, guids.berserkers, targets.berserkers);
 }
 
-// Deliberately not FindTargetValue: that walks the bot's own threatened-by-me list and returns the
-// first name match, so it answers "one arbitrary berserker that happens to be attacking me" - with
-// four per wave it routinely misses the one that actually has Flurry.
 Unit* FindMuruBerserkerToStun(PlayerbotAI* botAI)
 {
     float const reach = GetBerserkerStunReach(botAI->GetBot());
@@ -320,7 +292,6 @@ Unit* FindMuruFuryMageToInterrupt(PlayerbotAI* botAI)
         botAI, GetCachedMuruEncounterGuids(botAI).furyMages, reach, &IsCastingFelFireball);
 }
 
-// Mage-only, so the class gate is inline rather than a reach table: Spellsteal is the whole list
 Unit* FindMuruFuryMageToSpellsteal(PlayerbotAI* botAI)
 {
     if (botAI->GetBot()->getClass() != CLASS_MAGE)
@@ -347,7 +318,7 @@ bool IsTankingMuruVoidSentinel(PlayerbotAI* botAI)
 ObjectGuid FindMuruSingularityGuid(Player* bot)
 {
     Creature* singularity = bot->FindNearestCreature(
-        Id(SwpNpcs::NPC_SINGULARITY), MURU_SINGULARITY_SEARCH_RADIUS, true);
+        Id(SwpNpcs::NPC_SINGULARITY), SINGULARITY_SEARCH_RADIUS);
 
     return singularity ? singularity->GetGUID() : ObjectGuid::Empty;
 }
@@ -356,7 +327,7 @@ GuidVector FindMuruVoidZoneGuids(Player* bot)
 {
     std::list<Creature*> voidZones;
     bot->GetCreatureListWithEntryInGrid(
-        voidZones, Id(SwpNpcs::NPC_DARKNESS), MURU_VOID_ZONE_SEARCH_RADIUS);
+        voidZones, Id(SwpNpcs::NPC_DARKNESS), VOID_ZONE_SEARCH_RADIUS);
 
     GuidVector guids;
     guids.reserve(voidZones.size());
@@ -369,16 +340,14 @@ GuidVector FindMuruVoidZoneGuids(Player* bot)
     return guids;
 }
 
-// Returns only a pool close enough to matter, so the range test is folded into the selection and
-// both the trigger and the action ask exactly the same question
 Creature* FindMuruVoidZoneToAvoid(PlayerbotAI* botAI)
 {
     Player* bot = botAI->GetBot();
-    GuidVector const& guids = botAI->GetAiObjectContext()
-        ->GetValue<GuidVector>("muru void zones")->RefGet();
+    GuidVector const& guids =
+        botAI->GetAiObjectContext()->GetValue<GuidVector>("muru void zones")->RefGet();
 
     Creature* nearest = nullptr;
-    float nearestDistance = MURU_VOID_ZONE_SAFE_DISTANCE;
+    float nearestDistance = VOID_ZONE_SAFE_DISTANCE;
 
     for (ObjectGuid const& guid : guids)
     {
@@ -408,7 +377,6 @@ Creature* FindAvailableVoidSpawnForEnslave(PlayerbotAI* botAI)
     Creature* bestSpawn = nullptr;
     float closestDistance = std::numeric_limits<float>::max();
 
-    // The cached list is already filtered to void spawns, so only availability is left to check
     for (ObjectGuid const& guid : GetCachedMuruEncounterGuids(botAI).voidSpawns)
     {
         Unit* unit = ResolveLivingUnit(botAI, guid);

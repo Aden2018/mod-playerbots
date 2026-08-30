@@ -310,15 +310,15 @@ bool LfgAction::Execute(Event event)
 
     Group* group = requester->GetGroup();
 
-    std::unordered_map<Classes, std::unordered_map<PBotRoles, uint32>> allowedClassNr;
-    std::unordered_map<PBotRoles, uint32> allowedRoles;
+    std::unordered_map<Classes, std::unordered_map<BotRoles, uint32>> allowedClassNr;
+    std::unordered_map<BotRoles, uint32> allowedRoles;
 
-    allowedRoles[PBOT_ROLE_TANK] = 1;
-    allowedRoles[PBOT_ROLE_HEALER] = 1;
-    allowedRoles[PBOT_ROLE_DPS] = 3;
+    allowedRoles[BOT_ROLE_TANK] = 1;
+    allowedRoles[BOT_ROLE_HEALER] = 1;
+    allowedRoles[BOT_ROLE_DPS] = 3;
 
-    PBotRoles role = botAI->IsTank(requester, true) ? PBOT_ROLE_TANK
-                                                   : (botAI->IsHeal(requester, true) ? PBOT_ROLE_HEALER : PBOT_ROLE_DPS);
+    BotRoles role = botAI->IsTank(requester, true) ? BOT_ROLE_TANK
+                                                   : (botAI->IsHeal(requester, true) ? BOT_ROLE_HEALER : BOT_ROLE_DPS);
     Classes cls = (Classes)requester->getClass();
 
     if (group)
@@ -329,46 +329,46 @@ bool LfgAction::Execute(Event event)
         // Select optimal group layout.
         if (param == "40")
         {
-            allowedRoles[PBOT_ROLE_TANK] = 4;
-            allowedRoles[PBOT_ROLE_HEALER] = 16;
-            allowedRoles[PBOT_ROLE_DPS] = 20;
+            allowedRoles[BOT_ROLE_TANK] = 4;
+            allowedRoles[BOT_ROLE_HEALER] = 16;
+            allowedRoles[BOT_ROLE_DPS] = 20;
             /*
-            allowedClassNr[CLASS_PALADIN][PBOT_ROLE_TANK] = 0;
-            allowedClassNr[CLASS_DRUID][PBOT_ROLE_TANK] = 1;
+            allowedClassNr[CLASS_PALADIN][BOT_ROLE_TANK] = 0;
+            allowedClassNr[CLASS_DRUID][BOT_ROLE_TANK] = 1;
 
-            allowedClassNr[CLASS_DRUID][PBOT_ROLE_HEALER] = 3;
-            allowedClassNr[CLASS_PALADIN][PBOT_ROLE_HEALER] = 4;
-            allowedClassNr[CLASS_SHAMAN][PBOT_ROLE_HEALER] = 4;
-            allowedClassNr[CLASS_PRIEST][PBOT_ROLE_HEALER] = 11;
+            allowedClassNr[CLASS_DRUID][BOT_ROLE_HEALER] = 3;
+            allowedClassNr[CLASS_PALADIN][BOT_ROLE_HEALER] = 4;
+            allowedClassNr[CLASS_SHAMAN][BOT_ROLE_HEALER] = 4;
+            allowedClassNr[CLASS_PRIEST][BOT_ROLE_HEALER] = 11;
 
-            allowedClassNr[CLASS_WARRIOR][PBOT_ROLE_DPS] = 8;
-            allowedClassNr[CLASS_PALADIN][PBOT_ROLE_DPS] = 4;
-            allowedClassNr[CLASS_HUNTER][PBOT_ROLE_DPS] = 4;
-            allowedClassNr[CLASS_ROGUE][PBOT_ROLE_DPS] = 6;
-            allowedClassNr[CLASS_PRIEST][PBOT_ROLE_DPS] = 1;
-            allowedClassNr[CLASS_SHAMAN][PBOT_ROLE_DPS] = 4;
-            allowedClassNr[CLASS_MAGE][PBOT_ROLE_DPS] = 15;
-            allowedClassNr[CLASS_WARLOCK][PBOT_ROLE_DPS] = 4;
-            allowedClassNr[CLASS_DRUID][PBOT_ROLE_DPS] = 1;
+            allowedClassNr[CLASS_WARRIOR][BOT_ROLE_DPS] = 8;
+            allowedClassNr[CLASS_PALADIN][BOT_ROLE_DPS] = 4;
+            allowedClassNr[CLASS_HUNTER][BOT_ROLE_DPS] = 4;
+            allowedClassNr[CLASS_ROGUE][BOT_ROLE_DPS] = 6;
+            allowedClassNr[CLASS_PRIEST][BOT_ROLE_DPS] = 1;
+            allowedClassNr[CLASS_SHAMAN][BOT_ROLE_DPS] = 4;
+            allowedClassNr[CLASS_MAGE][BOT_ROLE_DPS] = 15;
+            allowedClassNr[CLASS_WARLOCK][BOT_ROLE_DPS] = 4;
+            allowedClassNr[CLASS_DRUID][BOT_ROLE_DPS] = 1;
             */
         }
         else if (param == "25")
         {
-            allowedRoles[PBOT_ROLE_TANK] = 3;
-            allowedRoles[PBOT_ROLE_HEALER] = 7;
-            allowedRoles[PBOT_ROLE_DPS] = 15;
+            allowedRoles[BOT_ROLE_TANK] = 3;
+            allowedRoles[BOT_ROLE_HEALER] = 7;
+            allowedRoles[BOT_ROLE_DPS] = 15;
         }
         else if (param == "20")
         {
-            allowedRoles[PBOT_ROLE_TANK] = 2;
-            allowedRoles[PBOT_ROLE_HEALER] = 5;
-            allowedRoles[PBOT_ROLE_DPS] = 13;
+            allowedRoles[BOT_ROLE_TANK] = 2;
+            allowedRoles[BOT_ROLE_HEALER] = 5;
+            allowedRoles[BOT_ROLE_DPS] = 13;
         }
         else if (param == "10")
         {
-            allowedRoles[PBOT_ROLE_TANK] = 2;
-            allowedRoles[PBOT_ROLE_HEALER] = 3;
-            allowedRoles[PBOT_ROLE_DPS] = 5;
+            allowedRoles[BOT_ROLE_TANK] = 2;
+            allowedRoles[BOT_ROLE_HEALER] = 3;
+            allowedRoles[BOT_ROLE_DPS] = 5;
         }
 
         if (group->IsFull())
@@ -391,8 +391,8 @@ bool LfgAction::Execute(Event event)
             if (!botAI->IsSafe(player))
                 return false;
 
-            role = botAI->IsTank(player, true) ? PBOT_ROLE_TANK
-                                               : (botAI->IsHeal(player, true) ? PBOT_ROLE_HEALER : PBOT_ROLE_DPS);
+            role = botAI->IsTank(player, true) ? BOT_ROLE_TANK
+                                               : (botAI->IsHeal(player, true) ? BOT_ROLE_HEALER : BOT_ROLE_DPS);
             cls = (Classes)player->getClass();
 
             if (allowedRoles[role] > 0)
@@ -411,7 +411,7 @@ bool LfgAction::Execute(Event event)
             allowedClassNr[cls][role]--;
     }
 
-    role = botAI->IsTank(bot, true) ? PBOT_ROLE_TANK : (botAI->IsHeal(bot, true) ? PBOT_ROLE_HEALER : PBOT_ROLE_DPS);
+    role = botAI->IsTank(bot, true) ? BOT_ROLE_TANK : (botAI->IsHeal(bot, true) ? BOT_ROLE_HEALER : BOT_ROLE_DPS);
     cls = (Classes)bot->getClass();
 
     if (allowedRoles[role] == 0)
@@ -438,7 +438,7 @@ bool LfgAction::Execute(Event event)
             return false;
 
         std::map<std::string, std::string> placeholders;
-        placeholders["%role"] = (role & PBOT_ROLE_TANK ? "tank" : (role & PBOT_ROLE_HEALER ? "healer" : "dps"));
+        placeholders["%role"] = (role & BOT_ROLE_TANK ? "tank" : (role & BOT_ROLE_HEALER ? "healer" : "dps"));
         placeholders["%spotsleft"] = std::to_string(allowedRoles[role] - 1);
 
         std::ostringstream out;

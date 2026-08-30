@@ -9,6 +9,16 @@
 
 #include "Multiplier.h"
 
+// General
+
+class SunwellPlateauNoEncounterDrinkingMultiplier : public Multiplier
+{
+public:
+    SunwellPlateauNoEncounterDrinkingMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "sunwell plateau no encounter drinking") {}
+    float GetValue(Action* action) override;
+};
+
 // Kalecgos
 
 class KalecgosControlMisdirectionMultiplier : public Multiplier
@@ -48,6 +58,14 @@ class KalecgosSuppressAssistTankPullThreatMultiplier : public Multiplier
 public:
     KalecgosSuppressAssistTankPullThreatMultiplier(PlayerbotAI* botAI)
         : Multiplier(botAI, "kalecgos suppress assist tank pull threat") {}
+    float GetValue(Action* action) override;
+};
+
+class KalecgosEnterSpectralRiftMultiplier : public Multiplier
+{
+public:
+    KalecgosEnterSpectralRiftMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "kalecgos enter spectral rift") {}
     float GetValue(Action* action) override;
 };
 
@@ -209,11 +227,11 @@ public:
     float GetValue(Action* action) override;
 };
 
-class EredarTwinsNoMovingIntoConflagrationMultiplier : public Multiplier
+class EredarTwinsIsolateConflagrationMultiplier : public Multiplier
 {
 public:
-    EredarTwinsNoMovingIntoConflagrationMultiplier(PlayerbotAI* botAI)
-        : Multiplier(botAI, "eredar twins no moving into conflagration") {}
+    EredarTwinsIsolateConflagrationMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "eredar twins isolate conflagration") {}
     float GetValue(Action* action) override;
 };
 
@@ -268,11 +286,11 @@ public:
     float GetValue(Action* action) override;
 };
 
-class KiljaedenTanksFocusAssignedHandOnlyMultiplier : public Multiplier
+class KiljaedenSingleTargetHandsMultiplier : public Multiplier
 {
 public:
-    KiljaedenTanksFocusAssignedHandOnlyMultiplier(PlayerbotAI* botAI)
-        : Multiplier(botAI, "kil'jaeden tanks focus assigned hand only") {}
+    KiljaedenSingleTargetHandsMultiplier(PlayerbotAI* botAI)
+        : Multiplier(botAI, "kil'jaeden single target hands") {}
     float GetValue(Action* action) override;
 };
 
@@ -296,7 +314,7 @@ class KiljaedenControlDragonMultiplier : public Multiplier
 {
 public:
     KiljaedenControlDragonMultiplier(PlayerbotAI* botAI)
-        : Multiplier(botAI, "kil'jaeden control dragon") {}
+        : Multiplier(botAI, "kil'jaeden dragon buff and protect raid") {}
     float GetValue(Action* action) override;
 };
 

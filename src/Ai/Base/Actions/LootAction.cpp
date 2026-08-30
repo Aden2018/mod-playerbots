@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "LootAction.h"
@@ -486,7 +487,7 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         return true;
 
     uint32 max = proto->MaxCount;
-    if (max > 0 && botAI->GetBot()->HasItemCount(itemid, max, false))
+    if (max > 0 && botAI->GetBot()->HasItemCount(itemid, max, true))
         return false;
 
     if (proto->StartQuest)
@@ -494,30 +495,26 @@ bool StoreLootAction::IsLootAllowed(uint32 itemid, PlayerbotAI* botAI)
         return true;
     }
 
-    Player* bot = botAI->GetBot();
-    bool botNeedsQuestItem = bot->HasQuestForItem(itemid);
-
-    // Quest items have highest loot priority for bot (unless a real player in group also needs it)
-    if (botNeedsQuestItem)
+    for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
     {
-        Group* group = bot->GetGroup();
+        uint32 entry = botAI->GetBot()->GetQuestSlotQuestId(slot);
+        Quest const* quest = sObjectMgr->GetQuestTemplate(entry);
+        if (!quest)
+            continue;
 
-        // If sync quest with player is enabled, check if any real player in group also needs this item
-        if (group && !IsRealPlayer(bot) && sPlayerbotAIConfig.syncQuestWithPlayer)
+        for (uint8 i = 0; i < 4; i++)
         {
-            for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+            if (quest->RequiredItemId[i] == itemid)
             {
-                Player* member = ref->GetSource();
-                if (member && member != bot && !GET_PLAYERBOT_AI(member) && member->HasQuestForItem(itemid))
-                {
-                    // Real player needs this quest item, bot defers looting
-                    return false;
-                }
+                // if (AI_VALUE2(uint32, "item count", proto->Name1) < quest->RequiredItemCount[i])
+                // {
+                //     if (botAI->GetMaster() && sPlayerbotAIConfig.syncQuestWithPlayer)
+                //         return false; //Quest is autocomplete for the bot so no item needed.
+                // }
+
+                return true;
             }
         }
-
-        // Bot needs this quest item and no real player is competing, loot it
-        return true;
     }
 
     // if (proto->Bonding == BIND_QUEST_ITEM ||  //Still testing if it works ok without these lines.

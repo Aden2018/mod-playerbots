@@ -13,11 +13,11 @@
 
 // General
 
-class SerpentShrineCavernEraseTimersAndTrackersAction : public Action
+class SerpentShrineCavernResetEncounterStatesAction : public Action
 {
 public:
-    SerpentShrineCavernEraseTimersAndTrackersAction(
-        PlayerbotAI* botAI, std::string const name = "serpent shrine cavern erase timers and trackers") : Action(botAI, name) {}
+    SerpentShrineCavernResetEncounterStatesAction(
+        PlayerbotAI* botAI, std::string const name = "serpent shrine cavern reset encounter states") : Action(botAI, name) {}
     bool Execute(Event event) override;
 };
 
@@ -423,15 +423,7 @@ private:
     bool IsSecondCorePasserInPosition(Player* secondCorePasser);
     bool IsThirdCorePasserInPosition(Player* thirdCorePasser);
     bool IsFourthCorePasserInPosition(Player* fourthCorePasser);
-    void ScheduleTransferCoreAfterImbue(PlayerbotAI* botAI, Player* giver, Player* receiver);
     bool UseCoreOnNearestGenerator(const uint32 instanceId);
-};
-
-class LadyVashjDestroyTaintedCoreAction : public Action
-{
-public:
-    LadyVashjDestroyTaintedCoreAction(PlayerbotAI* botAI, std::string const name = "lady vashj destroy tainted core") : Action(botAI, name) {}
-    bool Execute(Event event) override;
 };
 
 class LadyVashjAvoidToxicSporesAction : public MovementAction

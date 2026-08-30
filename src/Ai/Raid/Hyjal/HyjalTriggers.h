@@ -12,15 +12,16 @@
 
 // General
 
-class HyjalSummitBotIsNotInCombatTrigger : public Trigger
+class HyjalSummitNoEncounterInProgress : public Trigger
 {
 public:
-    HyjalSummitBotIsNotInCombatTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "hyjal summit bot is not in combat") {}
+    HyjalSummitNoEncounterInProgress(PlayerbotAI* botAI)
+        : Trigger(botAI, "hyjal summit no encounter in progress") {}
     bool IsActive() override;
 };
 
-// For Misdirection. Anetheron is not included because Hunters also Misdirect the Infernals.
+// For Misdirection to the boss. Anetheron is not included because Misdirection is used there for
+// picking up Infernals as well.
 class HyjalPullingBossTrigger : public Trigger
 {
 public:
@@ -33,19 +34,23 @@ private:
     std::string const _bossName;
 };
 
-// This covers all five MT actions, and activeAboveHealthPct is used for Archimonde only
-class HyjalBossEngagedByMainTankTrigger : public Trigger
+// This covers all five boss tanking actions, and activeAboveHealthPct is used for Archimonde
+// only. Anetheron, Kaz'rogal, and Azgalor need their offtanks free for the Infernals, the
+// Malevolent Cleave split, and the Doomguards, respectively, so those three are main tank only.
+class HyjalBossShouldBeTankedTrigger : public Trigger
 {
 public:
-    HyjalBossEngagedByMainTankTrigger(
+    HyjalBossShouldBeTankedTrigger(
         PlayerbotAI* botAI, std::string const& name, std::string const& bossName,
-        float activeAboveHealthPct = 0.0f)
-        : Trigger(botAI, name), _bossName(bossName), _activeAboveHealthPct(activeAboveHealthPct) {}
+        float activeAboveHealthPct = 0.0f, bool mainTankOnly = true)
+        : Trigger(botAI, name), _bossName(bossName), _activeAboveHealthPct(activeAboveHealthPct),
+          _mainTankOnly(mainTankOnly) {}
     bool IsActive() override;
 
 private:
     std::string const _bossName;
     float const _activeAboveHealthPct;
+    bool const _mainTankOnly;
 };
 
 // Rage Winterchill
@@ -66,11 +71,11 @@ public:
     bool IsActive() override;
 };
 
-class RageWinterchillRangedIsStandingInDeathAndDecayTrigger : public Trigger
+class RageWinterchillRangedInDeathAndDecayTrigger : public Trigger
 {
 public:
-    RageWinterchillRangedIsStandingInDeathAndDecayTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "rage winterchill ranged is standing in death and decay") {}
+    RageWinterchillRangedInDeathAndDecayTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "rage winterchill ranged in death and decay") {}
     bool IsActive() override;
 };
 
@@ -108,37 +113,45 @@ public:
     bool IsActive() override;
 };
 
-class AnetheronInfernalsShouldBeKeptAwayTrigger : public Trigger
+class AnetheronInfernalsPulseImmolationTrigger : public Trigger
 {
 public:
-    AnetheronInfernalsShouldBeKeptAwayTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "anetheron infernals should be kept away") {}
+    AnetheronInfernalsPulseImmolationTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "anetheron infernals pulse immolation") {}
     bool IsActive() override;
 };
 
-class AnetheronShouldDetermineDpsPriorityTrigger : public Trigger
+class AnetheronInfernalsShouldBeTankedAwayTrigger : public Trigger
 {
 public:
-    AnetheronShouldDetermineDpsPriorityTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "anetheron should determine dps priority") {}
+    AnetheronInfernalsShouldBeTankedAwayTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "anetheron infernals should be tanked away") {}
+    bool IsActive() override;
+};
+
+class AnetheronShouldDivideDpsTrigger : public Trigger
+{
+public:
+    AnetheronShouldDivideDpsTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "anetheron should divide dps") {}
     bool IsActive() override;
 };
 
 // Kaz'rogal
 
-class KazrogalMalevolentCleaveSplitsDamageTrigger : public Trigger
+class KazrogalCanSplitMalevolentCleaveDamageTrigger : public Trigger
 {
 public:
-    KazrogalMalevolentCleaveSplitsDamageTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kaz'rogal malevolent cleave splits damage") {}
+    KazrogalCanSplitMalevolentCleaveDamageTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kaz'rogal can split malevolent cleave damage") {}
     bool IsActive() override;
 };
 
-class KazrogalLowManaBotsNeedEscapePathTrigger : public Trigger
+class KazrogalRangedShouldAvoidWarStompTrigger : public Trigger
 {
 public:
-    KazrogalLowManaBotsNeedEscapePathTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kaz'rogal low mana bots need escape path") {}
+    KazrogalRangedShouldAvoidWarStompTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kaz'rogal ranged should avoid war stomp") {}
     bool IsActive() override;
 };
 
@@ -166,6 +179,14 @@ public:
     bool IsActive() override;
 };
 
+class KazrogalImmunityNoLongerNeededTrigger : public Trigger
+{
+public:
+    KazrogalImmunityNoLongerNeededTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kaz'rogal immunity no longer needed") {}
+    bool IsActive() override;
+};
+
 class KazrogalWarlockShouldManageManaTrigger : public Trigger
 {
 public:
@@ -176,11 +197,11 @@ public:
 
 // Azgalor
 
-class AzgalorBossEngagedByRangedTrigger : public Trigger
+class AzgalorRangedShouldSpreadTrigger : public Trigger
 {
 public:
-    AzgalorBossEngagedByRangedTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "azgalor boss engaged by ranged") {}
+    AzgalorRangedShouldSpreadTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "azgalor ranged should spread") {}
     bool IsActive() override;
 };
 
@@ -192,27 +213,26 @@ public:
     bool IsActive() override;
 };
 
-class AzgalorRangedIsStandingInRainOfFireTrigger : public Trigger
+class AzgalorRangedInRainOfFireTrigger : public Trigger
 {
 public:
-    AzgalorRangedIsStandingInRainOfFireTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "azgalor ranged is standing in rain of fire") {}
+    AzgalorRangedInRainOfFireTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "azgalor ranged in rain of fire") {}
     bool IsActive() override;
 };
 
 class AzgalorBotIsDoomedTrigger : public Trigger
 {
 public:
-    AzgalorBotIsDoomedTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "azgalor bot is doomed") {}
+    AzgalorBotIsDoomedTrigger(PlayerbotAI* botAI) : Trigger(botAI, "azgalor bot is doomed") {}
     bool IsActive() override;
 };
 
-class AzgalorDoomguardsMustBeControlledTrigger : public Trigger
+class AzgalorShouldControlDoomguardsTrigger : public Trigger
 {
 public:
-    AzgalorDoomguardsMustBeControlledTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "azgalor doomguards must be controlled") {}
+    AzgalorShouldControlDoomguardsTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "azgalor should control doomguards") {}
     bool IsActive() override;
 };
 

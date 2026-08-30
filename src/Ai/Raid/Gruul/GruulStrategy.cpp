@@ -10,27 +10,27 @@
 void RaidGruulsLairStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // General
-    triggers.push_back(new TriggerNode("gruul's lair bot is not in combat", {
+    triggers.push_back(new TriggerNode("gruul's lair no encounter in progress", {
         NextAction("gruul's lair reset encounter states", ACTION_EMERGENCY + 10) }));
 
     // High King Maulgar
-    triggers.push_back(new TriggerNode("high king maulgar bosses engaged by melee tanks", {
+    triggers.push_back(new TriggerNode("high king maulgar three ogres need melee tanks", {
         NextAction("high king maulgar melee tanks position bosses", ACTION_RAID + 1) }));
 
-    triggers.push_back(new TriggerNode("high king maulgar krosh engaged by mage tank", {
+    triggers.push_back(new TriggerNode("high king maulgar krosh needs mage tank", {
         NextAction("high king maulgar mage tank attack krosh", ACTION_RAID + 1) }));
 
-    triggers.push_back(new TriggerNode("high king maulgar kiggler engaged by moonkin tank", {
+    triggers.push_back(new TriggerNode("high king maulgar kiggler needs moonkin tank", {
         NextAction("high king maulgar moonkin tank attack kiggler", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("high king maulgar determining kill order", {
         NextAction("high king maulgar assign dps priority", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("high king maulgar boss channeling whirlwind", {
-        NextAction("high king maulgar run away from whirlwind", ACTION_EMERGENCY + 7) }));
+        NextAction("high king maulgar run away from whirlwind", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("high king maulgar krosh casts blast wave", {
-        NextAction("high king maulgar flee from blast nova danger", ACTION_EMERGENCY + 6) }));
+        NextAction("high king maulgar flee from blast wave danger", ACTION_RAID + 3) }));
 
     triggers.push_back(new TriggerNode("high king maulgar wild fel stalker spawned", {
         NextAction("high king maulgar banish fel stalker", ACTION_RAID + 1) }));
@@ -38,8 +38,11 @@ void RaidGruulsLairStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("high king maulgar pulling ogre council", {
         NextAction("high king maulgar misdirect ogres to tanks", ACTION_RAID + 1) }));
 
+    triggers.push_back(new TriggerNode("high king maulgar boss casts intimidating roar", {
+        NextAction("high king maulgar cast fear ward on main tank", ACTION_RAID + 2) }));
+
     // Gruul the Dragonkiller
-    triggers.push_back(new TriggerNode("gruul the dragonkiller boss engaged by tanks", {
+    triggers.push_back(new TriggerNode("gruul the dragonkiller should be tanked", {
         NextAction("gruul the dragonkiller tanks position boss", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("gruul the dragonkiller ranged should spread", {
@@ -56,7 +59,7 @@ void RaidGruulsLairStrategy::InitMultipliers(std::vector<Multiplier*>& multiplie
 
     // High King Maulgar
     multipliers.push_back(new HighKingMaulgarControlTankActionsMultiplier(botAI));
-    multipliers.push_back(new HighKingMaulgarDontTauntKigglerMultiplier(botAI));
+    multipliers.push_back(new HighKingMaulgarRestrictTauntingMultiplier(botAI));
     multipliers.push_back(new HighKingMaulgarDisableDpsAssistMultiplier(botAI));
     multipliers.push_back(new HighKingMaulgarAvoidWhirlwindMultiplier(botAI));
     multipliers.push_back(new HighKingMaulgarControlHunterActionsMultiplier(botAI));
@@ -65,4 +68,5 @@ void RaidGruulsLairStrategy::InitMultipliers(std::vector<Multiplier*>& multiplie
     // Gruul the Dragonkiller
     multipliers.push_back(new GruulTheDragonkillerControlTankMovementMultiplier(botAI));
     multipliers.push_back(new GruulTheDragonkillerStaySpreadForShatterMultiplier(botAI));
+    multipliers.push_back(new GruulTheDragonkillerHoldWhileSnaredMultiplier(botAI));
 }

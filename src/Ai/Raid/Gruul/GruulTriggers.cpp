@@ -6,45 +6,43 @@
 
 #include "GruulTriggers.h"
 #include "GruulHelpers.h"
+#include "InstanceScript.h"
 #include "Playerbots.h"
 
 using namespace GruulHelpers;
 
 // General
 
-bool GruulsLairBotIsNotInCombatTrigger::IsActive()
+bool GruulsLairNoEncounterInProgress::IsActive()
 {
-    return bot->GetMapId() == GRUUL_MAP_ID && !AI_VALUE2(bool, "combat", "self target");
+    if (bot->GetMapId() != GRUUL_MAP_ID)
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    return instance && !instance->IsEncounterInProgress();
 }
 
 // High King Maulgar
 
-bool HighKingMaulgarBossesEngagedByMeleeTanksTrigger::IsActive()
+bool HighKingMaulgarThreeOgresNeedMeleeTanksTrigger::IsActive()
 {
-    if (!PlayerbotAI::IsTank(bot))
-        return false;
+    if (IsBlindeyeTank(bot))
+        return AI_VALUE2(Unit*, "find target", "blindeye the seer");
 
-    if (!AI_VALUE2(Unit*, "find target", "high king maulgar"))
-        return false;
+    if (IsOlmTank(bot))
+        return AI_VALUE2(Unit*, "find target", "olm the summoner");
 
-    return IsMaulgarTank(bot) || IsOlmTank(bot) || IsBlindeyeTank(bot);
+    return IsMaulgarTank(bot) && AI_VALUE2(Unit*, "find target", "high king maulgar");
 }
 
-bool HighKingMaulgarKroshEngagedByMageTankTrigger::IsActive()
+bool HighKingMaulgarKroshNeedsMageTankTrigger::IsActive()
 {
-    if (bot->getClass() != CLASS_MAGE)
-        return false;
-
-    return AI_VALUE2(Unit*, "find target", "krosh firehand") && GetKroshMageTank(bot) == bot;
+    return IsKroshMageTank(bot) && AI_VALUE2(Unit*, "find target", "krosh firehand");
 }
 
-bool HighKingMaulgarKigglerEngagedByMoonkinTankTrigger::IsActive()
+bool HighKingMaulgarKigglerNeedsMoonkinTankTrigger::IsActive()
 {
-    if (bot->getClass() != CLASS_DRUID)
-        return false;
-
-    return AI_VALUE2(Unit*, "find target", "kiggler the crazed") &&
-        GetKigglerMoonkinTank(bot) == bot;
+    return IsKigglerMoonkinTank(bot) && AI_VALUE2(Unit*, "find target", "kiggler the crazed");
 }
 
 bool HighKingMaulgarDeterminingKillOrderTrigger::IsActive()
@@ -61,10 +59,10 @@ bool HighKingMaulgarDeterminingKillOrderTrigger::IsActive()
     if (IsBlindeyeTank(bot))
         return !AI_VALUE2(Unit*, "find target", "blindeye the seer");
 
-    if (bot->getClass() == CLASS_MAGE && GetKroshMageTank(bot) == bot)
+    if (IsKroshMageTank(bot))
         return !AI_VALUE2(Unit*, "find target", "krosh firehand");
 
-    if (bot->getClass() == CLASS_DRUID && GetKigglerMoonkinTank(bot) == bot)
+    if (IsKigglerMoonkinTank(bot))
         return !AI_VALUE2(Unit*, "find target", "kiggler the crazed");
 
     return true;
@@ -81,10 +79,10 @@ bool HighKingMaulgarBossChannelingWhirlwindTrigger::IsActive()
 
 bool HighKingMaulgarKroshCastsBlastWaveTrigger::IsActive()
 {
-    if (!AI_VALUE2(Unit*, "find target", "krosh firehand"))
+    if (PlayerbotAI::IsTank(bot) || IsKroshMageTank(bot))
         return false;
 
-    return !PlayerbotAI::IsTank(bot) && GetKroshMageTank(bot) != bot;
+    return AI_VALUE2(Unit*, "find target", "krosh firehand");
 }
 
 bool HighKingMaulgarWildFelStalkerSpawnedTrigger::IsActive()
@@ -98,12 +96,17 @@ bool HighKingMaulgarPullingOgreCouncilTrigger::IsActive()
         return false;
 
     Unit* blindeye = AI_VALUE2(Unit*, "find target", "blindeye the seer");
-    return blindeye && blindeye->GetHealthPct() > 80.0f;
+    return blindeye && blindeye->GetHealthPct() > BLINDEYE_ENGAGED_HEALTH_PCT;
+}
+
+bool HighKingMaulgarBossCastsIntimidatingRoarTrigger::IsActive()
+{
+    return bot->getClass() == CLASS_PRIEST && AI_VALUE2(Unit*, "find target", "high king maulgar");
 }
 
 // Gruul the Dragonkiller
 
-bool GruulTheDragonkillerBossEngagedByTanksTrigger::IsActive()
+bool GruulTheDragonkillerShouldBeTankedTrigger::IsActive()
 {
     return PlayerbotAI::IsTank(bot) && AI_VALUE2(Unit*, "find target", "gruul the dragonkiller");
 }
@@ -115,5 +118,5 @@ bool GruulTheDragonkillerRangedShouldSpreadTrigger::IsActive()
 
 bool GruulTheDragonkillerIncomingShatterTrigger::IsActive()
 {
-    return bot->HasAura(Id(GruulSpells::SPELL_GROUND_SLAM));
+    return HasGroundSlam(bot);
 }

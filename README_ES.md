@@ -64,7 +64,3 @@ Si necesita cambiar la configuración del módulo, vaya a la carpeta de configur
 * [Talamortis](https://github.com/talamortis)<!-- Puedes eliminar estas líneas, pero al crear un nuevo modulo, es notificado a estas personas, por lo que está bueno que eso ocurra. -->
 
 AzerothCore: [repository](https://github.com/azerothcore) - [website](http://azerothcore.org/) - [discord chat community](https://discord.gg/PaqQRkd)
-
-<a href="https://github.com/Aden2018/mod-playerbots/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Aden2018/mod-playerbots" />
-</a>

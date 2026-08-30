@@ -7,6 +7,7 @@
 #include "SWPEncounter_Brut.h"
 #include "Playerbots.h"
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace SwpHelpers
@@ -170,7 +171,6 @@ void EnsureRangedAssignments(Group* group, BrutallusEncounterState& state)
             return;
         }
 
-        // Double up if every slot is taken (unlikely even though TBC hates melee, as there are 20)
         assignments[member->GetGUID()] =
             static_cast<uint8>(assignments.size() % BRUTALLUS_TOTAL_RANGED_POSITIONS);
     };
@@ -231,7 +231,6 @@ void EnsureMeleeAssignments(Group* group, BrutallusEncounterState& state)
             return;
         }
 
-        // Double up if every slot is taken (unlikely since there are 14 and TBC hates melee)
         assignments[member->GetGUID()] =
             static_cast<uint8>(assignments.size() % BRUTALLUS_TOTAL_MELEE_POSITIONS);
     };
@@ -431,6 +430,11 @@ bool ReleaseBrutallusBurnPad(Player* bot)
         return false;
 
     return instanceItr->second.rangedBurnPadAssignments.erase(bot->GetGUID()) > 0;
+}
+
+bool HasBrutallusBurn(Player* bot)
+{
+    return bot->HasAura(Id(SwpSpells::SPELL_BURN));
 }
 
 }

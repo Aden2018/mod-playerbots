@@ -16,8 +16,8 @@ public:
     RaidSSCActionContext()
     {
         // General
-        creators["serpent shrine cavern erase timers and trackers"] =
-            &RaidSSCActionContext::serpent_shrine_cavern_erase_timers_and_trackers;
+        creators["serpent shrine cavern reset encounter states"] =
+            &RaidSSCActionContext::serpent_shrine_cavern_reset_encounter_states;
 
         // Trash
         creators["underbog colossus escape toxic pool"] =
@@ -164,9 +164,6 @@ public:
         creators["lady vashj pass the tainted core"] =
             &RaidSSCActionContext::lady_vashj_pass_the_tainted_core;
 
-        creators["lady vashj destroy tainted core"] =
-            &RaidSSCActionContext::lady_vashj_destroy_tainted_core;
-
         creators["lady vashj avoid toxic spores"] =
             &RaidSSCActionContext::lady_vashj_avoid_toxic_spores;
 
@@ -176,8 +173,8 @@ public:
 
 private:
     // General
-    static Action* serpent_shrine_cavern_erase_timers_and_trackers(PlayerbotAI* botAI) {
-        return new SerpentShrineCavernEraseTimersAndTrackersAction(botAI);
+    static Action* serpent_shrine_cavern_reset_encounter_states(PlayerbotAI* botAI) {
+        return new SerpentShrineCavernResetEncounterStatesAction(botAI);
     }
 
     // Trash
@@ -330,9 +327,6 @@ private:
     }
     static Action* lady_vashj_pass_the_tainted_core(PlayerbotAI* botAI) {
         return new LadyVashjPassTheTaintedCoreAction(botAI);
-    }
-    static Action* lady_vashj_destroy_tainted_core(PlayerbotAI* botAI) {
-        return new LadyVashjDestroyTaintedCoreAction(botAI);
     }
     static Action* lady_vashj_avoid_toxic_spores(PlayerbotAI* botAI) {
         return new LadyVashjAvoidToxicSporesAction(botAI);

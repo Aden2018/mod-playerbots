@@ -9,12 +9,12 @@
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "Spell.h"
-#include "SWPSharedConstants.h"
 #include "SWPEncounter_Felmyst.h"
 #include "SWPEncounter_Kalec.h"
 #include "SWPEncounter_KJ.h"
 #include "SWPEncounter_Twins.h"
-#include <unordered_set>
+#include "SWPSharedConstants.h"
+#include <list>
 #include <vector>
 
 using namespace SwpHelpers;
@@ -111,7 +111,7 @@ void RequestInterruptForBotsNeedingFelmystFogMovement(Unit* contextUnit, Player*
     }
 }
 
-void RequestInterruptForBotsWithDelayedFelmystEncapsulate(Creature* felmyst)
+void RequestInterruptForBotsWithFelmystEncapsulate(Creature* felmyst)
 {
     if (!felmyst || felmyst->IsFlying())
         return;
@@ -349,8 +349,6 @@ class MuruVoidZoneSpellListenerScript : public AllSpellScript
 public:
     MuruVoidZoneSpellListenerScript() : AllSpellScript("MuruVoidZoneSpellListenerScript") {}
 
-    // Entropius picks the player, the missile fixes the pool where they are standing now, and the
-    // pool is permanent once it lands - so the cast that gets dropped here buys the flight time
     void OnSpellCast(
         Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
     {
@@ -381,7 +379,7 @@ public:
         {
             case Id(SwpNpcs::NPC_FELMYST):
                 RequestInterruptForBotsNeedingFelmystFogMovement(creature, nullptr);
-                RequestInterruptForBotsWithDelayedFelmystEncapsulate(creature);
+                RequestInterruptForBotsWithFelmystEncapsulate(creature);
                 break;
 
             case Id(SwpNpcs::NPC_GRAND_WARLOCK_ALYTHESS):
@@ -405,8 +403,6 @@ public:
         if (!creature || creature->GetEntry() != Id(SwpNpcs::NPC_ARMAGEDDON_TARGET))
             return;
 
-        // Fires on every update of every armageddon target for its whole eight to ten second life,
-        // and everything below is first-sight work, so bail before scanning the player list
         if (kiljaedenTrackedArmageddonTargets.count(creature->GetGUID()))
             return;
 
@@ -424,14 +420,13 @@ public:
                 if (!player->IsAlive() || HasKiljaedenDragonAura(player))
                     continue;
 
-                if (creature->GetExactDist2d(player) > KILJAEDEN_ARMAGEDDON_SAFE_DISTANCE)
+                if (creature->GetExactDist2d(player) > ARMAGEDDON_SAFE_DISTANCE)
                     continue;
 
                 botsToInterrupt.push_back(botAI);
             }
         }
 
-        // Left untracked when no bot is running the strategy, so a later update can pick it up
         if (!hasSunwellStrategy)
             return;
 
@@ -439,7 +434,7 @@ public:
 
         AddKiljaedenArmageddon(
             creature->GetInstanceId(), creature->GetPosition(),
-            KILJAEDEN_ARMAGEDDON_HAZARD_DURATION_MS, KILJAEDEN_ARMAGEDDON_SAFE_DISTANCE);
+            ARMAGEDDON_HAZARD_DURATION_MS, ARMAGEDDON_SAFE_DISTANCE);
 
         for (PlayerbotAI* botAI : botsToInterrupt)
             botAI->RequestSpellInterrupt();

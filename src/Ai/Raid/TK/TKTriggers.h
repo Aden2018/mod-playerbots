@@ -11,11 +11,11 @@
 
 // General
 
-class TempestKeepBotIsNotInCombatTrigger : public Trigger
+class TempestKeepNoEncounterInProgressTrigger : public Trigger
 {
 public:
-    TempestKeepBotIsNotInCombatTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "tempest keep bot is not in combat") {}
+    TempestKeepNoEncounterInProgressTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "tempest keep no encounter in progress") {}
     bool IsActive() override;
 };
 
@@ -29,11 +29,11 @@ public:
 
 // Trash
 
-class CrimsonHandCenturionCastsArcaneVolleyTrigger : public Trigger
+class CrimsonHandCenturionCastsArcaneFlurryTrigger : public Trigger
 {
 public:
-    CrimsonHandCenturionCastsArcaneVolleyTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "crimson hand centurion casts arcane volley") {}
+    CrimsonHandCenturionCastsArcaneFlurryTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "crimson hand centurion casts arcane flurry") {}
     bool IsActive() override;
 };
 
@@ -54,19 +54,19 @@ public:
     bool IsActive() override;
 };
 
-class AlarEmbersOfAlarExplodeUponDeathTrigger : public Trigger
+class AlarEmbersExplodeUponDeathTrigger : public Trigger
 {
 public:
-    AlarEmbersOfAlarExplodeUponDeathTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "al'ar embers of al'ar explode upon death") {}
+    AlarEmbersExplodeUponDeathTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "al'ar embers explode upon death") {}
     bool IsActive() override;
 };
 
-class AlarKillingEmbersOfAlarDamagesBossTrigger : public Trigger
+class AlarKillingEmbersDamagesBossTrigger : public Trigger
 {
 public:
-    AlarKillingEmbersOfAlarDamagesBossTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "al'ar killing embers of al'ar damages boss") {}
+    AlarKillingEmbersDamagesBossTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "al'ar killing embers damages boss") {}
     bool IsActive() override;
 };
 
@@ -86,11 +86,11 @@ public:
     bool IsActive() override;
 };
 
-class AlarEverythingIsOnFireInPhase2Trigger : public Trigger
+class AlarIsInPhase2Trigger : public Trigger
 {
 public:
-    AlarEverythingIsOnFireInPhase2Trigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "al'ar everything is on fire in phase 2") {}
+    AlarIsInPhase2Trigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "al'ar is in phase 2") {}
     bool IsActive() override;
 };
 
@@ -104,19 +104,19 @@ public:
 
 // Void Reaver
 
-class VoidReaverBossCastsPoundingTrigger : public Trigger
+class VoidReaverShouldBeTankedTrigger : public Trigger
 {
 public:
-    VoidReaverBossCastsPoundingTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "void reaver boss casts pounding") {}
+    VoidReaverShouldBeTankedTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "void reaver should be tanked") {}
     bool IsActive() override;
 };
 
-class VoidReaverKnockAwayReducesTankAggroTrigger : public Trigger
+class VoidReaverKnockAwayPullsAggroToNonTanksTrigger : public Trigger
 {
 public:
-    VoidReaverKnockAwayReducesTankAggroTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "void reaver knock away reduces tank aggro") {}
+    VoidReaverKnockAwayPullsAggroToNonTanksTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "void reaver knock away pulls aggro to non-tanks") {}
     bool IsActive() override;
 };
 
@@ -138,11 +138,11 @@ public:
 
 // High Astromancer Solarian
 
-class HighAstromancerSolarianEngagedByMainTankTrigger : public Trigger
+class HighAstromancerSolarianShouldBeTankedTrigger : public Trigger
 {
 public:
-    HighAstromancerSolarianEngagedByMainTankTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "high astromancer solarian engaged by main tank") {}
+    HighAstromancerSolarianShouldBeTankedTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "high astromancer solarian should be tanked") {}
     bool IsActive() override;
 };
 
@@ -188,11 +188,11 @@ public:
     bool IsActive() override;
 };
 
-class KaelthasSunstriderSanguinarOrTelonicusIsActiveTrigger : public Trigger
+class KaelthasSunstriderSanguinarOrTelonicusShouldBeTankedTrigger : public Trigger
 {
 public:
-    KaelthasSunstriderSanguinarOrTelonicusIsActiveTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kael'thas sunstrider sanguinar or telonicus is active") {}
+    KaelthasSunstriderSanguinarOrTelonicusShouldBeTankedTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kael'thas sunstrider sanguinar or telonicus should be tanked") {}
     bool IsActive() override;
 };
 
@@ -220,11 +220,11 @@ public:
     bool IsActive() override;
 };
 
-class KaelthasSunstriderBotsHaveSpecificRolesInPhase3Trigger : public Trigger
+class KaelthasSunstriderBotsShouldHoldPhase3PositionsTrigger : public Trigger
 {
 public:
-    KaelthasSunstriderBotsHaveSpecificRolesInPhase3Trigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "kael'thas sunstrider bots have specific roles in phase 3") {}
+    KaelthasSunstriderBotsShouldHoldPhase3PositionsTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "kael'thas sunstrider bots should hold phase 3 positions") {}
     bool IsActive() override;
 };
 

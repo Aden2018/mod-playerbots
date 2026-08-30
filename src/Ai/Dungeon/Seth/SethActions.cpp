@@ -8,6 +8,7 @@
 #include "EncounterHelpers.h"
 #include "Playerbots.h"
 #include "SethShared.h"
+#include <algorithm>
 #include <array>
 #include <cmath>
 
@@ -95,39 +96,29 @@ bool TalonKingIkissTankMoveBossToPillarPositionAction::Execute(Event /*event*/)
     if (!ikiss)
         return false;
 
-    if (ikiss->GetHealthPct() > 95.0f)
+    if (ikiss->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT)
         _hasReachedPillarPosition = false;
 
     if (_hasReachedPillarPosition == true)
         return false;
 
     Position const& position = PILLAR_POSITION;
-    float const distToPosition = bot->GetExactDist2d(position);
+    constexpr float arrivalDist = 2.0f;
 
-    if (distToPosition <= 2.0f)
+    if (bot->GetExactDist2d(position) <= arrivalDist)
     {
         _hasReachedPillarPosition = true;
         return false;
     }
 
-    float const posX = position.GetPositionX();
-    float const posY = position.GetPositionY();
-    float const botX = bot->GetPositionX();
-    float const botY = bot->GetPositionY();
-    float const toPosX = posX - botX;
-    float const toPosY = posY - botY;
-
-    float const toBossX = ikiss->GetPositionX() - botX;
-    float const toBossY = ikiss->GetPositionY() - botY;
-    bool const backwards = (toPosX * toBossX + toPosY * toBossY) < 0.0f;
-
-    float const maxMoveDist = backwards ? 2.25f : 3.5f;
-    float const moveDist = std::min(maxMoveDist, distToPosition);
-    float const moveX = botX + (toPosX / distToPosition) * moveDist;
-    float const moveY = botY + (toPosY / distToPosition) * moveDist;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetTankPositionStep(bot, position, arrivalDist, ikiss, moveX, moveY, backwards))
+        return false;
 
     return MoveTo(
-        SETH_MAP_ID, moveX, moveY, position.GetPositionZ(), false, false,
+        SETH_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
         false, false, MovementPriority::MOVEMENT_COMBAT, true, backwards);
 }
 

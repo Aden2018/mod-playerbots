@@ -40,15 +40,14 @@ class HyjalSummitMainTankPositionBossAction : public AttackAction
 public:
     HyjalSummitMainTankPositionBossAction(
         PlayerbotAI* botAI, std::string const& name, std::string const& bossName,
-        Position const& position, float arrivalDistance, float bailBelowHealthPct = 0.0f)
+        Position const& position, float bailBelowHealthPct = 0.0f)
         : AttackAction(botAI, name), _bossName(bossName), _position(position),
-          _arrivalDistance(arrivalDistance), _bailBelowHealthPct(bailBelowHealthPct) {}
+          _bailBelowHealthPct(bailBelowHealthPct) {}
     bool Execute(Event event) override;
 
 private:
     std::string const _bossName;
     Position const& _position;
-    float const _arrivalDistance;
     float const _bailBelowHealthPct;
 };
 
@@ -140,6 +139,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class AnetheronGetOutOfImmolationAction : public MovementAction
+{
+public:
+    AnetheronGetOutOfImmolationAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "anetheron get out of immolation") {}
+    bool Execute(Event event) override;
+};
+
 class AnetheronAssignDpsPriorityAction : public AttackAction
 {
 public:
@@ -150,11 +157,11 @@ public:
 
 // Kaz'rogal
 
-class KazrogalAssistTanksMoveInFrontOfBossAction : public AttackAction
+class KazrogalAssistTanksMoveInFrontAction : public AttackAction
 {
 public:
-    KazrogalAssistTanksMoveInFrontOfBossAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "kaz'rogal assist tanks move in front of boss") {}
+    KazrogalAssistTanksMoveInFrontAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "kaz'rogal assist tanks move in front") {}
     bool Execute(Event event) override;
 };
 
@@ -185,8 +192,14 @@ public:
 class KazrogalCancelMarkAction : public Action
 {
 public:
-    KazrogalCancelMarkAction(PlayerbotAI* botAI)
-        : Action(botAI, "kaz'rogal cancel mark") {}
+    KazrogalCancelMarkAction(PlayerbotAI* botAI) : Action(botAI, "kaz'rogal cancel mark") {}
+    bool Execute(Event event) override;
+};
+
+class KazrogalCancelImmunityAction : public Action
+{
+public:
+    KazrogalCancelImmunityAction(PlayerbotAI* botAI) : Action(botAI, "kaz'rogal cancel immunity") {}
     bool Execute(Event event) override;
 };
 
@@ -262,11 +275,11 @@ private:
     bool SetTremorTotem();
 };
 
-class ArchimondeSpreadToAvoidAirBurstAction : public MovementAction
+class ArchimondeKeepAirBurstAwayFromTankAction : public MovementAction
 {
 public:
-    ArchimondeSpreadToAvoidAirBurstAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "archimonde spread to avoid air burst") {}
+    ArchimondeKeepAirBurstAwayFromTankAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "archimonde keep air burst away from tank") {}
     bool Execute(Event event) override;
 };
 

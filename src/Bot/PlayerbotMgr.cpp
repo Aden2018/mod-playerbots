@@ -1,6 +1,7 @@
 /*
- * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license, you may redistribute it
- * and/or modify it under version 3 of the License, or (at your option), any later version.
+ * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
+ * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
+ * or (at your option) any later version.
  */
 
 #include "PlayerbotMgr.h"
@@ -1139,7 +1140,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         if (genderArg)
         {
             std::string g = genderArg;
-            std::transform(g.begin(), g.end(), g.begin(), [](unsigned char c) { return ::tolower(c); });
+            std::transform(g.begin(), g.end(), g.begin(), ::tolower);
 
             if (g == "male" || g == "0")
                 gender = GENDER_MALE; // 0

@@ -55,6 +55,8 @@ public:
         creators["anetheron infernal tank take position"] =
             &RaidHyjalSummitActionContext::anetheron_infernal_tank_take_position;
 
+        creators["anetheron get out of immolation"] =
+            &RaidHyjalSummitActionContext::anetheron_get_out_of_immolation;
         creators["anetheron assign dps priority"] =
             &RaidHyjalSummitActionContext::anetheron_assign_dps_priority;
 
@@ -65,8 +67,8 @@ public:
         creators["kaz'rogal main tank position boss"] =
             &RaidHyjalSummitActionContext::kazrogal_main_tank_position_boss;
 
-        creators["kaz'rogal assist tanks move in front of boss"] =
-            &RaidHyjalSummitActionContext::kazrogal_assist_tanks_move_in_front_of_boss;
+        creators["kaz'rogal assist tanks move in front"] =
+            &RaidHyjalSummitActionContext::kazrogal_assist_tanks_move_in_front;
 
         creators["kaz'rogal spread ranged in arc"] =
             &RaidHyjalSummitActionContext::kazrogal_spread_ranged_in_arc;
@@ -80,6 +82,8 @@ public:
         creators["kaz'rogal cancel mark"] =
             &RaidHyjalSummitActionContext::kazrogal_cancel_mark;
 
+        creators["kaz'rogal cancel immunity"] =
+            &RaidHyjalSummitActionContext::kazrogal_cancel_immunity;
         creators["kaz'rogal warlock manage mana"] =
             &RaidHyjalSummitActionContext::kazrogal_warlock_manage_mana;
 
@@ -118,8 +122,8 @@ public:
         creators["archimonde cast fear immunity spell"] =
             &RaidHyjalSummitActionContext::archimonde_cast_fear_immunity_spell;
 
-        creators["archimonde spread to avoid air burst"] =
-            &RaidHyjalSummitActionContext::archimonde_spread_to_avoid_air_burst;
+        creators["archimonde keep air burst away from tank"] =
+            &RaidHyjalSummitActionContext::archimonde_keep_air_burst_away_from_tank;
 
         creators["archimonde spread ranged"] =
             &RaidHyjalSummitActionContext::archimonde_spread_ranged;
@@ -145,7 +149,7 @@ private:
     static Action* rage_winterchill_main_tank_position_boss(PlayerbotAI* botAI) {
         return new HyjalSummitMainTankPositionBossAction(
             botAI, "rage winterchill main tank position boss", "rage winterchill",
-            HyjalHelpers::WINTERCHILL_TANK_POSITION, 4.0f);
+            HyjalHelpers::WINTERCHILL_TANK_POSITION);
     }
     static Action* rage_winterchill_spread_ranged_in_circle(PlayerbotAI* botAI) {
         return new RageWinterchillSpreadRangedInCircleAction(botAI);
@@ -164,7 +168,7 @@ private:
     static Action* anetheron_main_tank_position_boss(PlayerbotAI* botAI) {
         return new HyjalSummitMainTankPositionBossAction(
             botAI, "anetheron main tank position boss", "anetheron",
-            HyjalHelpers::ANETHERON_TANK_POSITION, 4.0f);
+            HyjalHelpers::ANETHERON_TANK_POSITION);
     }
     static Action* anetheron_spread_ranged_in_circle(PlayerbotAI* botAI) {
         return new AnetheronSpreadRangedInCircleAction(botAI);
@@ -178,6 +182,9 @@ private:
     static Action* anetheron_infernal_tank_take_position(PlayerbotAI* botAI) {
         return new AnetheronInfernalTankTakePositionAction(botAI);
     }
+    static Action* anetheron_get_out_of_immolation(PlayerbotAI* botAI) {
+        return new AnetheronGetOutOfImmolationAction(botAI);
+    }
     static Action* anetheron_assign_dps_priority(PlayerbotAI* botAI) {
         return new AnetheronAssignDpsPriorityAction(botAI);
     }
@@ -190,10 +197,10 @@ private:
     static Action* kazrogal_main_tank_position_boss(PlayerbotAI* botAI) {
         return new HyjalSummitMainTankPositionBossAction(
             botAI, "kaz'rogal main tank position boss", "kaz'rogal",
-            HyjalHelpers::KAZROGAL_TANK_POSITION, 2.0f);
+            HyjalHelpers::KAZROGAL_TANK_POSITION);
     }
-    static Action* kazrogal_assist_tanks_move_in_front_of_boss(PlayerbotAI* botAI) {
-        return new KazrogalAssistTanksMoveInFrontOfBossAction(botAI);
+    static Action* kazrogal_assist_tanks_move_in_front(PlayerbotAI* botAI) {
+        return new KazrogalAssistTanksMoveInFrontAction(botAI);
     }
     static Action* kazrogal_spread_ranged_in_arc(PlayerbotAI* botAI) {
         return new KazrogalSpreadRangedInArcAction(botAI);
@@ -207,6 +214,9 @@ private:
     static Action* kazrogal_cancel_mark(PlayerbotAI* botAI) {
         return new KazrogalCancelMarkAction(botAI);
     }
+    static Action* kazrogal_cancel_immunity(PlayerbotAI* botAI) {
+        return new KazrogalCancelImmunityAction(botAI);
+    }
     static Action* kazrogal_warlock_manage_mana(PlayerbotAI* botAI) {
         return new KazrogalWarlockManageManaAction(botAI);
     }
@@ -219,7 +229,7 @@ private:
     static Action* azgalor_main_tank_position_boss(PlayerbotAI* botAI) {
         return new HyjalSummitMainTankPositionBossAction(
             botAI, "azgalor main tank position boss", "azgalor",
-            HyjalHelpers::AZGALOR_TANK_POSITION, 2.0f, 60.0f);
+            HyjalHelpers::AZGALOR_TANK_POSITION, 60.0f);
     }
     static Action* azgalor_disperse_ranged(PlayerbotAI* botAI) {
         return new AzgalorDisperseRangedAction(botAI);
@@ -248,13 +258,13 @@ private:
     static Action* archimonde_move_boss_to_initial_position(PlayerbotAI* botAI) {
         return new HyjalSummitMainTankPositionBossAction(
             botAI, "archimonde move boss to initial position", "archimonde",
-            HyjalHelpers::ARCHIMONDE_INITIAL_POSITION, 3.0f, 60.0f);
+            HyjalHelpers::ARCHIMONDE_INITIAL_POSITION, 60.0f);
     }
     static Action* archimonde_cast_fear_immunity_spell(PlayerbotAI* botAI) {
         return new ArchimondeCastFearImmunitySpellAction(botAI);
     }
-    static Action* archimonde_spread_to_avoid_air_burst(PlayerbotAI* botAI) {
-        return new ArchimondeSpreadToAvoidAirBurstAction(botAI);
+    static Action* archimonde_keep_air_burst_away_from_tank(PlayerbotAI* botAI) {
+        return new ArchimondeKeepAirBurstAwayFromTankAction(botAI);
     }
     static Action* archimonde_spread_ranged(PlayerbotAI* botAI) {
         return new ArchimondeSpreadRangedAction(botAI);

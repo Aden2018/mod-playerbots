@@ -25,19 +25,23 @@ constexpr uint32 Id(T value)
 enum class GruulSpells : uint32
 {
     // High King Maulgar
-    SPELL_WHIRLWIND    = 33238,
+    SPELL_WHIRLWIND     = 33238,
 
     // Krosh Firehand
-    SPELL_SPELL_SHIELD = 33054,
+    SPELL_SPELL_SHIELD  = 33054,
 
     // Hunter
-    SPELL_MISDIRECTION = 35079,
+    SPELL_MISDIRECTION  = 35079,
 
     // Mage
-    SPELL_SPELLSTEAL   = 30449,
+    SPELL_SPELLSTEAL    = 30449,
+
+    // Priest
+    SPELL_FEAR_WARD     = 6346,
 
     // Gruul the Dragonkiller
-    SPELL_GROUND_SLAM  = 33525,
+    SPELL_GROUND_SLAM_1 = 33525,
+    SPELL_GROUND_SLAM_2 = 39187,
 };
 
 enum class GruulNpcs : uint32
@@ -47,6 +51,7 @@ enum class GruulNpcs : uint32
 
 inline constexpr uint32 GRUUL_MAP_ID = 565;
 inline constexpr float WHIRLWIND_SAFE_DISTANCE = 8.0f;
+inline constexpr float BLINDEYE_ENGAGED_HEALTH_PCT = 75.0f;
 
 inline Position const MAULGAR_TANK_POSITION  = {  90.686f, 167.047f, -13.234f };
 inline Position const OLM_TANK_POSITION      = { 101.050f, 219.359f,  -9.503f };
@@ -58,7 +63,10 @@ bool IsMaulgarTank(Player* bot);
 bool IsOlmTank(Player* bot);
 bool IsBlindeyeTank(Player* bot);
 Player* GetKroshMageTank(Player* bot);
+bool IsKroshMageTank(Player* bot);
 Player* GetKigglerMoonkinTank(Player* bot);
+bool IsKigglerMoonkinTank(Player* bot);
+bool HasGroundSlam(Player* bot);
 
 }
 

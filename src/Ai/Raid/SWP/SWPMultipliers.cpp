@@ -9,25 +9,40 @@
 #include "DruidActions.h"
 #include "EncounterHelpers.h"
 #include "FollowActions.h"
+#include "GenericSpellActions.h"
 #include "HunterActions.h"
+#include "InstanceScript.h"
 #include "MageActions.h"
+#include "NonCombatActions.h"
 #include "ReachTargetActions.h"
 #include "RogueActions.h"
 #include "ShamanActions.h"
 #include "SWPActions.h"
-#include "SWPSharedConstants.h"
-#include "SWPEncounter_Brut.h"
 #include "SWPEncounter_Felmyst.h"
 #include "SWPEncounter_Kalec.h"
 #include "SWPEncounter_KJ.h"
 #include "SWPEncounter_Muru.h"
 #include "SWPEncounter_Twins.h"
-#include "TargetValue.h"
+#include "SWPSharedConstants.h"
 #include "Timer.h"
 #include "WipeAction.h"
 
 using namespace SwpHelpers;
 using namespace EncounterHelpers;
+
+// General
+
+float SunwellPlateauNoEncounterDrinkingMultiplier::GetValue(Action* action)
+{
+    if (bot->GetMapId() != SWP_MAP_ID)
+        return 1.0f;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    if (!instance || !instance->IsEncounterInProgress())
+        return 1.0f;
+
+    return dynamic_cast<DrinkAction*>(action) ? 0.0f : 1.0f;
+}
 
 // Kalecgos
 
@@ -95,9 +110,13 @@ float KalecgosControlMovementMultiplier::GetValue(Action* action)
     return kalecgos && !kalecgos->IsFriendlyTo(bot) ? 0.0f : 1.0f;
 }
 
+// Avoid dueling taunts in the surface and spectral realms
 float KalecgosRestrictTauntMultiplier::GetValue(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
+        return 1.0f;
+
+    if (!PlayerbotAI::IsTank(bot))
         return 1.0f;
 
     if (!IsTauntAction(bot, action))
@@ -106,10 +125,16 @@ float KalecgosRestrictTauntMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "kalecgos"))
         return 1.0f;
 
-    if (IsInSpectralRealm(bot))
+    if (!IsInSpectralRealm(bot))
+        return FindKalecgosDesignatedTank(bot) == bot ? 1.0f : 0.0f;
+
+    Unit* sathrovarr = AI_VALUE2(Unit*, "find target", "sathrovarr the corruptor");
+    if (!sathrovarr)
         return 1.0f;
 
-    return FindKalecgosDesignatedTank(bot) == bot ? 1.0f : 0.0f;
+    Unit* victim = sathrovarr->GetVictim();
+    Player* victimPlayer = victim ? victim->ToPlayer() : nullptr;
+    return victimPlayer && PlayerbotAI::IsTank(victimPlayer) ? 0.0f : 1.0f;
 }
 
 float KalecgosSuppressAssistTankPullThreatMultiplier::GetValue(Action* action)
@@ -129,6 +154,29 @@ float KalecgosSuppressAssistTankPullThreatMultiplier::GetValue(Action* action)
 
     return getMSTimeDiff(stateItr->second.encounterStartMs, getMSTime()) <
         KALECGOS_PULL_THREAT_SUPPRESSION_MS ? 0.0f : 1.0f;
+}
+
+float KalecgosEnterSpectralRiftMultiplier::GetValue(Action* action)
+{
+    if (!dynamic_cast<MovementAction*>(action) &&
+        !dynamic_cast<CastReachTargetSpellAction*>(action))
+    {
+        return 1.0f;
+    }
+
+    if (dynamic_cast<AttackAction*>(action))
+        return 1.0f;
+
+    if (dynamic_cast<KalecgosEnterSpectralRiftAction*>(action))
+        return 1.0f;
+
+    if (!AI_VALUE2(Unit*, "find target", "kalecgos"))
+        return 1.0f;
+
+    if (!ShouldEnterKalecgosPortal(bot))
+        return 1.0f;
+
+    return botAI->GetGameObject(AI_VALUE(ObjectGuid, "kalecgos spectral rift")) ? 0.0f : 1.0f;
 }
 
 float KalecgosDelayCooldownsForSathrovarrMultiplier::GetValue(Action* action)
@@ -244,10 +292,7 @@ float BrutallusDelayCooldownsMultiplier::GetValue(Action* action)
         return 1.0f;
 
     Unit* brutallus = AI_VALUE2(Unit*, "find target", "brutallus");
-    if (!brutallus)
-        return 1.0f;
-
-    return brutallus->GetHealthPct() > SWP_PULL_COMPLETE_HP_PERCENT ? 0.0f : 1.0f;
+    return brutallus && brutallus->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
 }
 
 // Felmyst
@@ -284,8 +329,8 @@ float FelmystWaitForLandingDpsMultiplier::GetValue(Action* action)
         return 1.0f;
 
     auto const stateItr = felmystEncounterStates.find(felmyst->GetInstanceId());
-    return stateItr != felmystEncounterStates.end() && stateItr->second.landingDpsWaitStartMs ?
-        0.0f : 1.0f;
+    return stateItr != felmystEncounterStates.end() &&
+        stateItr->second.landingDpsWaitStartMs ? 0.0f : 1.0f;
 }
 
 float FelmystPrioritizeEncapsulateAvoidanceMultiplier::GetValue(Action* action)
@@ -409,7 +454,7 @@ float FelmystDelayCooldownsMultiplier::GetValue(Action* action)
     if (felmyst->IsFlying())
         return 0.0f;
 
-    return felmyst->GetHealthPct() > SWP_PULL_COMPLETE_HP_PERCENT ? 0.0f : 1.0f;
+    return felmyst->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
 }
 
 // Eredar Twins
@@ -447,7 +492,8 @@ float EredarTwinsHoldDpsAtStartMultiplier::GetValue(Action* action)
     if (PlayerbotAI::IsTank(bot))
         return 1.0f;
 
-    if (!dynamic_cast<CastSpellAction*>(action) && !dynamic_cast<AttackAction*>(action))
+    // No AttackAction block. Commencing auto-attack gets bots positioned, but don't use abilities.
+    if (!dynamic_cast<CastSpellAction*>(action))
         return 1.0f;
 
     if (dynamic_cast<CastHealingSpellAction*>(action))
@@ -462,32 +508,31 @@ float EredarTwinsHoldDpsAtStartMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "lady sacrolash"))
         return 1.0f;
 
-    // Read only: the window is opened by EredarTwinsDeterminingDpsPriorityTrigger
     auto const it = eredarTwinsDpsHoldStartMs.find(bot->GetInstanceId());
     if (it == eredarTwinsDpsHoldStartMs.end())
-        return 1.0f;
+        return 0.0f;
 
     return getMSTimeDiff(it->second, getMSTime()) < EREDAR_TWINS_DPS_HOLD_MS ? 0.0f : 1.0f;
 }
 
 float EredarTwinsControlThreatMultiplier::GetValue(Action* action)
 {
+    if (PlayerbotAI::IsHeal(bot)) // early return; already excluded from ShouldHoldTwinThreat()
+        return 1.0f;
+
     if (!dynamic_cast<CastSpellAction*>(action) && !dynamic_cast<AttackAction*>(action))
         return 1.0f;
 
-    if (dynamic_cast<CastHealingSpellAction*>(action))
-        return 1.0f;
-
-    if (dynamic_cast<EredarTwinsDpsPrioritizeLadySacrolashAction*>(action))
+    if (dynamic_cast<EredarTwinsDpsPrioritizeSacrolashAction*>(action))
         return 1.0f;
 
     Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
     Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
 
-    bool const shouldHoldSacrolashThreat = sacrolash && ShouldHoldTwinThreat(
-        bot, sacrolash, SACROLASH_THREAT_HOLD_RATIO, IsAnySacrolashTank);
-    bool const shouldHoldAlythessThreat = alythess && ShouldHoldTwinThreat(
-        bot, alythess, ALYTHESS_THREAT_HOLD_RATIO, IsAlythessTank);
+    bool const shouldHoldSacrolashThreat = sacrolash && !PlayerbotAI::IsTank(bot) &&
+        ShouldHoldTwinThreat(bot, sacrolash, SACROLASH_THREAT_HOLD_RATIO, IsAnySacrolashTank);
+    bool const shouldHoldAlythessThreat = alythess &&
+        ShouldHoldTwinThreat(bot, alythess, ALYTHESS_THREAT_HOLD_RATIO, IsAlythessTank);
 
     if (!shouldHoldSacrolashThreat && !shouldHoldAlythessThreat)
         return 1.0f;
@@ -530,15 +575,15 @@ float EredarTwinsControlMovementMultiplier::GetValue(Action* action)
     return PlayerbotAI::IsRanged(bot) || IsAlythessTank(bot) ? 0.0f : 1.0f;
 }
 
-float EredarTwinsNoMovingIntoConflagrationMultiplier::GetValue(Action* action)
+float EredarTwinsIsolateConflagrationMultiplier::GetValue(Action* action)
 {
-    bool const isReachSpell = dynamic_cast<CastReachTargetSpellAction*>(action);
+    bool const isReachTargetSpell = dynamic_cast<CastReachTargetSpellAction*>(action);
 
-    if (!isReachSpell && !dynamic_cast<MovementAction*>(action))
+    if (!isReachTargetSpell && !dynamic_cast<MovementAction*>(action))
         return 1.0f;
 
-    if (dynamic_cast<EredarTwinsConflagratedBotMoveFromGroupAction*>(action) ||
-        dynamic_cast<EredarTwinsMoveFromConflagSacrolashVictimAction*>(action))
+    if (dynamic_cast<EredarTwinsConflagrationTargetMoveFromGroupAction*>(action) ||
+        dynamic_cast<EredarTwinsMoveAwayFromSacrolashVictimAction*>(action))
     {
         return 1.0f;
     }
@@ -550,24 +595,25 @@ float EredarTwinsNoMovingIntoConflagrationMultiplier::GetValue(Action* action)
     if (!conflagTarget)
         return 1.0f;
 
-    // Block movement for bot targeted by Conflagration
+    // Block movement for bot targeted by Conflagration, unless the target is a Rogue that has
+    // vanished and caused Alythess to drop the target.
     if (conflagTarget == bot)
-        return 0.0f;
+        return bot->getClass() == CLASS_ROGUE && botAI->HasAura("vanish", bot) ? 1.0f : 0.0f;
 
     Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
     if (!sacrolash)
         return 1.0f;
 
-    // When Sacrolash's target is targeted by Conflagration, block actions that move toward them
+    // If Sacrolash's victim is targeted by Conflagration, block actions that move toward Sacrolash.
     Unit* victim = sacrolash->GetVictim();
     if (!victim || victim == bot || conflagTarget != victim)
         return 1.0f;
 
-    if (isReachSpell)
+    if (isReachTargetSpell)
         return 0.0f;
 
-    // Block movement actions generally when too close to the Conflagration target
-    return bot->GetExactDist2d(victim) < EREDAR_TWINS_CONFLAGRATION_SAFE_DISTANCE ? 0.0f : 1.0f;
+    // Block movement actions generally when too close to the Conflagration target.
+    return bot->GetExactDist2d(victim) < CONFLAGRATION_SAFE_DISTANCE ? 0.0f : 1.0f;
 }
 
 float EredarTwinsDelayCooldownsMultiplier::GetValue(Action* action)
@@ -583,10 +629,7 @@ float EredarTwinsDelayCooldownsMultiplier::GetValue(Action* action)
         return 1.0f;
 
     Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
-    if (!sacrolash)
-        return 1.0f;
-
-    return sacrolash->GetHealthPct() > EREDAR_TWINS_MAX_DPS_HP_PERCENT ? 0.0f : 1.0f;
+    return sacrolash && sacrolash->GetHealthPct() > MAX_DPS_HP_PERCENT ? 0.0f : 1.0f;
 }
 
 // M'uru
@@ -687,7 +730,7 @@ float MuruControlMovementMultiplier::GetValue(Action* action)
             MURU_ENTRANCE_POSITION : MURU_STACK_POSITION;
         float const targetDistFromRef = actionTarget->GetExactDist2d(refPosition);
 
-        return targetDistFromMuru > MURU_DARKNESS_SAFE_DISTANCE &&
+        return targetDistFromMuru > DARKNESS_SAFE_DISTANCE &&
             targetDistFromRef < MURU_HOLDING_POSITION_RADIUS;
     };
 
@@ -710,15 +753,17 @@ float MuruDelayCooldownsMultiplier::GetValue(Action* action)
         return 1.0f;
 
     Unit* entropius = AI_VALUE2(Unit*, "find target", "entropius");
-    if (entropius && entropius->GetHealthPct() < SWP_PULL_COMPLETE_HP_PERCENT)
+    if (entropius && entropius->GetHealthPct() < BOSS_ENGAGED_HEALTH_PCT)
         return 1.0f;
 
+    // Bloodlust is saved for Entropius
     if (bot->getClass() == CLASS_SHAMAN &&
         (dynamic_cast<CastHeroismAction*>(action) || dynamic_cast<CastBloodlustAction*>(action)))
     {
         return 0.0f;
     }
 
+    // Other dps cooldowns can be used on M'uru after the pull
     return muru->GetHealthPct() > MURU_MAX_DPS_HP_PERCENT ? 0.0f : 1.0f;
 }
 
@@ -751,26 +796,29 @@ float KiljaedenDelayCooldownsMultiplier::GetValue(Action* action)
     return kiljaeden->GetHealthPct() > KILJAEDEN_PHASE3_HP_THRESHOLD ? 0.0f : 1.0f;
 }
 
-float KiljaedenTanksFocusAssignedHandOnlyMultiplier::GetValue(Action* action)
+float KiljaedenSingleTargetHandsMultiplier::GetValue(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
 
-    if (!dynamic_cast<DpsAssistAction*>(action) &&
-        !dynamic_cast<TankAssistAction*>(action) &&
-        !dynamic_cast<CombatFormationMoveAction*>(action) &&
-        !IsTauntAction(bot, action) && !IsAoeThreatAction(bot, action))
+    // Shaman have no spreading DoTs, and their only spell classified as ActionThreatType::Aoe is
+    // Chain Lightning, which is a strong single-target spell in addition to providing AoE damage.
+    if (bot->getClass() == CLASS_SHAMAN)
+        return 1.0f;
+
+    if (!PlayerbotAI::IsDps(bot))
+        return 1.0f;
+
+    if (!dynamic_cast<CastDebuffSpellOnAttackerAction*>(action) &&
+        action->getThreatType() != Action::ActionThreatType::Aoe)
     {
         return 1.0f;
     }
 
-    if (dynamic_cast<SetBehindTargetAction*>(action))
-        return 1.0f;
+    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) > SUNWELL_CENTER_RADIUS)
+        return 1.0;
 
-    if (!AI_VALUE2(Unit*, "find target", "hand of the deceiver"))
-        return 1.0f;
-
-    return HasAtLeastThreeBotTanks(bot) ? 0.0f : 1.0f;
+    return AI_VALUE(GuidVector, "kiljaeden hands").empty() ? 1.0f : 0.0f;
 }
 
 float KiljaedenControlMovementAndTargetingMultiplier::GetValue(Action* action)
@@ -819,7 +867,7 @@ float KiljaedenControlDragonMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "kil'jaeden"))
         return 1.0f;
 
-    if (dynamic_cast<KiljaedenControlDragonAction*>(action))
+    if (dynamic_cast<KiljaedenDragonBuffAndProtectRaidAction*>(action))
         return 1.0f;
 
     if (dynamic_cast<WipeAction*>(action))

@@ -24,7 +24,7 @@ using namespace EncounterHelpers;
 
 // Al'ar <Phoenix God>
 
-float AlarMoveBetweenPlatformsMultiplier::GetValue(Action* action)
+float AlarSuppressGapClosersMultiplier::GetValue(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -76,7 +76,7 @@ float AlarControlMovementMultiplier::GetValue(Action* action)
     if (!IsAlarInPhase2(alar->GetInstanceId()))
         return 1.0f;
 
-    // Enable FollowAction only in non-combat engine in Phase 2
+    // Enable FollowAction only in the non-combat engine in Phase 2.
     return botAI->GetState() == BOT_STATE_COMBAT ? 0.0f : 1.0f;
 }
 
@@ -102,7 +102,7 @@ float AlarStayAwayFromRebirthMultiplier::GetValue(Action* action)
     if (dynamic_cast<AlarMoveAwayFromRebirthAction*>(action))
         return 1.0f;
 
-    // Don't block Flame Quills avoidance in case of bad timing for the transition
+    // Don't block Flame Quills avoidance in case of bad timing for the transition.
     if (dynamic_cast<AlarJumpFromPlatformAction*>(action))
         return 1.0f;
 
@@ -327,6 +327,10 @@ float KaelthasSunstriderDisableWarlockTankSoulshatterMultiplier::GetValue(Action
     if (phase != PHASE_SINGLE_ADVISOR && phase != PHASE_ALL_ADVISORS)
         return 1.0f;
 
+    Unit* capernian = AI_VALUE2(Unit*, "find target", "grand astromancer capernian");
+    if (!IsAdvisorActive(capernian))
+        return 1.0f;
+
     return GetCapernianTank(bot) == bot ? 0.0f : 1.0f;
 }
 
@@ -445,14 +449,22 @@ float KaelthasSunstriderPrepareForPhase3Multiplier::GetValue(Action* action)
     if (GetKaelthasPhase(kaelthas) != PHASE_ALL_ADVISORS)
         return 1.0f;
 
-    // Proxy for revival/Kael talk phase (could pick any advisor here)
-    Unit* thaladred = AI_VALUE2(Unit*, "find target", "thaladred the darkener");
-    if (!thaladred || !thaladred->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
+    Unit* sanguinar = AI_VALUE2(Unit*, "find target", "lord sanguinar");
+    if (PlayerbotAI::IsAssistHealOfIndex(bot, 0, true))
+    {
+        if (dynamic_cast<KaelthasSunstriderKiteThaladredAction*>(action))
+            return 1.0f;
+
+        return sanguinar && sanguinar->IsAlive() ? 0.0f : 1.0f;
+    }
+
+    // The Sanguinar check is a proxy for the revival/Kael talk phase (any non-selectable advisor
+    // would do, since all four revive together, but Sanguinar is already needed for the healer).
+    if (!sanguinar || !sanguinar->HasUnitFlag(UNIT_FLAG_NOT_SELECTABLE))
         return 1.0f;
 
     if (PlayerbotAI::IsMainTank(bot) ||
         PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) ||
-        PlayerbotAI::IsAssistHealOfIndex(bot, 0, true) ||
         (bot->getClass() == CLASS_WARLOCK && GetCapernianTank(bot) == bot))
     {
         return 0.0f;
@@ -461,7 +473,7 @@ float KaelthasSunstriderPrepareForPhase3Multiplier::GetValue(Action* action)
     return 1.0f;
 }
 
-// Bloodlust/Heroism and other major cooldowns should be saved until Phase 3
+// Bloodlust/Heroism and other major cooldowns should be saved until Phase 3.
 float KaelthasSunstriderDelayCooldownsMultiplier::GetValue(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)

@@ -27,14 +27,11 @@ float GruulsLairDelayDpsCooldownsMultiplier::GetValue(Action* action)
         return 1.0f;
 
     Unit* gruul = AI_VALUE2(Unit*, "find target", "gruul the dragonkiller");
-    if (gruul && gruul->GetHealthPct() > 95.0f)
+    if (gruul && gruul->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT)
         return 0.0f;
 
     Unit* blindeye = AI_VALUE2(Unit*, "find target", "blindeye the seer");
-    if (!blindeye)
-        return 1.0f;
-
-    return blindeye->GetHealthPct() > 75.0f ? 0.0f : 1.0f;
+    return blindeye && blindeye->GetHealthPct() > BLINDEYE_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
 }
 
 float HighKingMaulgarControlTankActionsMultiplier::GetValue(Action* action)
@@ -54,7 +51,7 @@ float HighKingMaulgarControlTankActionsMultiplier::GetValue(Action* action)
     return AI_VALUE2(Unit*, "find target", "high king maulgar") ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarDontTauntKigglerMultiplier::GetValue(Action* action)
+float HighKingMaulgarRestrictTauntingMultiplier::GetValue(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -63,21 +60,28 @@ float HighKingMaulgarDontTauntKigglerMultiplier::GetValue(Action* action)
         return 1.0f;
 
     bool const isAoeThreat = IsAoeThreatAction(bot, action);
-
-    if (!IsTauntAction(bot, action) && !isAoeThreat)
+    if (!isAoeThreat && !IsTauntAction(bot, action))
         return 1.0f;
 
+    // The main tank stays on Maulgar the whole time so it can do whatever.
+    if (PlayerbotAI::IsMainTank(bot))
+        return 1.0f;
+
+    // Blindeye and Olm are tanked next to each other by separate tanks; until Blindeye is dead,
+    // don't use AoE threat abilities.
+    if (isAoeThreat && AI_VALUE2(Unit*, "find target", "blindeye the seer"))
+        return 0.0f;
+
+    // Kiggler is the only ogre for which taunting is a problem because he is the only one that is
+    // both (1) tanked by a non-traditional-tank and (2) directed to be attacked by traditional
+    // tanks (the Blindeye and Olm tanks after both are down).
     Unit* kiggler = AI_VALUE2(Unit*, "find target", "kiggler the crazed");
     if (!kiggler)
         return 1.0f;
 
-    // The check for Kiggler presumes that Blindeye and Olm are already dead; aoe threat abilities
-    // are okay only when Maulgar and Krosh are left
-    if (isAoeThreat)
-        return 0.0f;
+    if (!GetKigglerMoonkinTank(bot))
+        return 1.0f;
 
-    // Kiggler is the only ogre for which taunting is a problem because he is the only one that is
-    // both (1) tanked by a non-tank and (2) attacked by tanks (after Blindeye and Olm are down)
     return AI_VALUE(Unit*, "current target") == kiggler ? 0.0f : 1.0f;
 }
 
@@ -86,7 +90,7 @@ float HighKingMaulgarDisableDpsAssistMultiplier::GetValue(Action* action)
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
 
-    if (!PlayerbotAI::IsDps(bot))
+    if (PlayerbotAI::IsTank(bot))
         return 1.0f;
 
     if (!dynamic_cast<DpsAssistAction*>(action))
@@ -102,6 +106,9 @@ float HighKingMaulgarAvoidWhirlwindMultiplier::GetValue(Action* action)
     {
         return 1.0f;
     }
+
+    if (dynamic_cast<AttackAction*>(action))
+        return 1.0f;
 
     if (dynamic_cast<HighKingMaulgarRunAwayFromWhirlwindAction*>(action))
         return 1.0f;
@@ -139,10 +146,7 @@ float HighKingMaulgarControlHunterActionsMultiplier::GetValue(Action* action)
 
     // Arcane Shot removes Spell Shield, which the mage tank needs to survive
     Unit* krosh = AI_VALUE2(Unit*, "find target", "krosh firehand");
-    if (!krosh)
-        return 1.0f;
-
-    return action->GetTarget() == krosh ? 0.0f : 1.0f;
+    return krosh && action->GetTarget() == krosh ? 0.0f : 1.0f;
 }
 
 float HighKingMaulgarControlMageTankActionsMultiplier::GetValue(Action* action)
@@ -153,11 +157,7 @@ float HighKingMaulgarControlMageTankActionsMultiplier::GetValue(Action* action)
     if (bot->getClass() != CLASS_MAGE)
         return 1.0f;
 
-    auto castSpellAction = dynamic_cast<CastSpellAction*>(action);
-    if (!castSpellAction)
-        return 1.0f;
-
-    if (castSpellAction->getThreatType() != Action::ActionThreatType::Aoe &&
+    if (action->getThreatType() != Action::ActionThreatType::Aoe &&
         !dynamic_cast<CastIceBlockAction*>(action) &&
         !dynamic_cast<CastInvisibilityAction*>(action))
     {
@@ -185,15 +185,12 @@ float GruulTheDragonkillerControlTankMovementMultiplier::GetValue(Action* action
     }
 
     Unit* gruul = AI_VALUE2(Unit*, "find target", "gruul the dragonkiller");
-    if (!gruul)
-        return 1.0f;
-
-    return gruul->GetVictim() == bot ? 0.0f : 1.0f;
+    return gruul && gruul->GetVictim() == bot ? 0.0f : 1.0f;
 }
 
 float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValue(Action* action)
 {
-    if (!bot->HasAura(Id(GruulSpells::SPELL_GROUND_SLAM)))
+    if (!HasGroundSlam(bot))
         return 1.0f;
 
     if (!dynamic_cast<MovementAction*>(action) &&
@@ -203,4 +200,21 @@ float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValue(Action* actio
     }
 
     return dynamic_cast<GruulTheDragonkillerShatterSpreadAction*>(action) ? 1.0f : 0.0f;
+}
+
+// MoveTo does not check speed, and thus even with a snare of -100% or more, it starts a spline
+// and calculates IsWaitingForLastMove from distance / speed, which is infinite in that case and
+// clamps to MaxWaitForMove (5s), blocking all movements for that duration. This multiplier is
+// needed to solve the issue for Gruul because the snare he applies (Gronn Lord's Grasp) persists
+// 300ms beyond the Shatter sequence, meaning that bots would otherwise be unable to move for 5s
+// after the Shatter sequence, even though no in-game factors would prevent their movement.
+float GruulTheDragonkillerHoldWhileSnaredMultiplier::GetValue(Action* action)
+{
+    if (bot->GetSpeed(MOVE_RUN) > 0.0f)
+        return 1.0f;
+
+    if (!AI_VALUE2(Unit*, "find target", "gruul the dragonkiller"))
+        return 1.0f;
+
+    return dynamic_cast<MovementAction*>(action) ? 0.0f : 1.0f;
 }
