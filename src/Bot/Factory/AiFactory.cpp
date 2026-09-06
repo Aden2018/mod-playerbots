@@ -138,49 +138,49 @@ std::map<uint8, uint32> AiFactory::GetPlayerSpecTabs(Player* bot)
     return tabs;
 }
 
-BotRoles AiFactory::GetPlayerRoles(Player* player)
+PBotRoles AiFactory::GetPlayerRoles(Player* player)
 {
-    BotRoles role = BOT_ROLE_NONE;
+    PBotRoles role = PBOT_ROLE_NONE;
     uint8 tab = GetPlayerSpecTab(player);
 
     switch (player->getClass())
     {
         case CLASS_PRIEST:
             if (tab == PRIEST_TAB_SHADOW)
-                role = BOT_ROLE_DPS;
+                role = PBOT_ROLE_DPS;
             else
-                role = BOT_ROLE_HEALER;
+                role = PBOT_ROLE_HEALER;
             break;
         case CLASS_SHAMAN:
             if (tab == SHAMAN_TAB_RESTORATION)
-                role = BOT_ROLE_HEALER;
+                role = PBOT_ROLE_HEALER;
             else
-                role = BOT_ROLE_DPS;
+                role = PBOT_ROLE_DPS;
             break;
         case CLASS_WARRIOR:
             if (tab == WARRIOR_TAB_PROTECTION)
-                role = BOT_ROLE_TANK;
+                role = PBOT_ROLE_TANK;
             else
-                role = BOT_ROLE_DPS;
+                role = PBOT_ROLE_DPS;
             break;
         case CLASS_PALADIN:
             if (tab == PALADIN_TAB_HOLY)
-                role = BOT_ROLE_HEALER;
+                role = PBOT_ROLE_HEALER;
             else if (tab == PALADIN_TAB_PROTECTION)
-                role = BOT_ROLE_TANK;
+                role = PBOT_ROLE_TANK;
             else if (tab == PALADIN_TAB_RETRIBUTION)
-                role = BOT_ROLE_DPS;
+                role = PBOT_ROLE_DPS;
             break;
         case CLASS_DRUID:
             if (tab == DRUID_TAB_BALANCE)
-                role = BOT_ROLE_DPS;
+                role = PBOT_ROLE_DPS;
             else if (tab == DRUID_TAB_FERAL)
-                role = (BotRoles)(BOT_ROLE_TANK | BOT_ROLE_DPS);
+                role = (PBotRoles)(PBOT_ROLE_TANK | PBOT_ROLE_DPS);
             else if (tab == DRUID_TAB_RESTORATION)
-                role = BOT_ROLE_HEALER;
+                role = PBOT_ROLE_HEALER;
             break;
         default:
-            role = BOT_ROLE_DPS;
+            role = PBOT_ROLE_DPS;
             break;
     }
 

@@ -181,7 +181,7 @@ bool TameAction::SetPetByName(const std::string& name)
 {
     // Make a lowercase copy of the input name for case-insensitive comparison
     std::string lowerName = name;
-    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), [](unsigned char c) { return std::tolower(c); });
 
     // Get the full list of creature templates from the object manager
     CreatureTemplateContainer const* creatures = sObjectMgr->GetCreatureTemplates();
@@ -193,7 +193,7 @@ bool TameAction::SetPetByName(const std::string& name)
         const CreatureTemplate& creature = itr->second;
         std::string creatureName = creature.Name;
         // Convert creature's name to lowercase for comparison
-        std::transform(creatureName.begin(), creatureName.end(), creatureName.begin(), ::tolower);
+        std::transform(creatureName.begin(), creatureName.end(), creatureName.begin(), [](unsigned char c) { return std::tolower(c); });
 
         // If the input name matches this creature's name
         if (creatureName == lowerName)
@@ -283,7 +283,7 @@ bool TameAction::SetPetByFamily(const std::string& family)
 {
     // Convert the input family name to lowercase for case-insensitive comparison
     std::string lowerFamily = family;
-    std::transform(lowerFamily.begin(), lowerFamily.end(), lowerFamily.begin(), ::tolower);
+    std::transform(lowerFamily.begin(), lowerFamily.end(), lowerFamily.begin(), [](unsigned char c) { return std::tolower(c); });
 
     // Get all creature templates from the object manager
     CreatureTemplateContainer const* creatures = sObjectMgr->GetCreatureTemplates();
@@ -309,7 +309,7 @@ bool TameAction::SetPetByFamily(const std::string& family)
 
         // Compare the family name in a case-insensitive way
         std::string familyName = familyEntry->Name[0];
-        std::transform(familyName.begin(), familyName.end(), familyName.begin(), ::tolower);
+        std::transform(familyName.begin(), familyName.end(), familyName.begin(), [](unsigned char c) { return std::tolower(c); });
 
         if (familyName != lowerFamily)
             continue;
@@ -394,9 +394,9 @@ bool TameAction::RenamePet(const std::string& newName)
 
     // Normalize the name: capitalize the first letter, lowercase the rest
     std::string normalized = newName;
-    normalized[0] = std::toupper(normalized[0]);
+    normalized[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(normalized[0])));
     for (size_t i = 1; i < normalized.size(); ++i)
-        normalized[i] = std::tolower(normalized[i]);
+        normalized[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(normalized[i])));
 
     // Check if the new name is reserved or forbidden
     if (sObjectMgr->IsReservedName(normalized))

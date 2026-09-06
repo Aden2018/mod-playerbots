@@ -25,14 +25,14 @@ char* strstri(char const* haystack, char const* needle)
 
     for (; *haystack; ++haystack)
     {
-        if (tolower(*haystack) == tolower(*needle))
+        if (std::tolower(static_cast<unsigned char>(*haystack)) == std::tolower(static_cast<unsigned char>(*needle)))
         {
             char const* h = haystack;
             char const* n = needle;
 
             for (; *h && *n; ++h, ++n)
             {
-                if (tolower(*h) != tolower(*n))
+                if (std::tolower(static_cast<unsigned char>(*h)) != std::tolower(static_cast<unsigned char>(*n)))
                 {
                     break;
                 }

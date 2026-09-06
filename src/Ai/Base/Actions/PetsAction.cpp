@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the mod-playerbots module for AzerothCore. See AUTHORS file for Copyright
  * information; released under GNU GPL v2 license, redistribute/modify under version 2 of the License,
  * or (at your option) any later version.
@@ -415,6 +415,26 @@ bool PetAttackAction::Execute(Event /*event*/)
         return false;
 
     Unit* target = AI_VALUE(Unit*, "current target");
+
+    // ��������� bot û�е�ǰĿ�꣬��� master �� NPCBots Ŀ��
+    if (!target)
+    {
+        Player* master = botAI->GetMaster();
+        if (master && master->HaveBot())
+        {
+            for (auto const& [_, pbot] : *master->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (botVictim && botVictim->IsAlive() && botVictim->GetMapId() == bot->GetMapId() &&
+                    !botVictim->IsFriendlyTo(bot))
+                {
+                    target = botVictim;
+                    break;
+                }
+            }
+        }
+    }
+
     if (!target)
         return false;
 

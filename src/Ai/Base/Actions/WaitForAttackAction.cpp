@@ -148,7 +148,7 @@ bool SetWaitForAttackTimeAction::Execute(Event event)
         return false;
     }
 
-    if (!std::all_of(newTimeStr.begin(), newTimeStr.end(), ::isdigit))
+    if (!std::all_of(newTimeStr.begin(), newTimeStr.end(), [](unsigned char c) { return std::isdigit(c); }))
     {
         std::string const text = PlayerbotTextMgr::instance().GetBotTextOrDefault(
             "wait_for_attack_invalid_time",

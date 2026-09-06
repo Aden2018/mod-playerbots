@@ -34,18 +34,89 @@ bool AttackMyTargetAction::Execute(Event /*event*/)
     if (!master)
         return false;
 
-    ObjectGuid guid = master->GetTarget();
-    if (!guid)
+    Unit* targetUnit = nullptr;
+
+    // 1. 优先主人鼠标选中目标（必须是敌对且存活）
+    ObjectGuid selGuid = master->GetTarget();
+    if (selGuid)
+    {
+        Unit* unit = botAI->GetUnit(selGuid);
+        if (unit && unit->IsAlive() && !unit->IsFriendlyTo(master))
+            targetUnit = unit;
+    }
+
+    // 2. 主人自身攻击目标兜底
+    if (!targetUnit)
+    {
+        Unit* victim = master->GetVictim();
+        if (victim && victim->IsAlive() && !victim->IsFriendlyTo(master))
+            targetUnit = victim;
+    }
+
+    // 3. 主人宠物攻击目标兜底
+    if (!targetUnit)
+    {
+        if (Pet* pet = master->GetPet())
+        {
+            Unit* victim = pet->GetVictim();
+            if (victim && victim->IsAlive() && !victim->IsFriendlyTo(master))
+                targetUnit = victim;
+        }
+    }
+
+    // 4. 遍历队伍成员（NPCBots若以Player身份加入队伍，会被包含）
+    if (!targetUnit)
+    {
+        if (Group* group = master->GetGroup())
+        {
+            for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+            {
+                Player* member = itr->GetSource();
+                if (!member || member == master || member == botAI->GetBot())
+                    continue;
+
+                Unit* memberTarget = member->GetVictim();
+                if (memberTarget && memberTarget->IsAlive() && !memberTarget->IsFriendlyTo(master))
+                {
+                    targetUnit = memberTarget;
+                    break;
+                }
+            }
+        }
+    }
+
+    // 5. 遍历主人控制的其他单位（如NPCBots Creature），补充可能不在队伍中的情况
+    if (!targetUnit)
+    {
+        for (Unit::ControlSet::const_iterator itr = master->m_Controlled.begin(); 
+             itr != master->m_Controlled.end(); ++itr)
+        {
+            Unit* controlled = *itr;
+            // 跳过宠物（已经检查过）和自身（若有）
+            if (!controlled || controlled == master->GetPet())
+                continue;
+
+            Unit* controlledTarget = controlled->GetVictim();
+            if (controlledTarget && controlledTarget->IsAlive() && !controlledTarget->IsFriendlyTo(master))
+            {
+                targetUnit = controlledTarget;
+                break;
+            }
+        }
+    }
+
+    // 无有效目标提示
+    if (!targetUnit || !targetUnit->IsAlive())
     {
         if (verbose)
             botAI->TellError(PlayerbotTextMgr::instance().GetBotTextOrDefault(
                 "pull_no_target_error", "You have no target", {}));
-
         return false;
     }
 
+    ObjectGuid guid = targetUnit->GetGUID();
     botAI->GetAiObjectContext()->GetValue<GuidVector>("prioritized targets")->Set({guid});
-    bool result = Attack(botAI->GetUnit(guid));
+    bool result = Attack(targetUnit);
     if (result)
         context->GetValue<ObjectGuid>("pull target")->Set(guid);
 

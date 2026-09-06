@@ -118,7 +118,7 @@ void SuggestWhatToDoAction::grindMaterials()
                 if (name == category->GetName())
                 {
                     std::string item = category->GetLabel();
-                    transform(item.begin(), item.end(), item.begin(), ::tolower);
+                    std::transform(item.begin(), item.end(), item.begin(), [](unsigned char c) { return ::tolower(c); });
                     std::ostringstream itemout;
                     itemout << "|c0000b000" << item << "|r";
                     item = itemout.str();

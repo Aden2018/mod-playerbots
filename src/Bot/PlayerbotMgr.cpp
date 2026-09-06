@@ -1140,7 +1140,7 @@ std::vector<std::string> PlayerbotHolder::HandlePlayerbotCommand(char const* arg
         if (genderArg)
         {
             std::string g = genderArg;
-            std::transform(g.begin(), g.end(), g.begin(), ::tolower);
+            std::transform(g.begin(), g.end(), g.begin(), [](unsigned char c) { return ::tolower(c); });
 
             if (g == "male" || g == "0")
                 gender = GENDER_MALE; // 0

@@ -25,6 +25,38 @@ GuidVector AttackersValue::Calculate()
     if (Group* group = bot->GetGroup())
         AddAttackersOf(group, targets);
 
+    // ============ 新增：收集当前Bot主人Master自身攻击目标 + Master的NPCBots攻击目标 ============
+    Player* master = botAI->GetMaster();
+    if (master)
+    {
+        // 1. 主人自身攻击目标
+        Unit* masterVictim = master->GetVictim();
+        if (masterVictim && masterVictim->IsAlive() && masterVictim->GetMapId() == bot->GetMapId() &&
+            !masterVictim->IsFriendlyTo(master))
+        {
+            targets.insert(masterVictim);
+        }
+
+        // 2. master 的 NPCBots 目标也加入攻击列表（你提供的逻辑+安全校验）
+        if (master->HaveBot())
+        {
+            for (auto const& [_, pbot] : *master->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (!botVictim)
+                    continue;
+                // 存活、同地图、敌对过滤
+                if (!botVictim->IsAlive() || botVictim->GetMapId() != master->GetMapId())
+                    continue;
+                if (botVictim->IsFriendlyTo(master))
+                    continue;
+
+                targets.insert(botVictim);
+            }
+        }
+    }
+    // ======================================================================================
+
     RemoveNonThreating(targets);
 
     // prioritized target
@@ -75,6 +107,45 @@ void AttackersValue::AddAttackersOf(Group* group, std::unordered_set<Unit*>& tar
             continue;
 
         AddAttackersOf(member, targets);
+
+        // ========== 新增：队员自身攻击目标 ==========
+        Unit* memberVictim = member->GetVictim();
+        if (memberVictim && memberVictim->IsAlive() && memberVictim->GetMapId() == bot->GetMapId() &&
+            !memberVictim->IsFriendlyTo(member))
+        {
+            targets.insert(memberVictim);
+        }
+
+        // ========== 新增：该队员名下所有NPCBots攻击目标 ==========
+        if (member->HaveBot())
+        {
+            for (auto const& [_, pbot] : *member->GetBotMgr()->GetBotMap())
+            {
+                Unit* botVictim = pbot->GetVictim();
+                if (!botVictim)
+                    continue;
+                if (!botVictim->IsAlive() || botVictim->GetMapId() != member->GetMapId())
+                    continue;
+                if (botVictim->IsFriendlyTo(member))
+                    continue;
+
+                targets.insert(botVictim);
+            }
+        }
+        // ===========================================
+
+        // 原有收集队员Playerbots攻击者逻辑保留（用于支援挨打队友）
+        PlayerbotAI* memberBotAI = GET_PLAYERBOT_AI(member);
+        if (memberBotAI)
+        {
+            GuidVector memberAttackers = memberBotAI->GetAiObjectContext()->GetValue<GuidVector>("attackers")->Get();
+            for (ObjectGuid atkGuid : memberAttackers)
+            {
+                Unit* atkUnit = botAI->GetUnit(atkGuid);
+                if (atkUnit && IsValidTarget(atkUnit, bot))
+                    targets.insert(atkUnit);
+            }
+        }
     }
 }
 
@@ -101,6 +172,49 @@ void AttackersValue::AddAttackersOf(Player* player, std::unordered_set<Unit*>& t
         if (player->IsValidAttackTarget(attacker) &&
             player->GetDistance2d(attacker) < sPlayerbotAIConfig.sightDistance)
             targets.insert(attacker);
+    }
+
+    if (player->HaveBot())
+    {
+        for (auto const& [_, npcBot] : *player->GetBotMgr()->GetBotMap())
+
+        {
+            if (!npcBot || !npcBot->IsInWorld() || !npcBot->IsAlive() || npcBot->IsDuringRemoveFromWorld())
+
+                continue;
+
+            if (npcBot->GetMapId() != bot->GetMapId() ||
+
+                ServerFacade::instance().GetDistance2d(bot, npcBot) > sPlayerbotAIConfig.sightDistance)
+
+                continue;
+
+            for (auto const& [guid, ref] : npcBot->GetThreatMgr().GetThreatenedByMeList())
+
+            {
+                Unit* attacker = ref->GetOwner();
+
+                if (!attacker)
+
+                    continue;
+
+                if (bot->IsValidAttackTarget(attacker) &&
+
+                    bot->GetDistance2d(attacker) < sPlayerbotAIConfig.sightDistance)
+
+                    targets.insert(attacker);
+            }
+
+            if (Unit* botTarget = npcBot->GetVictim())
+
+            {
+                if (bot->IsValidAttackTarget(botTarget) &&
+
+                    bot->GetDistance2d(botTarget) < sPlayerbotAIConfig.sightDistance)
+
+                    targets.insert(botTarget);
+            }
+        }
     }
 }
 
@@ -212,34 +326,25 @@ bool AttackersValue::IsPossibleTarget(Unit* attacker, Player* bot, float /*range
         if (bot->GetGroup() && botAI->GetMaster())
             leaderHasThreat = attacker->GetThreatMgr().GetThreat(botAI->GetMaster());
 
-        // A player claims a creature by damaging it or landing a hostile spell on it, which is what
-        // sets its loot recipient. The below code covers anti-kill-stealing mechanics.
-        //
-        // (1) Whatever the claim, the bot may attack if it (a) is in a raid/group and has a master
-        //     holding nonzero threat on the creature, (b) has, or has a raid/group member that has,
-        //     already tapped it, or (c) is already in combat with the creature.
-        if (leaderHasThreat || c->isTappedBy(bot) || c->IsInCombatWith(bot))
-            return true;
-
-        // (2) Nobody has claimed the creature, so ask who it is attacking. If it is not attacking
-        //     anything, or if it is attacking (a) something with no player behind it (e.g., a
-        //     critter), (b) the bot, (c) the bot's master, or (d) a member of the bot's raid/group,
-        //     then the victim is considered to belong to the bot and may be attacked. Clauses (b)
-        //     through (d) also include a player's pets, guardians, totems, and charms.
-        if (!c->hasLootRecipient())
+        bool isMemberBotGroup = false;
+        if (bot->GetGroup() && botAI->GetMaster())
         {
-            Unit* victim = c->GetVictim();
-            Player* victimOwner = victim ? victim->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr;
-            if (!victim || !victimOwner || victimOwner == bot || victimOwner == botAI->GetMaster() ||
-                (bot->GetGroup() && bot->GetGroup() == victimOwner->GetGroup()))
-            {
-                return true;
-            }
+            PlayerbotAI* masterBotAI = GET_PLAYERBOT_AI(botAI->GetMaster());
+            if (masterBotAI && !IsSelfBot(botAI->GetMaster()))
+                isMemberBotGroup = true;
         }
 
-        // (3) Last because it is applied automatically only in battlegrounds and arenas: the
-        //     "attack tagged" strategy always allows for attacking of creatures.
-        return botAI->HasStrategy("attack tagged", BOT_STATE_NON_COMBAT);
+        bool canAttack = (!isMemberBotGroup && botAI->HasStrategy("attack tagged", BOT_STATE_NON_COMBAT)) ||
+            leaderHasThreat ||
+            (!c->hasLootRecipient() &&
+                (!c->GetVictim() ||
+                    (c->GetVictim() &&
+                        ((!c->GetVictim()->IsPlayer() || bot->IsInSameGroupWith(c->GetVictim()->ToPlayer())) ||
+                            (botAI->GetMaster() && c->GetVictim() == botAI->GetMaster()))))) ||
+            c->isTappedBy(bot);
+
+        if (!canAttack)
+            return false;
     }
 
     return true;

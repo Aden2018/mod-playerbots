@@ -1,9 +1,9 @@
 <p align="center">
-    <a href="https://github.com/mod-playerbots/mod-playerbots/blob/master/README.md">English</a>
+    <a href="https://github.com/Aden2018/mod-playerbots/blob/master/README.md">English</a>
     |
-    <a href="https://github.com/mod-playerbots/mod-playerbots/blob/master/README_CN.md">中文</a>
+    <a href="https://github.com/Aden2018/mod-playerbots/blob/master/README_CN.md">中文</a>
     |
-    <a href="https://github.com/mod-playerbots/mod-playerbots/blob/master/README_ES.md">Español</a>
+    <a href="https://github.com/Aden2018/mod-playerbots/blob/master/README_ES.md">Español</a>
 </p>
 
 
@@ -12,9 +12,9 @@
 </div>
 
 <div align="center">
-    <img src="https://github.com/mod-playerbots/mod-playerbots/actions/workflows/macos_build.yml/badge.svg">
-    <img src="https://github.com/mod-playerbots/mod-playerbots/actions/workflows/core_build.yml/badge.svg">
-    <img src="https://github.com/mod-playerbots/mod-playerbots/actions/workflows/windows_build.yml/badge.svg">
+    <img src="https://github.com/Aden2018/mod-playerbots/actions/workflows/macos_build.yml/badge.svg">
+    <img src="https://github.com/Aden2018/mod-playerbots/actions/workflows/core_build.yml/badge.svg">
+    <img src="https://github.com/Aden2018/mod-playerbots/actions/workflows/windows_build.yml/badge.svg">
 </div>
 
 # Playerbots Module
@@ -34,14 +34,14 @@ We also have a **[Discord server](https://discord.gg/NQm5QShwf9)** where you can
 
 Supported platforms are Ubuntu, Windows, and macOS. Other Linux distributions may work, but may not receive support.
 
-> **Important:** All `mod-playerbots` installations require a custom fork of AzerothCore: [mod-playerbots/azerothcore-wotlk (Playerbot branch)](https://github.com/mod-playerbots/azerothcore-wotlk/tree/Playerbot). The standard AzerothCore repository will **not** work.
+> **Important:** All `mod-playerbots` installations require a custom fork of AzerothCore: [Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots (Playerbot branch)](https://github.com/Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots/tree/Playerbot). The standard AzerothCore repository will **not** work.
 
 ### Quick Start
 
 ```bash
-git clone https://github.com/mod-playerbots/azerothcore-wotlk.git --branch=Playerbot
+git clone https://github.com/Aden2018/AzerothCore-wotlk-with-PlayerBots-NPCBots.git --branch=Playerbot
 cd azerothcore-wotlk/modules
-git clone https://github.com/mod-playerbots/mod-playerbots.git --branch=master
+git clone https://github.com/Aden2018/mod-playerbots.git --branch=master
 ```
 
 Then build the server following the platform-specific instructions in our **[Installation Guide](https://github.com/mod-playerbots/mod-playerbots/wiki/Installation-Guide)**.
@@ -75,10 +75,10 @@ Please click on the "⭐" button to stay up to date and help us gain more visibi
 
 ## Acknowledgements
 
-`mod-playerbots` is based on [ZhengPeiRu21/mod-playerbots](https://github.com/ZhengPeiRu21/mod-playerbots) and [celguar/mangosbot-bots](https://github.com/celguar/mangosbot-bots). We extend our gratitude to [@ZhengPeiRu21](https://github.com/ZhengPeiRu21) and [@celguar](https://github.com/celguar) for their continued efforts in maintaining the module.
+`mod-playerbots` is based on [mod-playerbots/mod-playerbots](https://github.com/mod-playerbots/mod-playerbots) and [brighton-chi/mod-playerbots](https://github.com/brighton-chi/mod-playerbots). We extend our gratitude to [@mod-playerbots](https://github.com/mod-playerbots) and [@brighton-chi](https://github.com/brighton-chi) for their continued efforts in maintaining the module.
 
 Also, a thank you to the many contributors who've helped build this project:
 
-<a href="https://github.com/mod-playerbots/mod-playerbots/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=mod-playerbots/mod-playerbots" />
+<a href="https://github.com/Aden2018/mod-playerbots/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Aden2018/mod-playerbots" />
 </a>

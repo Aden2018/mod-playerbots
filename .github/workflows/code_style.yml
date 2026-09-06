@@ -2,9 +2,9 @@ name: Codestyle
 
 on:
   push:
-    branches: [ "master", "test-staging" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "master", "test-staging" ]
+    branches: [ "master" ]
 
 concurrency:
   group: "codestyle-${{ github.event.pull_request.number }}"

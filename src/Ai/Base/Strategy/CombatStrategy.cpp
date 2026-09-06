@@ -50,6 +50,16 @@ void CombatStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
             }
         )
     );
+    // 在 InitTriggers 末尾添加（原注释保留）：
+    // ============ 新增：启用宠物攻击触发器 ============
+    triggers.push_back(
+        new TriggerNode(
+            "pet attack",
+            {
+                NextAction("pet attack", ACTION_NORMAL)
+            }
+        )
+    );
     // The pet-attack trigger is commented out because it was forcing the bot's pet to attack, overriding stay and follow commands.
     // Pets will automatically attack the bot's enemy if they are in "defensive" or "aggressive"
     // stance, or if the master issues an attack command.

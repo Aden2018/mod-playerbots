@@ -453,7 +453,7 @@ public:
         std::string rest = (spacePos != std::string::npos) ? auraIdOrName.substr(spacePos + 1) : "";
         if (!idStr.empty())
         {
-            bool isNumeric = std::all_of(idStr.begin(), idStr.end(), ::isdigit);
+            bool isNumeric = std::all_of(idStr.begin(), idStr.end(), [](unsigned char c) { return std::isdigit(c); });
             if (isNumeric)
             {
                 auraId = atoi(idStr.c_str());
@@ -538,7 +538,7 @@ public:
             }
             if (!idOrName.empty())
             {
-                bool isNumeric = std::all_of(idOrName.begin(), idOrName.end(), ::isdigit);
+                bool isNumeric = std::all_of(idOrName.begin(), idOrName.end(), [](unsigned char c) { return std::isdigit(c); });
                 if (isNumeric)
                 {
                     entryId = atoi(idOrName.c_str());
