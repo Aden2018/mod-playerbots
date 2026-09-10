@@ -386,7 +386,7 @@ public:
         {
             Player* player = ObjectAccessor::FindPlayer(guid);
 
-            if (guid.IsGroup() || (player && !PlayerbotsMgr::instance().GetPlayerbotAI(player)))
+            if (guid.IsGroup() || IsRealPlayer(player) || IsSelfBot(player))
             {
                 nonBotFound = true;
                 break;
@@ -512,11 +512,12 @@ public:
 };
 
 void AddPlayerbotsSecureLoginScripts();
+void AddPlayerbotsSelfBotAfkScripts();
 
 void AddSC_MagtheridonBotScripts();
 void AddSC_TempestKeepBotScripts();
-void AddSC_HyjalSummitBotScripts();
-void AddSC_SunwellPlateauBotScripts();
+void AddSC_HyjalBotScripts();
+void AddSC_SunwellBotScripts();
 void AddSC_IcecrownBotScripts();
 void AddSC_RubySanctumBotScripts();
 void AddSC_randombot_level_mgr();
@@ -532,12 +533,13 @@ void AddPlayerbotsScripts()
     new PlayerbotsScript();
     new PlayerBotsBGScript();
     AddPlayerbotsSecureLoginScripts();
+    AddPlayerbotsSelfBotAfkScripts();
     AddPlayerbotsCommandscripts();
     PlayerBotsGuildValidationScript();
     AddSC_MagtheridonBotScripts();
     AddSC_TempestKeepBotScripts();
-    AddSC_HyjalSummitBotScripts();
-    AddSC_SunwellPlateauBotScripts();
+    AddSC_HyjalBotScripts();
+    AddSC_SunwellBotScripts();
     AddSC_IcecrownBotScripts();
     AddSC_RubySanctumBotScripts();
     AddSC_randombot_level_mgr();

@@ -9,7 +9,7 @@
 
 #include "ObjectGuid.h"
 #include "Position.h"
-#include "SWPSharedConstants.h"
+#include "SWPShared.h"
 #include <unordered_map>
 #include <vector>
 
@@ -48,74 +48,60 @@ struct MuruDarknessState
     uint32 expireMs = 0;
 };
 
-inline Position const MURU_ENTRANCE_POSITION =             { 1840.567f, 605.769f, 71.250f };
-inline Position const MURU_CENTER_POSITION =               { 1816.250f, 625.484f, 69.604f };
-inline Position const MURU_STACK_POSITION =                { 1836.532f, 608.957f, 71.222f };
-inline Position const MURU_VOID_SENTINEL_N_TANK_POSITION = { 1840.448f, 630.605f, 70.567f };
-inline Position const MURU_VOID_SENTINEL_E_TANK_POSITION = { 1814.960f, 601.646f, 70.547f };
-
-// Ability reaches from SpellRange.dbc (MaxRangeHostile). Berserker and Fury Mage selection filters
-// candidates based on these distances.
-inline constexpr float MURU_MELEE_ABILITY_REACH = 5.0f;
-inline constexpr float MURU_WAR_STOMP_REACH = 8.0f;
-inline constexpr float MURU_HAMMER_OF_JUSTICE_REACH = 10.0f;
-inline constexpr float MURU_WIND_SHEAR_REACH = 25.0f;
-inline constexpr float MURU_RANGED_ABILITY_REACH = 30.0f;
-inline constexpr float MURU_SILENCING_SHOT_REACH = 35.0f;
+inline constexpr float MURU_MISDIRECT_MIN_TARGET_HP_PERCENT = 80.0f;
+// Dps cooldowns are held until 97% to allow for initial positioning.
+inline constexpr float MURU_MAX_DPS_HP_PERCENT = 97.0f;
 
 // For the "muru encounter targets" value. Only list membership is cached, not states read (like
 // auras, casting, health).
 inline constexpr uint32 MURU_ENCOUNTER_TARGETS_CACHE_INTERVAL_MS = 200;
+// For the "muru void zones" value.
+inline constexpr uint32 VOID_ZONE_CACHE_INTERVAL_MS = 200;
+// For the "muru singularity" value. Only one exists at a time: Entropius casts Black Hole every
+// 29s, and Singularities despawn after 18s.
+inline constexpr uint32 SINGULARITY_CACHE_INTERVAL_MS = 200;
 
 // Darkness cycle: 45998 ticks every 45s and triggers the 3s pre-effect 45999, whose own tick casts
 // 45996, a 15y zone doing 3k a second. 45996 is also applied to M'uru itself (via a separate
 // effect), so once it is applied, the Darkness window is read off that aura and these two are only
 // estimates used before the aura is applied.
-inline constexpr uint32 DARKNESS_PRE_EFFECT_MS = 3000;
-inline constexpr uint32 DARKNESS_AURA_MS = 20000;
-
+inline constexpr uint32 MURU_DARKNESS_PRE_EFFECT_MS = 3000;
+inline constexpr uint32 MURU_DARKNESS_AURA_MS = 20000;
 // This is an arbitrary window to allow tanks a bit more time to get positioned after Darkness.
-inline constexpr uint32 DARKNESS_EARLY_WINDOW_MS = 10000;
-
+inline constexpr uint32 MURU_DARKNESS_EARLY_WINDOW_MS = 10000;
 // Darkness damages within 15 yards of M'uru; the rest is avoidance padding.
-inline constexpr float DARKNESS_SAFE_DISTANCE = 20.0f;
-
+inline constexpr float MURU_DARKNESS_SAFE_DISTANCE = 20.0f;
+// Tanks won't try to pick up anything farther than this distance from the ranged stack.
+inline constexpr float MURU_MAX_TARGET_DIST_FROM_STACK = 30.0f;
 // The maximum distance from the melee dps holding spot that they wander to attack during Darkness.
-inline constexpr float MURU_HOLDING_POSITION_RADIUS = 20.0f;
-
+inline constexpr float MURU_HOLDING_POSITION_RADIUS = 25.0f;
 // Targeting is based on the nearest mob; this buffer is to keep targets sticky.
 inline constexpr float MURU_TARGET_SWITCH_MARGIN = 10.0f;
-
 // Radius of Shadow Bolt Volley (46082), which is centred on the enslaved Void Spawn.
 inline constexpr float MURU_SHADOW_BOLT_VOLLEY_RADIUS = 20.0f;
 
-// Void Zones (25879) have aura 46262, ticking 46264 for 3k in a 3y radius, but more importantly
-// they spawn Dark Fiends. The wide safe distance is in anticipation of the Dark Fiend spawn.
-inline constexpr float VOID_ZONE_SEARCH_RADIUS = 12.0f;
-inline constexpr float VOID_ZONE_SAFE_DISTANCE = 8.0f;
+// Void Zones (25879) have aura 46262, ticking 46264 for 3k in a 3y radius, and spawn Dark Fiends.
+// The wide safe distance is in anticipation of the Dark Fiend spawn. Search is measured by
+// IsWithinDist, which adds both CombatReaches for a total of 14.5y.
+inline constexpr float VOID_ZONE_SAFE_DISTANCE = 10.0f;
+inline constexpr float VOID_ZONE_SEARCH_RADIUS = VOID_ZONE_SAFE_DISTANCE + 2.0f;
 // Dark Fiend search radii for killing (dispelling) and avoiding, respectively.
 inline constexpr float DARK_FIEND_DISPEL_SEARCH_RADIUS = 50.0f;
 inline constexpr float DARK_FIEND_AVOID_SEARCH_RADIUS = 15.0f;
 // A Dark Fiend detonates within 2y of whoever it is chasing. The safe distance is deliberately
 // wide as touching a single Dark Fiend is almost a guaranteed wipe.
-inline constexpr float DARK_FIEND_SAFE_DISTANCE = 10.0f;
-
-// Feeds the "muru void zones" value.
-inline constexpr uint32 VOID_ZONE_CACHE_INTERVAL_MS = 200;
-
+inline constexpr float DARK_FIEND_SAFE_DISTANCE = 12.0f;
 inline constexpr float SINGULARITY_SEARCH_RADIUS = 30.0f;
+// Distance kept from a Singularity. The active tank's distance is greater in order to leave space
+// for melee on Entropius.
+inline constexpr float SINGULARITY_SAFE_DISTANCE = 15.0f;
+inline constexpr float SINGULARITY_TANK_SAFE_DISTANCE = 20.0f;
 
-// Feeds the "muru singularity" value. Only one exists at a time: Entropius casts Black Hole every
-// 29s, and Singularities despawn after 18s.
-inline constexpr uint32 SINGULARITY_CACHE_INTERVAL_MS = 200;
-
-// Tanks drag nothing further than this from the ranged stack.
-inline constexpr float MURU_MAX_TARGET_DIST_FROM_STACK = 25.0f;
-
-inline constexpr float MURU_MISDIRECT_MIN_TARGET_HP_PERCENT = 80.0f;
-
-// Dps cooldowns are held until 97% to allow for initial positioning.
-inline constexpr float MURU_MAX_DPS_HP_PERCENT = 97.0f;
+inline Position const MURU_ENTRANCE_POSITION =             { 1840.567f, 605.769f, 71.250f };
+inline Position const MURU_CENTER_POSITION =               { 1816.250f, 625.484f, 69.604f };
+inline Position const MURU_STACK_POSITION =                { 1836.532f, 608.957f, 71.222f };
+inline Position const MURU_VOID_SENTINEL_N_TANK_POSITION = { 1840.448f, 630.605f, 70.567f };
+inline Position const MURU_VOID_SENTINEL_E_TANK_POSITION = { 1814.960f, 601.646f, 70.547f };
 
 extern std::unordered_map<uint32, MuruDarknessState> muruDarknessStates;
 extern std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>>
@@ -124,17 +110,25 @@ extern std::unordered_map<uint32, std::unordered_map<ObjectGuid, uint8>>
 bool IsMuruPhaseActive(Unit* muru);
 bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru);
 bool TryGetMuruDarknessEarlyState(
-    Player* bot, Unit* muru, uint32 earlyWindowMs = DARKNESS_EARLY_WINDOW_MS);
+    Player* bot, Unit* muru, uint32 earlyWindowMs = MURU_DARKNESS_EARLY_WINDOW_MS);
+bool PeekMuruDarknessActiveState(Player* bot);
+bool PeekMuruDarknessEarlyState(
+    Player* bot, uint32 earlyWindowMs = MURU_DARKNESS_EARLY_WINDOW_MS);
 MuruEncounterGuids FindMuruEncounterGuids(PlayerbotAI* botAI);
 void GatherMuruEncounterTargets(PlayerbotAI* botAI, MuruEncounterTargets& targets);
+Unit* SelectNearestMuruTargetByEntry(
+    Unit* currentTarget, uint32 entry, std::vector<Unit*> const& candidates,
+    Position const& origin);
 Unit* FindMuruBerserkerToStun(PlayerbotAI* botAI);
 Unit* FindMuruFuryMageToInterrupt(PlayerbotAI* botAI);
 Unit* FindMuruFuryMageToSpellsteal(PlayerbotAI* botAI);
+Position const& GetAssignedVoidSentinelTankPosition(Unit* voidSentinel);
 bool IsTankingMuruVoidSentinel(PlayerbotAI* botAI);
 GuidVector FindMuruVoidZoneGuids(Player* bot);
 ObjectGuid FindMuruSingularityGuid(Player* bot);
 Creature* FindMuruVoidZoneToAvoid(PlayerbotAI* botAI);
 Creature* FindAvailableVoidSpawnForEnslave(PlayerbotAI* botAI);
+bool CommandControlledCreatureToAttack(Unit* controlled, Unit* target);
 
 }
 

@@ -16,7 +16,7 @@
 #include "SSCHelpers.h"
 #include "Timer.h"
 
-using namespace SerpentShrineCavernHelpers;
+using namespace SscHelpers;
 using namespace EncounterHelpers;
 
 // General
@@ -55,7 +55,7 @@ bool SerpentShrineCavernResetEncounterStatesAction::Execute(Event /*event*/)
 // Move out of toxic pool left behind by some colossi upon death
 bool UnderbogColossusEscapeToxicPoolAction::Execute(Event /*event*/)
 {
-    Aura* aura = bot->GetAura(SPELL_TOXIC_POOL);
+    Aura* aura = bot->GetAura(Id(SscSpells::SPELL_TOXIC_POOL));
     if (!aura)
         return false;
 
@@ -117,9 +117,12 @@ bool UnderbogColossusEscapeToxicPoolAction::Execute(Event /*event*/)
                   true, MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
+// Deleted GetFirstAliveUnitByEntry, remains in helpers. Can FindNearestCreature get this totem?
 bool GreyheartTidecallerMarkWaterElementalTotemAction::Execute(Event /*event*/)
 {
-    Unit* totem = GetFirstAliveUnitByEntry(botAI, NPC_WATER_ELEMENTAL_TOTEM);
+    constexpr float searchRadius = 20.0f;
+    Creature* totem =
+        bot->FindNearestCreature(Id(SscNpcs::NPC_WATER_ELEMENTAL_TOTEM), searchRadius);
     return totem && MarkTargetWithSkull(bot, totem);
 }
 
@@ -134,7 +137,7 @@ bool HydrossTheUnstablePositionFrostTankAction::Execute(Event /*event*/)
     if (!hydross)
         return false;
 
-    if (!hydross->HasAura(SPELL_CORRUPTION) && !HasMarkOfHydrossAt100Percent(bot))
+    if (!hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) && !HasMarkOfHydrossAt100Percent(bot))
     {
         if (MarkTargetWithSquare(bot, hydross))
             return true;
@@ -164,7 +167,7 @@ bool HydrossTheUnstablePositionFrostTankAction::Execute(Event /*event*/)
         }
     }
 
-    if (!hydross->HasAura(SPELL_CORRUPTION) && HasMarkOfHydrossAt100Percent(bot) &&
+    if (!hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) && HasMarkOfHydrossAt100Percent(bot) &&
         hydross->GetVictim() == bot && bot->IsWithinMeleeRange(hydross))
     {
         constexpr uint32 phaseChangeDelayMs = 1 * IN_MILLISECONDS;
@@ -198,7 +201,7 @@ bool HydrossTheUnstablePositionFrostTankAction::Execute(Event /*event*/)
     }
 
     const Position& position = HYDROSS_FROST_TANK_POSITION;
-    if (hydross->HasAura(SPELL_CORRUPTION) &&
+    if (hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) &&
         bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 2.0f)
     {
         return MoveTo(SSC_MAP_ID, position.GetPositionX(), position.GetPositionY(),
@@ -218,7 +221,7 @@ bool HydrossTheUnstablePositionNatureTankAction::Execute(Event /*event*/)
     if (!hydross)
         return false;
 
-    if (hydross->HasAura(SPELL_CORRUPTION) && !HasMarkOfCorruptionAt100Percent(bot))
+    if (hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) && !HasMarkOfCorruptionAt100Percent(bot))
     {
         if (MarkTargetWithTriangle(bot, hydross))
             return true;
@@ -248,7 +251,7 @@ bool HydrossTheUnstablePositionNatureTankAction::Execute(Event /*event*/)
         }
     }
 
-    if (hydross->HasAura(SPELL_CORRUPTION) && HasMarkOfCorruptionAt100Percent(bot) &&
+    if (hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) && HasMarkOfCorruptionAt100Percent(bot) &&
         hydross->GetVictim() == bot && bot->IsWithinMeleeRange(hydross))
     {
         constexpr uint32 phaseChangeDelayMs = 1 * IN_MILLISECONDS;
@@ -282,7 +285,7 @@ bool HydrossTheUnstablePositionNatureTankAction::Execute(Event /*event*/)
     }
 
     const Position& position = HYDROSS_NATURE_TANK_POSITION;
-    if (!hydross->HasAura(SPELL_CORRUPTION) &&
+    if (!hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)) &&
         bot->GetExactDist2d(position.GetPositionX(), position.GetPositionY()) > 2.0f)
     {
         return MoveTo(SSC_MAP_ID, position.GetPositionX(), position.GetPositionY(),
@@ -295,7 +298,9 @@ bool HydrossTheUnstablePositionNatureTankAction::Execute(Event /*event*/)
 
 bool HydrossTheUnstablePrioritizeElementalAddsAction::Execute(Event /*event*/)
 {
-    if (Unit* waterElemental = GetFirstAliveUnitByEntry(botAI, NPC_PURE_SPAWN_OF_HYDROSS))
+    constexpr float searchRadius = 75.0f;
+    if (Creature* waterElemental =
+            bot->FindNearestCreature(Id(SscNpcs::NPC_PURE_SPAWN_OF_HYDROSS), searchRadius))
     {
         if (MarkTargetWithSkull(bot, waterElemental))
             return true;
@@ -305,7 +310,8 @@ bool HydrossTheUnstablePrioritizeElementalAddsAction::Execute(Event /*event*/)
         if (AI_VALUE(Unit*, "current target") != waterElemental)
             return Attack(waterElemental);
     }
-    else if (Unit* natureElemental = GetFirstAliveUnitByEntry(botAI, NPC_TAINTED_SPAWN_OF_HYDROSS))
+    else if (Creature* natureElemental =
+            bot->FindNearestCreature(Id(SscNpcs::NPC_TAINTED_SPAWN_OF_HYDROSS), searchRadius))
     {
         if (MarkTargetWithSkull(bot, natureElemental))
             return true;
@@ -349,12 +355,12 @@ bool HydrossTheUnstableMisdirectBossToTankAction::TryMisdirectToFrostTank(
     if (!frostTank)
         return false;
 
-    if (HasNoMarkOfHydross(bot) && !hydross->HasAura(SPELL_CORRUPTION))
+    if (HasNoMarkOfHydross(bot) && !hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)))
     {
         if (botAI->CanCastSpell("misdirection", frostTank))
             return botAI->CastSpell("misdirection", frostTank);
 
-        if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", hydross))
+        if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", hydross))
             return botAI->CastSpell("steady shot", hydross);
     }
 
@@ -368,12 +374,12 @@ bool HydrossTheUnstableMisdirectBossToTankAction::TryMisdirectToNatureTank(
     if (!natureTank)
         return false;
 
-    if (HasNoMarkOfCorruption(bot) && hydross->HasAura(SPELL_CORRUPTION))
+    if (HasNoMarkOfCorruption(bot) && hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)))
     {
         if (botAI->CanCastSpell("misdirection", natureTank))
             return botAI->CastSpell("misdirection", natureTank);
 
-        if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", hydross))
+        if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", hydross))
             return botAI->CastSpell("steady shot", hydross);
     }
 
@@ -438,7 +444,7 @@ bool HydrossTheUnstableManageTimersAction::Execute(Event /*event*/)
 
     bool changed = false;
 
-    if (!hydross->HasAura(SPELL_CORRUPTION))
+    if (!hydross->HasAura(Id(SscSpells::SPELL_CORRUPTION)))
     {
         if (hydrossFrostDpsWaitTimer.try_emplace(instanceId, now).second ||
             hydrossNatureDpsWaitTimer.erase(instanceId) > 0 ||
@@ -606,11 +612,8 @@ bool TheLurkerBelowTanksPickUpAddsAction::Execute(Event /*event*/)
     for (auto guid : attackers)
     {
         Unit* unit = botAI->GetUnit(guid);
-        if (unit && unit->IsAlive() &&
-            unit->GetEntry() == NPC_COILFANG_GUARDIAN)
-        {
+        if (unit && unit->IsAlive() && unit->GetEntry() == Id(SscNpcs::NPC_COILFANG_GUARDIAN))
             guardians.push_back(unit);
-        }
     }
 
     if (guardians.size() < 3)
@@ -675,15 +678,6 @@ bool TheLurkerBelowManageSpoutTimerAction::Execute(Event /*event*/)
 
 // Leotheras the Blind
 
-bool LeotherasTheBlindTargetSpellbindersAction::Execute(Event /*event*/)
-{
-    Unit* spellbinder = GetFirstAliveUnitByEntry(botAI, NPC_GREYHEART_SPELLBINDER);
-    if (spellbinder && MarkTargetWithSkull(bot, spellbinder))
-        return true;
-
-    return false;
-}
-
 // Warlock tank action--see GetLeotherasDemonFormTank in RaidSSCHelpers.cpp
 // Use tank strategy for Demon Form and DPS strategy for Human Form
 bool LeotherasTheBlindDemonFormTankAttackBossAction::Execute(Event /*event*/)
@@ -696,7 +690,7 @@ bool LeotherasTheBlindDemonFormTankAttackBossAction::Execute(Event /*event*/)
     {
         Unit* unit = botAI->GetUnit(guid);
         Creature* creature = unit ? unit->ToCreature() : nullptr;
-        if (creature && creature->GetEntry() == NPC_INNER_DEMON &&
+        if (creature && creature->GetEntry() == Id(SscNpcs::NPC_INNER_DEMON) &&
             creature->GetSummonerGUID() == bot->GetGUID())
         {
             innerDemon = creature;
@@ -707,7 +701,7 @@ bool LeotherasTheBlindDemonFormTankAttackBossAction::Execute(Event /*event*/)
     if (innerDemon)
         return false;
 
-    if (Unit* leotherasDemon = GetActiveLeotherasDemon(bot))
+    if (Creature* leotherasDemon = GetActiveLeotherasDemon(bot))
     {
         if (MarkTargetWithSquare(bot, leotherasDemon))
             return true;
@@ -735,7 +729,7 @@ bool LeotherasTheBlindMeleeTanksDontAttackDemonFormAction::Execute(Event /*event
 bool LeotherasTheBlindPositionRangedAction::Execute(Event /*event*/)
 {
     constexpr float safeDistFromBoss = 15.0f;
-    Unit* leotherasHuman = GetLeotherasHuman(bot);
+    Creature* leotherasHuman = GetLeotherasHuman(bot);
     if (leotherasHuman && bot->GetExactDist2d(leotherasHuman) < safeDistFromBoss &&
         leotherasHuman->GetVictim() != bot)
     {
@@ -775,7 +769,7 @@ bool LeotherasTheBlindPositionRangedAction::Execute(Event /*event*/)
 
 bool LeotherasTheBlindRunAwayFromWhirlwindAction::Execute(Event /*event*/)
 {
-    if (Unit* leotherasHuman = GetLeotherasHuman(bot))
+    if (Creature* leotherasHuman = GetLeotherasHuman(bot))
     {
         float currentDistance = bot->GetExactDist2d(leotherasHuman);
         constexpr float safeDistance = 25.0f;
@@ -796,7 +790,7 @@ bool LeotherasTheBlindMeleeDpsRunAwayFromBossAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("cloak of shadows", bot))
         return botAI->CastSpell("cloak of shadows", bot);
 
-    Unit* leotheras = GetPhase2LeotherasDemon(bot);
+    Creature* leotheras = GetPhase2LeotherasDemon(bot);
     if (!leotheras)
         return false;
 
@@ -823,7 +817,7 @@ bool LeotherasTheBlindDestroyInnerDemonAction::Execute(Event /*event*/)
     {
         Unit* unit = botAI->GetUnit(guid);
         Creature* creature = unit ? unit->ToCreature() : nullptr;
-        if (creature && creature->GetEntry() == NPC_INNER_DEMON &&
+        if (creature && creature->GetEntry() == Id(SscNpcs::NPC_INNER_DEMON) &&
             creature->GetSummonerGUID() == bot->GetGUID())
         {
             innerDemon = creature;
@@ -853,15 +847,15 @@ bool LeotherasTheBlindDestroyInnerDemonAction::Execute(Event /*event*/)
 // Prot Paladins have an advantage in that Inner Demons are weak to Holy)
 bool LeotherasTheBlindDestroyInnerDemonAction::HandleFeralTankStrategy(Unit* innerDemon)
 {
-    if (bot->HasAura(SPELL_DIRE_BEAR_FORM))
-        bot->RemoveAura(SPELL_DIRE_BEAR_FORM);
+    if (bot->HasAura(Id(SscSpells::SPELL_DIRE_BEAR_FORM)))
+        bot->RemoveAura(Id(SscSpells::SPELL_DIRE_BEAR_FORM));
 
-    if (bot->HasAura(SPELL_BEAR_FORM))
-        bot->RemoveAura(SPELL_BEAR_FORM);
+    if (bot->HasAura(Id(SscSpells::SPELL_BEAR_FORM)))
+        bot->RemoveAura(Id(SscSpells::SPELL_BEAR_FORM));
 
     bool casted = false;
 
-    if (!bot->HasAura(SPELL_CAT_FORM) &&
+    if (!bot->HasAura(Id(SscSpells::SPELL_CAT_FORM)) &&
         botAI->CanCastSpell("cat form", bot) &&
         botAI->CastSpell("cat form", bot))
         casted = true;
@@ -896,8 +890,8 @@ bool LeotherasTheBlindDestroyInnerDemonAction::HandleHealerStrategy(Unit* innerD
 {
     if (bot->getClass() == CLASS_DRUID)
     {
-        if (bot->HasAura(SPELL_TREE_OF_LIFE))
-            bot->RemoveAura(SPELL_TREE_OF_LIFE);
+        if (bot->HasAura(Id(SscSpells::SPELL_TREE_OF_LIFE)))
+            bot->RemoveAura(Id(SscSpells::SPELL_TREE_OF_LIFE));
 
         bool casted = false;
 
@@ -971,7 +965,7 @@ bool LeotherasTheBlindDestroyInnerDemonAction::HandleHealerStrategy(Unit* innerD
 // Everybody except the Warlock tank should focus on Leotheras in Phase 3
 bool LeotherasTheBlindFinalPhaseAssignDpsPriorityAction::Execute(Event /*event*/)
 {
-    Unit* leotherasHuman = GetLeotherasHuman(bot);
+    Creature* leotherasHuman = GetLeotherasHuman(bot);
     if (!leotherasHuman)
         return false;
 
@@ -983,7 +977,7 @@ bool LeotherasTheBlindFinalPhaseAssignDpsPriorityAction::Execute(Event /*event*/
     if (AI_VALUE(Unit*, "current target") != leotherasHuman)
         return Attack(leotherasHuman);
 
-    Unit* leotherasDemon = GetPhase3LeotherasDemon(bot);
+    Creature* leotherasDemon = GetPhase3LeotherasDemon(bot);
     if (!leotherasDemon)
         return false;
 
@@ -1012,7 +1006,7 @@ bool LeotherasTheBlindFinalPhaseAssignDpsPriorityAction::Execute(Event /*event*/
 // Misdirect to Warlock tank or to main tank if there is no Warlock tank
 bool LeotherasTheBlindMisdirectBossToDemonFormTankAction::Execute(Event /*event*/)
 {
-    Unit* leotherasDemon = GetActiveLeotherasDemon(bot);
+    Creature* leotherasDemon = GetActiveLeotherasDemon(bot);
     if (!leotherasDemon)
         return false;
 
@@ -1026,7 +1020,7 @@ bool LeotherasTheBlindMisdirectBossToDemonFormTankAction::Execute(Event /*event*
     if (botAI->CanCastSpell("misdirection", targetTank))
         return botAI->CastSpell("misdirection", targetTank);
 
-    if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", leotherasDemon))
+    if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", leotherasDemon))
         return botAI->CastSpell("steady shot", leotherasDemon);
 
     return false;
@@ -1044,7 +1038,7 @@ bool LeotherasTheBlindManageDpsWaitTimersAction::Execute(Event /*event*/)
 
     bool changed = false;
     // Encounter start/reset: clear all timers
-    if (leotheras->HasAura(SPELL_LEOTHERAS_BANISHED) &&
+    if (leotheras->HasAura(Id(SscSpells::SPELL_LEOTHERAS_BANISHED)) &&
         (leotherasHumanFormDpsWaitTimer.erase(instanceId) > 0 ||
          leotherasDemonFormDpsWaitTimer.erase(instanceId) > 0 ||
          leotherasFinalPhaseDpsWaitTimer.erase(instanceId) > 0))
@@ -1053,8 +1047,8 @@ bool LeotherasTheBlindManageDpsWaitTimersAction::Execute(Event /*event*/)
     }
 
     // Human Phase
-    Unit* leotherasHuman = GetLeotherasHuman(bot);
-    Unit* leotherasPhase3Demon = GetPhase3LeotherasDemon(bot);
+    Creature* leotherasHuman = GetLeotherasHuman(bot);
+    Creature* leotherasPhase3Demon = GetPhase3LeotherasDemon(bot);
     if (leotherasHuman && !leotherasPhase3Demon &&
         (leotherasHumanFormDpsWaitTimer.try_emplace(instanceId, now).second ||
          leotherasDemonFormDpsWaitTimer.erase(instanceId) > 0))
@@ -1315,7 +1309,7 @@ bool FathomLordKarathressMisdirectBossesToTanksAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("misdirection", tankTarget))
         return botAI->CastSpell("misdirection", tankTarget);
 
-    if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", bossTarget))
+    if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", bossTarget))
         return botAI->CastSpell("steady shot", bossTarget);
 
     return false;
@@ -1326,7 +1320,8 @@ bool FathomLordKarathressMisdirectBossesToTanksAction::Execute(Event /*event*/)
 bool FathomLordKarathressAssignDpsPriorityAction::Execute(Event /*event*/)
 {
     // Target priority 1: Spitfire Totems for melee dps
-    Unit* totem = GetFirstAliveUnitByEntry(botAI, NPC_SPITFIRE_TOTEM);
+    constexpr float searchRadius = 75.0f;
+    Creature* totem = bot->FindNearestCreature(Id(SscNpcs::NPC_SPITFIRE_TOTEM), searchRadius);
     if (totem && PlayerbotAI::IsMelee(bot) && PlayerbotAI::IsDps(bot))
     {
         if (MarkTargetWithSkull(bot, totem))
@@ -1470,7 +1465,7 @@ bool MorogrimTidewalkerMisdirectBossToMainTankAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("misdirection", mainTank))
         return botAI->CastSpell("misdirection", mainTank);
 
-    if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", tidewalker))
+    if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", tidewalker))
         return botAI->CastSpell("steady shot", tidewalker);
 
     return false;
@@ -1736,7 +1731,7 @@ bool LadyVashjSetGroundingTotemInMainTankGroupAction::Execute(Event /*event*/)
     if (!mainTank)
         return false;
 
-    if (mainTank->HasAura(SPELL_GROUNDING_TOTEM_EFFECT))
+    if (mainTank->HasAura(Id(SscSpells::SPELL_GROUNDING_TOTEM_EFFECT)))
         return false;
 
     constexpr float distFromTank = 25.0f;
@@ -1760,7 +1755,7 @@ bool LadyVashjMisdirectBossToMainTankAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("misdirection", mainTank))
         return botAI->CastSpell("misdirection", mainTank);
 
-    if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", vashj))
+    if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", vashj))
         return botAI->CastSpell("steady shot", vashj);
 
     return false;
@@ -1774,7 +1769,7 @@ bool LadyVashjStaticChargeMoveAwayFromGroupAction::Execute(Event /*event*/)
 
     // If the main tank has Static Charge, other group members should move away
     Player* mainTank = GetGroupMainTank(bot);
-    if (mainTank && bot != mainTank && mainTank->HasAura(SPELL_STATIC_CHARGE))
+    if (mainTank && bot != mainTank && mainTank->HasAura(Id(SscSpells::SPELL_STATIC_CHARGE)))
     {
         float currentDistance = bot->GetExactDist2d(mainTank);
         constexpr float safeDistance = 11.0f;
@@ -1783,7 +1778,7 @@ bool LadyVashjStaticChargeMoveAwayFromGroupAction::Execute(Event /*event*/)
     }
 
     // If any other bot has Static Charge, it should move away from other group members
-    if (!PlayerbotAI::IsMainTank(bot) && bot->HasAura(SPELL_STATIC_CHARGE))
+    if (!PlayerbotAI::IsMainTank(bot) && bot->HasAura(Id(SscSpells::SPELL_STATIC_CHARGE)))
     {
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         {
@@ -1846,27 +1841,27 @@ bool LadyVashjAssignPhase2AndPhase3DpsPriorityAction::Execute(Event /*event*/)
 
         switch (unit->GetEntry())
         {
-            case NPC_ENCHANTED_ELEMENTAL:
+            case Id(SscNpcs::NPC_ENCHANTED_ELEMENTAL):
                 if (!enchanted || vashj->GetExactDist2d(unit) < vashj->GetExactDist2d(enchanted))
                     enchanted = unit;
                 break;
 
-            case NPC_COILFANG_ELITE:
+            case Id(SscNpcs::NPC_COILFANG_ELITE):
                 if (!elite || unit->GetHealthPct() < elite->GetHealthPct())
                     elite = unit;
                 break;
 
-            case NPC_COILFANG_STRIDER:
+            case Id(SscNpcs::NPC_COILFANG_STRIDER):
                 if (!strider || unit->GetHealthPct() < strider->GetHealthPct())
                     strider = unit;
                 break;
 
-            case NPC_TOXIC_SPOREBAT:
+            case Id(SscNpcs::NPC_TOXIC_SPOREBAT):
                 if (!sporebat || bot->GetDistance(unit) < bot->GetDistance(sporebat))
                     sporebat = unit;
                 break;
 
-            case NPC_LADY_VASHJ:
+            case Id(SscNpcs::NPC_LADY_VASHJ):
                 vashj = unit;
                 break;
 
@@ -1988,7 +1983,7 @@ bool LadyVashjMisdirectStriderToFirstAssistTankAction::Execute(Event /*event*/)
     if (botAI->CanCastSpell("misdirection", firstAssistTank))
         return botAI->CastSpell("misdirection", firstAssistTank);
 
-    if (bot->HasAura(SPELL_MISDIRECTION) && botAI->CanCastSpell("steady shot", strider))
+    if (bot->HasAura(Id(SscSpells::SPELL_MISDIRECTION)) && botAI->CanCastSpell("steady shot", strider))
         return botAI->CastSpell("steady shot", strider);
 
     return false;
@@ -2009,8 +2004,8 @@ bool LadyVashjTankAttackAndMoveAwayStriderAction::Execute(Event /*event*/)
     // players wearing an Ogre Suit (due to the extended combat reach)
     if (botAI->HasCheat(BotCheatMask::raid) && PlayerbotAI::IsTank(bot))
     {
-        if (!bot->HasAura(SPELL_FEAR_WARD))
-            bot->AddAura(SPELL_FEAR_WARD, bot);
+        if (!bot->HasAura(Id(SscSpells::SPELL_FEAR_WARD)))
+            bot->AddAura(Id(SscSpells::SPELL_FEAR_WARD), bot);
 
         if (PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) &&
             AI_VALUE(Unit*, "current target") != strider)
@@ -2038,12 +2033,12 @@ bool LadyVashjTankAttackAndMoveAwayStriderAction::Execute(Event /*event*/)
         {
             return botAI->CastSpell("frost shock", strider);
         }
-        else if (!strider->HasAura(SPELL_CURSE_OF_EXHAUSTION) && bot->getClass() == CLASS_WARLOCK &&
+        else if (!strider->HasAura(Id(SscSpells::SPELL_CURSE_OF_EXHAUSTION)) && bot->getClass() == CLASS_WARLOCK &&
                  botAI->CanCastSpell("curse of exhaustion", strider))
         {
             return botAI->CastSpell("curse of exhaustion", strider);
         }
-        else if (!strider->HasAura(SPELL_SLOW) && bot->getClass() == CLASS_MAGE &&
+        else if (!strider->HasAura(Id(SscSpells::SPELL_SLOW)) && bot->getClass() == CLASS_MAGE &&
                  botAI->CanCastSpell("slow", strider))
         {
             return botAI->CastSpell("slow", strider);
@@ -2080,7 +2075,7 @@ bool LadyVashjTeleportToTaintedElementalAction::Execute(Event /*event*/)
     if (bot->GetExactDist2d(tainted) < 5.0f)
     {
         bot->SetFullHealth();
-        bot->RemoveAura(SPELL_POISON_BOLT);
+        bot->RemoveAura(Id(SscSpells::SPELL_POISON_BOLT));
     }
 
     return false;
@@ -2099,12 +2094,13 @@ bool LadyVashjLootTaintedCoreAction::Execute(Event /*event*/)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (member && member->HasItemCount(ITEM_TAINTED_CORE, 1, false))
+        if (member && member->HasItemCount(Id(SscItems::ITEM_TAINTED_CORE), 1, false))
             return false;
     }
 
     constexpr float searchRadius = 150.0f;
-    Creature* elemental = bot->FindNearestCreature(NPC_TAINTED_ELEMENTAL, searchRadius, false);
+    Creature* elemental =
+        bot->FindNearestCreature(Id(SscNpcs::NPC_TAINTED_ELEMENTAL), searchRadius, false);
 
     if (!elemental || elemental->IsAlive())
         return false;
@@ -2173,11 +2169,11 @@ bool LadyVashjPassTheTaintedCoreAction::Execute(Event /*event*/)
     // Not gated behind CheatMask because the auto application of Fear Ward is necessary
     // to address an issue with bot movement, which is that bots cannot be rooted and
     // therefore will move when feared while holding the Tainted Core
-    if (!bot->HasAura(SPELL_FEAR_WARD))
-        bot->AddAura(SPELL_FEAR_WARD, bot);
+    if (!bot->HasAura(Id(SscSpells::SPELL_FEAR_WARD)))
+        bot->AddAura(Id(SscSpells::SPELL_FEAR_WARD), bot);
 
-    Item* item = bot->GetItemByEntry(ITEM_TAINTED_CORE);
-    if (!item || !botAI->HasItemInInventory(ITEM_TAINTED_CORE))
+    Item* item = bot->GetItemByEntry(Id(SscItems::ITEM_TAINTED_CORE));
+    if (!item || !botAI->HasItemInInventory(Id(SscItems::ITEM_TAINTED_CORE)))
     {
         // Passer order: HealAssistantOfIndex 0, 1, 2, then RangedDpsAssistantOfIndex 0
         if (bot == firstCorePasser &&
@@ -2201,7 +2197,7 @@ bool LadyVashjPassTheTaintedCoreAction::Execute(Event /*event*/)
             return true;
         }
     }
-    else if (item && botAI->HasItemInInventory(ITEM_TAINTED_CORE))
+    else if (item && botAI->HasItemInInventory(Id(SscItems::ITEM_TAINTED_CORE)))
     {
         // Designated core looter logic
         // Applicable only if cheat mode is on and thus looter is a bot
@@ -2568,7 +2564,7 @@ bool LadyVashjPassTheTaintedCoreAction::UseCoreOnNearestGenerator(const uint32 i
 {
     auto const& generators =
         GetAllGeneratorInfosByDbGuids(bot->GetMap(), SHIELD_GENERATOR_DB_GUIDS);
-    const GeneratorInfo* nearestGen = GetNearestGeneratorToBot(bot, generators);
+    GeneratorInfo const* nearestGen = GetNearestGeneratorToBot(bot, generators);
     if (!nearestGen)
         return false;
 
@@ -2576,7 +2572,7 @@ bool LadyVashjPassTheTaintedCoreAction::UseCoreOnNearestGenerator(const uint32 i
     if (!generator || bot->GetExactDist2d(generator) > 4.5f)
         return false;
 
-    Item* core = bot->GetItemByEntry(ITEM_TAINTED_CORE);
+    Item* core = bot->GetItemByEntry(Id(SscItems::ITEM_TAINTED_CORE));
     if (!core || bot->CanUseItem(core) != EQUIP_ERR_OK)
         return false;
 
@@ -2669,7 +2665,7 @@ bool LadyVashjAvoidToxicSporesAction::Execute(Event /*event*/)
 }
 
 Position LadyVashjAvoidToxicSporesAction::FindSafestNearbyPosition(
-    const std::vector<Unit*>& spores, const Position& vashjCenter,
+    std::vector<Unit*> const& spores, Position const& vashjCenter,
     float maxRadius, float hazardRadius)
 {
     constexpr float searchStep = M_PI / 8.0f;
@@ -2735,8 +2731,9 @@ Position LadyVashjAvoidToxicSporesAction::FindSafestNearbyPosition(
     return bestPos;
 }
 
-bool LadyVashjAvoidToxicSporesAction::IsPathSafeFromSpores(const Position& start,
-    const Position& end, const std::vector<Unit*>& spores, float hazardRadius)
+bool LadyVashjAvoidToxicSporesAction::IsPathSafeFromSpores(
+    Position const& start, Position const& end,
+    std::vector<Unit*> const& spores, float hazardRadius)
 {
     constexpr uint8 numChecks = 10;
     float dx = end.GetPositionX() - start.GetPositionX();
@@ -2767,7 +2764,8 @@ std::vector<Unit*> LadyVashjAvoidToxicSporesAction::GetAllSporeDropTriggers(Play
     std::list<Creature*> creatureList;
     constexpr float searchRadius = 50.0f;
 
-    bot->GetCreatureListWithEntryInGrid(creatureList, NPC_SPORE_DROP_TRIGGER, searchRadius);
+    bot->GetCreatureListWithEntryInGrid(
+        creatureList, Id(SscNpcs::NPC_SPORE_DROP_TRIGGER), searchRadius);
 
     for (Creature* creature : creatureList)
     {
@@ -2790,7 +2788,7 @@ bool LadyVashjUseFreeActionAbilitiesAction::Execute(Event /*event*/)
 
     // If Rogues are Entangled and either have Static Charge or
     // are near a spore, use Cloak of Shadows
-    if (bot->getClass() == CLASS_ROGUE && bot->HasAura(SPELL_ENTANGLE))
+    if (bot->getClass() == CLASS_ROGUE && bot->HasAura(Id(SscSpells::SPELL_ENTANGLE)))
     {
         bool nearSpore = false;
         for (Unit* spore : spores)
@@ -2801,7 +2799,7 @@ bool LadyVashjUseFreeActionAbilitiesAction::Execute(Event /*event*/)
                 break;
             }
         }
-        if (bot->HasAura(SPELL_STATIC_CHARGE) || nearSpore)
+        if (bot->HasAura(Id(SscSpells::SPELL_STATIC_CHARGE)) || nearSpore)
         {
             if (botAI->CanCastSpell("cloak of shadows", bot))
                 return botAI->CastSpell("cloak of shadows", bot);
@@ -2817,7 +2815,7 @@ bool LadyVashjUseFreeActionAbilitiesAction::Execute(Event /*event*/)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || !member->HasAura(SPELL_ENTANGLE) ||
+        if (!member || !member->IsAlive() || !member->HasAura(Id(SscSpells::SPELL_ENTANGLE)) ||
             !PlayerbotAI::IsMelee(member))
             continue;
 
@@ -2840,7 +2838,7 @@ bool LadyVashjUseFreeActionAbilitiesAction::Execute(Event /*event*/)
                 anyToxic = member;
         }
 
-        if (member->HasAura(SPELL_STATIC_CHARGE))
+        if (member->HasAura(Id(SscSpells::SPELL_STATIC_CHARGE)))
         {
             if (PlayerbotAI::IsMainTank(member))
                 mainTankStatic = member;

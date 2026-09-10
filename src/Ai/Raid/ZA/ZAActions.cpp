@@ -24,20 +24,24 @@ bool ZulAmanResetEncounterStatesAction::Execute(Event /*event*/)
 {
     bool reset = false;
     reset |= akilzonStormTimer.erase(bot->GetInstanceId()) > 0;
-    reset |= ClearTargetIcon(bot, RtiTargetValue::skullIndex);
-    reset |= ClearTargetIcon(bot, RtiTargetValue::moonIndex);
+
+    if (!AI_VALUE2(bool, "combat", "self target"))
+    {
+        reset |= ClearTargetIcon(bot, RtiTargetValue::skullIndex);
+        reset |= ClearTargetIcon(bot, RtiTargetValue::moonIndex);
+    }
 
     return reset;
 }
 
 bool ZulAmanMisdirectBossToMainTankAction::Execute(Event /*event*/)
 {
-    Unit* boss = AI_VALUE(Unit*, "boss target");
+    Unit* boss = AI_VALUE2(Unit*, "find target", _bossName);
     if (!boss)
         return false;
 
     Player* mainTank = GetGroupMainTank(bot);
-    if (!mainTank)
+    if (!mainTank || !mainTank->IsAlive())
         return false;
 
     if (botAI->CanCastSpell("misdirection", mainTank))
@@ -65,7 +69,7 @@ bool ZulAmanTanksPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, _position, arrivalDist, boss, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, _position, arrivalDist, boss, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
@@ -75,9 +79,8 @@ bool ZulAmanTanksPositionBossAction::Execute(Event /*event*/)
 
 bool ZulAmanSpreadRangedAction::Execute(Event /*event*/)
 {
-    float minDistance = _minDistance;
-    Player* nearestPlayer = GetNearestPlayerInRadius(bot, minDistance);
-    return nearestPlayer && FleePosition(nearestPlayer->GetPosition(), minDistance);
+    Player* nearestPlayer = GetNearestPlayerInRadius(bot, _minDistance);
+    return nearestPlayer && FleePosition(nearestPlayer->GetPosition(), _minDistance);
 }
 
 bool ZulAmanRunAwayFromWhirlwindAction::Execute(Event /*event*/)
@@ -98,15 +101,13 @@ bool ZulAmanRunAwayFromWhirlwindAction::Execute(Event /*event*/)
 
 bool AmanishiMedicineManMarkWardAction::Execute(Event /*event*/)
 {
-    constexpr float searchRadius = 40.0f;
-
     Creature* protectiveWard = bot->FindNearestCreature(
-        Id(ZaNpcs::NPC_AMANI_PROTECTIVE_WARD), searchRadius, true);
+        Id(ZaNpcs::NPC_AMANI_PROTECTIVE_WARD), ZA_CREATURE_SEARCH_RADIUS);
     if (protectiveWard)
         return MarkTargetWithSkull(bot, protectiveWard);
 
     Creature* healingWard = bot->FindNearestCreature(
-        Id(ZaNpcs::NPC_AMANI_HEALING_WARD), searchRadius, true);
+        Id(ZaNpcs::NPC_AMANI_HEALING_WARD), ZA_CREATURE_SEARCH_RADIUS);
     return healingWard && MarkTargetWithSkull(bot, healingWard);
 }
 
@@ -118,7 +119,8 @@ bool AkilzonMoveToEyeOfTheStormAction::Execute(Event /*event*/)
     if (!target && !PlayerbotAI::IsMainTank(bot))
         target = GetGroupMainTank(bot);
 
-    if (!target || bot->GetExactDist2d(target) <= 3.0f)
+    constexpr float arrivalDist = 3.0f;
+    if (!target || bot->GetExactDist2d(target) <= arrivalDist)
         return false;
 
     bot->CastStop();
@@ -127,18 +129,21 @@ bool AkilzonMoveToEyeOfTheStormAction::Execute(Event /*event*/)
         false, false, false, false, MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
-bool AkilzonManageElectricalStormTimerAction::Execute(Event /*event*/)
+bool AkilzonStartElectricalStormTimerAction::Execute(Event /*event*/)
 {
     return akilzonStormTimer.try_emplace(bot->GetInstanceId(), getMSTime()).second;
 }
 
 // Nalorakk <Bear Avatar>
 
-bool NalorakkTanksPositionBossAction::Execute(Event /*event*/)
+bool NalorakkTanksPositionBossAction::Execute(Event event)
 {
     Unit* nalorakk = AI_VALUE2(Unit*, "find target", "nalorakk");
     if (!nalorakk)
         return false;
+
+    if (AI_VALUE(Unit*, "current target") != nalorakk)
+        return Attack(nalorakk);
 
     // Main tank takes bear, assist tank takes troll
     Player* nalorakkTank = nullptr;
@@ -149,23 +154,20 @@ bool NalorakkTanksPositionBossAction::Execute(Event /*event*/)
 
     if (nalorakkTank && nalorakkTank == bot)
     {
-        if (AI_VALUE(Unit*, "current target") != nalorakk)
-            return Attack(nalorakk);
-
         if (nalorakk->GetVictim() != bot)
-            return botAI->DoSpecificAction("taunt spell", Event(), true);
+            return botAI->DoSpecificAction("taunt spell", event, true);
 
         if (!bot->IsWithinMeleeRange(nalorakk))
             return false;
     }
 
-    // Both tanks walk to the position, so the backpedal is left to GetTankPositionStep(), which
-    // takes it only while the bot actually has Nalorakk on it.
+    // Both always move to the position but should back to it only when holding Nalorakk, so
+    // whether movement is forwards or backwards is determined by GetStepToPosition().
     constexpr float arrivalDist = 2.0f;
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(
+    if (!GetStepToPosition(
             bot, NALORAKK_TANK_POSITION, arrivalDist, nalorakk, moveX, moveY, backwards))
     {
         return false;
@@ -188,7 +190,7 @@ bool JanalaiSpreadRangedInCircleAction::Execute(Event /*event*/)
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || !PlayerbotAI::IsRanged(member))
+        if (!member || member->GetMapId() != ZA_MAP_ID || !PlayerbotAI::IsRanged(member))
             continue;
 
         rangedMembers.push_back(member);
@@ -201,17 +203,16 @@ bool JanalaiSpreadRangedInCircleAction::Execute(Event /*event*/)
     size_t botIndex =
         (findIt != rangedMembers.end()) ? std::distance(rangedMembers.begin(), findIt) : 0;
     size_t count = rangedMembers.size();
-    if (count == 0)
-        return false;
-
-    constexpr float radius = 15.0f;
     float angle = (count == 1) ? 0.0f
         : (2.0f * M_PI * static_cast<float>(botIndex) / static_cast<float>(count));
 
-    float targetX = JANALAI_TANK_POSITION.GetPositionX() + radius * std::cos(angle);
-    float targetY = JANALAI_TANK_POSITION.GetPositionY() + radius * std::sin(angle);
+    float targetX =
+        JANALAI_TANK_POSITION.GetPositionX() + JANALAI_RANGED_SPREAD_RADIUS * std::cos(angle);
+    float targetY =
+        JANALAI_TANK_POSITION.GetPositionY() + JANALAI_RANGED_SPREAD_RADIUS * std::sin(angle);
 
-    if (bot->GetExactDist2d(targetX, targetY) <= 2.0f)
+    constexpr float arrivalDist = 2.0f;
+    if (bot->GetExactDist2d(targetX, targetY) <= arrivalDist)
         return false;
 
     return MoveTo(
@@ -221,16 +222,15 @@ bool JanalaiSpreadRangedInCircleAction::Execute(Event /*event*/)
 
 bool JanalaiAvoidFireBombsAction::Execute(Event /*event*/)
 {
-    auto const& bombs = GetNearbyFireBombs(botAI);
+    std::vector<Unit*> const bombs = GetNearbyFireBombs(botAI);
 
     if (bombs.empty())
         return false;
 
-    constexpr float hazardRadius = 5.0f;
     bool inDanger = false;
     for (Unit* bomb : bombs)
     {
-        if (bot->GetDistance2d(bomb) < hazardRadius)
+        if (bot->GetExactDist2d(bomb) < JANALAI_FIRE_BOMB_SAFE_DISTANCE)
         {
             inDanger = true;
             break;
@@ -240,35 +240,31 @@ bool JanalaiAvoidFireBombsAction::Execute(Event /*event*/)
     if (!inDanger)
         return false;
 
-    // The safe zone is flat, so a bot that has been knocked below the platform would be sent to a
-    // spot under the floor. Leave those to normal movement.
     constexpr float maxFloorDeviation = 5.0f;
     if (std::fabs(bot->GetPositionZ() - JANALAI_PLATFORM_Z) > maxFloorDeviation)
         return false;
 
-    constexpr float maxSearchDistance = 20.0f;
-    // One tick of movement is all a step needs to cover; CanTakeStepTowards() clamps it to the
-    // distance when the safe spot is nearer than this.
     constexpr float moveDist = 3.5f;
 
-    float stepX, stepY, stepZ;
-    if (!FindSafeStepInZone(
-            bot, bombs, JANALAI_SAFE_ZONE, maxSearchDistance, hazardRadius, moveDist,
-            stepX, stepY, stepZ))
+    float stepX;
+    float stepY;
+    float stepZ;
+    if (!FindSafeStepInJanalaiZone(
+            bot, bombs, JANALAI_SAFE_ZONE, JANALAI_FIRE_BOMB_MAX_SEARCH_DISTANCE,
+            JANALAI_FIRE_BOMB_SAFE_DISTANCE, moveDist, stepX, stepY, stepZ))
     {
         return false;
     }
 
     bot->CastStop();
     return MoveTo(
-        ZA_MAP_ID, stepX, stepY, stepZ,
-        false, false, false, false, MovementPriority::MOVEMENT_FORCED, true, false);
+        ZA_MAP_ID, stepX, stepY, stepZ, false, false, false, false,
+        MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
 bool JanalaiMarkAmanishiHatchersAction::Execute(Event /*event*/)
 {
     auto [hatcherLow, hatcherHigh] = GetAmanishiHatcherPair(botAI);
-
     if (!hatcherLow || !hatcherHigh || hatcherHigh == hatcherLow)
         return false;
 
@@ -277,24 +273,22 @@ bool JanalaiMarkAmanishiHatchersAction::Execute(Event /*event*/)
 
 // Halazzi <Lynx Avatar>
 
-bool HalazziFirstAssistTankAttackSpiritLynxAction::Execute(Event /*event*/)
+bool HalazziFirstAssistTankAttackSpiritLynxAction::Execute(Event event)
 {
-    Unit* lynx = AI_VALUE2(Unit*, "find target", "spirit of the lynx");
-    if (lynx)
+    if (Unit* lynx = AI_VALUE2(Unit*, "find target", "spirit of the lynx"))
     {
         if (AI_VALUE(Unit*, "current target") != lynx)
             return Attack(lynx);
 
-        if (lynx->GetVictim() != bot && botAI->DoSpecificAction("taunt spell", Event(), true))
-            return true;
+        if (lynx->GetVictim() != bot)
+            return botAI->DoSpecificAction("taunt spell", event, true);
     }
-
-    if (lynx && lynx->GetVictim() != bot)
-        return false;
 
     Position const& position = HALAZZI_TANK_POSITION;
     float const distToPosition = bot->GetExactDist2d(position);
-    if (distToPosition <= 2.0f)
+    constexpr float arrivalDist = 2.0f;
+
+    if (distToPosition <= arrivalDist)
         return false;
 
     return MoveTo(
@@ -305,9 +299,8 @@ bool HalazziFirstAssistTankAttackSpiritLynxAction::Execute(Event /*event*/)
 bool HalazziDpsAttackTotemAndBossAction::Execute(Event /*event*/)
 {
     // Target priority 1: Corrupted Lightning Totems
-    constexpr float searchRadius = 40.0f;
-    if (Creature* totem =
-            bot->FindNearestCreature(Id(ZaNpcs::NPC_CORRUPTED_LIGHTNING_TOTEM), searchRadius))
+    if (Creature* totem = bot->FindNearestCreature(
+            Id(ZaNpcs::NPC_CORRUPTED_LIGHTNING_TOTEM), ZA_CREATURE_SEARCH_RADIUS))
     {
         if (MarkTargetWithSkull(bot, totem))
             return true;
@@ -339,66 +332,63 @@ bool HexLordMalacrassAssignDpsPriorityAction::Execute(Event /*event*/)
         Id(ZaNpcs::NPC_HEX_LORD_MALACRASS)
     };
 
-    auto const& targets = AI_VALUE(GuidVector, "possible targets no los");
     Unit* priorityTarget = nullptr;
-    for (uint32 entry : hexLordAdds)
+    size_t bestRank = hexLordAdds.size();
+    for (auto const& guid : AI_VALUE(GuidVector, "possible targets no los"))
     {
-        for (auto const& guid : targets)
+        Unit* unit = botAI->GetUnit(guid);
+        if (!unit || !unit->IsAlive())
+            continue;
+
+        auto const it = std::find(hexLordAdds.begin(), hexLordAdds.end(), unit->GetEntry());
+        size_t const rank = std::distance(hexLordAdds.begin(), it);
+        if (rank < bestRank)
         {
-            Unit* unit = botAI->GetUnit(guid);
-            if (unit && unit->IsAlive() && unit->GetEntry() == entry)
-            {
-                priorityTarget = unit;
-                break;
-            }
+            bestRank = rank;
+            priorityTarget = unit;
         }
-
-        if (priorityTarget)
-            break;
     }
 
-    if (priorityTarget)
-    {
-        if (MarkTargetWithSkull(bot, priorityTarget))
-            return true;
-    }
-
-    return false;
+    return priorityTarget && MarkTargetWithSkull(bot, priorityTarget);
 }
 
 bool HexLordMalacrassMoveAwayFromFreezingTrapAction::Execute(Event /*event*/)
 {
-    GameObject* trap = bot->FindNearestGameObject(
-        Id(ZaObjects::GO_FREEZING_TRAP), ZA_FREEZING_TRAP_SEARCH_RADIUS, true);
-
+    GameObject* trap = GetNearbyFreezingTrap(botAI);
     if (!trap)
         return false;
 
-    float currentDistance = bot->GetDistance2d(trap);
-    constexpr float safeDistance = 6.0f;
-    constexpr uint32 minInterval = 0;
-    if (currentDistance >= safeDistance)
+    float const currentDistance = bot->GetExactDist2d(trap);
+    if (currentDistance >= ZA_FREEZING_TRAP_SAFE_DISTANCE)
         return false;
 
-    return FleePosition(trap->GetPosition(), safeDistance, minInterval);
+    constexpr uint32 minInterval = 0;
+    return FleePosition(trap->GetPosition(), ZA_FREEZING_TRAP_SAFE_DISTANCE, minInterval);
 }
 
 // Zul'jin
 
-bool ZuljinSpreadRaidForCyclonesAction::Execute(Event /*event*/)
+bool ZuljinMassDispelCreepingParalysisAction::Execute(Event /*event*/)
+{
+    Player* paralysisTarget = GetZuljinCreepingParalysisDispelTarget(bot);
+    return paralysisTarget &&
+        botAI->CanCastSpell(Id(ZaSpells::SPELL_MASS_DISPEL), paralysisTarget) &&
+        botAI->CastSpell(Id(ZaSpells::SPELL_MASS_DISPEL), paralysisTarget);
+}
+
+bool ZuljinPositionRangedForCyclonesAction::Execute(Event /*event*/)
 {
     size_t slotIndex;
-    if (!GetSpreadSlotIndex(bot, ZULJIN_SPREAD_POSITIONS.size(), slotIndex))
+    if (!GetZuljinSpreadSlotIndex(bot, ZULJIN_SPREAD_POSITIONS.size(), slotIndex))
         return false;
 
     Position const& position = ZULJIN_SPREAD_POSITIONS[slotIndex];
 
-    // No boss is passed, so this never backpedals - it is a walk to a standing spot, not tanking.
     constexpr float arrivalDist = 2.0f;
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, position, arrivalDist, nullptr, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, position, arrivalDist, nullptr, moveX, moveY, backwards))
         return false;
 
     return MoveTo(

@@ -9,27 +9,31 @@
 #include "Playerbots.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <list>
 
-namespace ZaHelpers
+using namespace EncounterHelpers;
+
+namespace
 {
 
-// General
-bool SafeZoneQuad::Contains(float x, float y) const
+bool IsInsideSafeZone(std::vector<Position> const& corners, float x, float y)
 {
-    // The point is inside a convex quad when it falls on the same side of all four edges.
+    // The safe zone's shape is pentagonal, sort of like a rectangle with one of the corners cut
+    // out (to exclude a fenced-off broken corner of the stage).
+    size_t const count = corners.size();
     int8 insideSign = 0;
-    for (uint8 i = 0; i < 4; ++i)
+    for (size_t i = 0; i < count; ++i)
     {
         Position const& edgeStart = corners[i];
-        Position const& edgeEnd = corners[(i + 1) % 4];
+        Position const& edgeEnd = corners[(i + 1) % count];
 
         float cross =
             (edgeEnd.GetPositionX() - edgeStart.GetPositionX()) * (y - edgeStart.GetPositionY()) -
             (edgeEnd.GetPositionY() - edgeStart.GetPositionY()) * (x - edgeStart.GetPositionX());
 
         if (cross == 0.0f)
-            continue;  // Exactly on this edge, so it rules nothing out.
+            continue;
 
         int8 const sign = cross > 0.0f ? 1 : -1;
         if (insideSign == 0)
@@ -41,127 +45,22 @@ bool SafeZoneQuad::Contains(float x, float y) const
     return true;
 }
 
-bool IsOnFlatFloor(Player* bot, float x, float y, float floorZ, float floorTolerance)
-{
-    // Searches downward from floorZ, so a spot over a hole reports the floor far below and a spot
-    // over nothing at all reports INVALID_HEIGHT. Both miss the tolerance by a wide margin.
-    float const groundZ = bot->GetMapHeight(x, y, floorZ);
-
-    return std::fabs(groundZ - floorZ) <= floorTolerance;
-}
-
-bool FindSafeStepInZone(Player* bot,
-    std::vector<Unit*> const& hazards, SafeZoneQuad const& safeZone,
-    float maxSearchDistance, float hazardRadius, float moveDist,
-    float& stepX, float& stepY, float& stepZ)
-{
-    constexpr float searchStep = M_PI / 8.0f;
-    constexpr float distanceStep = 1.0f;
-
-    // Cheapest first: the quad is arithmetic, the hazard sweep is a loop over every bomb, and the
-    // floor probe reads the map, so it only runs on what survives the other two.
-    auto const isAcceptable = [bot, &hazards, &safeZone, hazardRadius](float x, float y)
-    {
-        return safeZone.Contains(x, y) &&
-            IsPositionSafeFromHazards(x, y, hazards, hazardRadius) &&
-            IsOnFlatFloor(bot, x, y, safeZone.floorZ, safeZone.floorTolerance);
-    };
-
-    // Rings are walked nearest first and every candidate within a ring is the same distance out,
-    // so the first one that validates is the shortest move on offer.
-    for (float distance = distanceStep;
-            distance <= maxSearchDistance; distance += distanceStep)
-    {
-        for (float angle = 0.0f; angle < 2 * M_PI; angle += searchStep)
-        {
-            float const x = bot->GetPositionX() + distance * std::cos(angle);
-            float const y = bot->GetPositionY() + distance * std::sin(angle);
-
-            if (!isAcceptable(x, y))
-                continue;
-
-            if (!EncounterHelpers::CanTakeStepTowards(bot, x, y, moveDist, stepX, stepY, stepZ))
-                continue;
-
-            // The step stops short whenever the spot is further out than moveDist, and the line to
-            // it can cross ground the spot itself never touches, so where it lands is checked too.
-            if (!isAcceptable(stepX, stepY))
-                continue;
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
 bool IsPositionSafeFromHazards(
     float x, float y, std::vector<Unit*> const& hazards, float hazardRadius)
 {
     for (Unit* hazard : hazards)
     {
-        if (hazard->GetDistance2d(x, y) < hazardRadius)
+        if (hazard->GetExactDist2d(x, y) < hazardRadius)
             return false;
     }
 
     return true;
 }
 
-bool GetSpreadSlotIndex(Player* bot, size_t slotCount, size_t& slotIndex)
+}  // end anonymous namespace
+
+namespace ZaHelpers
 {
-    if (slotCount == 0)
-        return false;
-
-    Group* group = bot->GetGroup();
-    if (!group)
-        return false;
-
-    std::vector<Player*> healers;
-    std::vector<Player*> rangedDps;
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-    {
-        Player* member = ref->GetSource();
-        if (!member || member->GetMapId() != ZA_MAP_ID || !PlayerbotAI::IsRanged(member))
-            continue;
-
-        if (PlayerbotAI::IsHeal(member))
-            healers.push_back(member);
-        else
-            rangedDps.push_back(member);
-    }
-
-    auto const healerIt = std::find(healers.begin(), healers.end(), bot);
-    if (healerIt != healers.end())
-    {
-        slotIndex = static_cast<size_t>(std::distance(healers.begin(), healerIt)) % slotCount;
-        return true;
-    }
-
-    auto const dpsIt = std::find(rangedDps.begin(), rangedDps.end(), bot);
-    if (dpsIt == rangedDps.end())
-        return false;
-
-    // Healers occupy the head of the list, so the dps ordinal picks up where they left off.
-    size_t const ordinal =
-        healers.size() + static_cast<size_t>(std::distance(rangedDps.begin(), dpsIt));
-    slotIndex = ordinal % slotCount;
-    return true;
-}
-
-uint32 CountAttackersByEntry(PlayerbotAI* botAI, uint32 entry)
-{
-    uint32 count = 0;
-
-    AiObjectContext* context = botAI->GetAiObjectContext();
-    for (auto const& targetGuid : AI_VALUE(GuidVector, "attackers"))
-    {
-        Unit* unit = botAI->GetUnit(targetGuid);
-        if (unit && unit->IsAlive() && unit->GetEntry() == entry)
-            ++count;
-    }
-
-    return count;
-}
 
 // Akil'zon <Eagle Avatar>
 
@@ -202,6 +101,51 @@ bool IsNalorakkInBearForm(Unit* nalorakk)
 
 // Jan'alai <Dragonhawk Avatar>
 
+std::pair<Unit*, Unit*> GetAmanishiHatcherPair(PlayerbotAI* botAI)
+{
+    Unit* lowest = nullptr;
+    Unit* highest = nullptr;
+
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    for (auto const& targetGuid : AI_VALUE(GuidVector, "possible targets no los"))
+    {
+        Unit* unit = botAI->GetUnit(targetGuid);
+        if (unit && unit->GetEntry() == Id(ZaNpcs::NPC_AMANISHI_HATCHER))
+        {
+            if (!lowest || unit->GetGUID().GetCounter() < lowest->GetGUID().GetCounter())
+                lowest = unit;
+
+            if (!highest || unit->GetGUID().GetCounter() > highest->GetGUID().GetCounter())
+                highest = unit;
+        }
+    }
+
+    return {lowest, highest};
+}
+
+uint32 CountJanalaiHatchlingsByEntry(PlayerbotAI* botAI)
+{
+    uint32 count = 0;
+
+    AiObjectContext* context = botAI->GetAiObjectContext();
+    for (auto const& targetGuid : AI_VALUE(GuidVector, "attackers"))
+    {
+        Unit* unit = botAI->GetUnit(targetGuid);
+        if (unit && unit->IsAlive() &&
+            unit->GetEntry() == Id(ZaNpcs::NPC_AMANI_DRAGONHAWK_HATCHLING))
+        {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+bool IsJanalaiBombing(Unit* janalai)
+{
+    return janalai && janalai->HasAura(Id(ZaSpells::SPELL_FIRE_BOMB_CHANNEL));
+}
+
 GuidVector FindNearbyFireBombGuids(Player* bot)
 {
     std::list<Creature*> creatureList;
@@ -236,40 +180,133 @@ std::vector<Unit*> GetNearbyFireBombs(PlayerbotAI* botAI)
     return bombs;
 }
 
-bool IsJanalaiBombing(Unit* janalai)
+// Shortest move to a spot that is safe from Fire Bombs, within the measured area
+bool FindSafeStepInJanalaiZone(
+    Player* bot, std::vector<Unit*> const& hazards, std::vector<Position> const& safeZone,
+    float maxSearchDistance, float hazardRadius, float moveDist,
+    float& stepX, float& stepY, float& stepZ)
 {
-    return janalai && janalai->HasAura(Id(ZaSpells::SPELL_FIRE_BOMB_CHANNEL));
-}
+    constexpr uint8 angleCount = 16;
+    constexpr float angleStep = 2.0f * M_PI / angleCount;
+    constexpr float distanceStep = 1.0f;
 
-std::pair<Unit*, Unit*> GetAmanishiHatcherPair(PlayerbotAI* botAI)
-{
-    Unit* lowest = nullptr;
-    Unit* highest = nullptr;
+    uint32 const ringCount = static_cast<uint32>(maxSearchDistance / distanceStep);
 
-    AiObjectContext* context = botAI->GetAiObjectContext();
-    for (auto const& targetGuid : AI_VALUE(GuidVector, "possible targets no los"))
+    for (uint32 ring = 1; ring <= ringCount; ++ring)
     {
-        Unit* unit = botAI->GetUnit(targetGuid);
-        if (unit && unit->GetEntry() == Id(ZaNpcs::NPC_AMANISHI_HATCHER))
+        float const distance = ring * distanceStep;
+        for (uint8 i = 0; i < angleCount; ++i)
         {
-            if (!lowest || unit->GetGUID().GetCounter() < lowest->GetGUID().GetCounter())
-                lowest = unit;
+            float const angle = i * angleStep;
+            float const x = bot->GetPositionX() + distance * std::cos(angle);
+            float const y = bot->GetPositionY() + distance * std::sin(angle);
 
-            if (!highest || unit->GetGUID().GetCounter() > highest->GetGUID().GetCounter())
-                highest = unit;
+            if (!IsInsideSafeZone(safeZone, x, y))
+                continue;
+
+            if (!IsPositionSafeFromHazards(x, y, hazards, hazardRadius))
+                continue;
+
+            if (!CanTakeStepTowards(bot, x, y, moveDist, stepX, stepY, stepZ))
+                continue;
+
+            return true;
         }
     }
 
-    return {lowest, highest};
+    return false;
 }
 
 // Halazzi <Lynx Avatar>
 // N/A
 
 // Hex Lord Malacrass
-// N/A
+
+ObjectGuid FindNearbyFreezingTrapGuid(Player* bot)
+{
+    if (bot->GetMapId() != ZA_MAP_ID)
+        return ObjectGuid::Empty;
+
+    GameObject* trap = bot->FindNearestGameObject(
+        Id(ZaObjects::GO_FREEZING_TRAP), ZA_FREEZING_TRAP_SEARCH_RADIUS, true);
+
+    return trap ? trap->GetGUID() : ObjectGuid::Empty;
+}
+
+GameObject* GetNearbyFreezingTrap(PlayerbotAI* botAI)
+{
+    ObjectGuid const guid = botAI->GetAiObjectContext()
+        ->GetValue<ObjectGuid>("hex lord malacrass freezing trap")->Get();
+
+    return guid.IsEmpty() ? nullptr : botAI->GetGameObject(guid);
+}
 
 // Zul'jin
-// N/A
+
+bool GetZuljinSpreadSlotIndex(Player* bot, size_t slotCount, size_t& slotIndex)
+{
+    if (slotCount == 0)
+        return false;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return false;
+
+    std::vector<Player*> healers;
+    std::vector<Player*> rangedDps;
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || member->GetMapId() != ZA_MAP_ID || !PlayerbotAI::IsRanged(member))
+            continue;
+
+        if (PlayerbotAI::IsHeal(member))
+            healers.push_back(member);
+        else
+            rangedDps.push_back(member);
+    }
+
+    auto const healerIt = std::find(healers.begin(), healers.end(), bot);
+    if (healerIt != healers.end())
+    {
+        slotIndex = static_cast<size_t>(std::distance(healers.begin(), healerIt)) % slotCount;
+        return true;
+    }
+
+    auto const dpsIt = std::find(rangedDps.begin(), rangedDps.end(), bot);
+    if (dpsIt == rangedDps.end())
+        return false;
+
+    size_t const ordinal =
+        healers.size() + static_cast<size_t>(std::distance(rangedDps.begin(), dpsIt));
+    slotIndex = ordinal % slotCount;
+    return true;
+}
+
+Player* GetZuljinCreepingParalysisDispelTarget(Player* bot)
+{
+    Group* group = bot->GetGroup();
+    if (!group)
+        return nullptr;
+
+    Player* closestTarget = nullptr;
+    float closestDistance = std::numeric_limits<float>::max();
+
+    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
+    {
+        Player* member = ref->GetSource();
+        if (!member || !member->HasAura(Id(ZaSpells::SPELL_CREEPING_PARALYSIS)))
+            continue;
+
+        float distance = bot->GetExactDist(member);
+        if (distance < closestDistance)
+        {
+            closestTarget = member;
+            closestDistance = distance;
+        }
+    }
+
+    return closestTarget;
+}
 
 }

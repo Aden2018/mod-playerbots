@@ -7,11 +7,11 @@
 #include "HyjalStrategy.h"
 #include "HyjalMultipliers.h"
 
-void RaidHyjalSummitStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
+void RaidHyjalStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // General
-    triggers.push_back(new TriggerNode("hyjal summit no encounter in progress", {
-        NextAction("hyjal summit reset encounter states", ACTION_EMERGENCY + 10) }));
+    triggers.push_back(new TriggerNode("hyjal no encounter in progress", {
+        NextAction("hyjal reset encounter states", ACTION_EMERGENCY + 10) }));
 
     // Rage Winterchill
     triggers.push_back(new TriggerNode("rage winterchill pulling boss", {
@@ -75,7 +75,7 @@ void RaidHyjalSummitStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction("kaz'rogal activate aspect of the viper", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("kaz'rogal mark on mage or paladin", {
-        NextAction("kaz'rogal cancel mark", ACTION_EMERGENCY + 6) }));
+        NextAction("hyjal remove dangerous dot", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("kaz'rogal immunity no longer needed", {
         NextAction("kaz'rogal cancel immunity", ACTION_RAID + 1) }));
@@ -103,7 +103,7 @@ void RaidHyjalSummitStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction("azgalor move to doomguard tank", ACTION_EMERGENCY + 2) }));
 
     triggers.push_back(new TriggerNode("azgalor should control doomguards", {
-        NextAction("azgalor first assist tank position doomguard", ACTION_RAID) }));
+        NextAction("azgalor tank position doomguard", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("azgalor should divide dps", {
         NextAction("azgalor determine dps priority", ACTION_RAID) }));
@@ -116,7 +116,7 @@ void RaidHyjalSummitStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction("archimonde move boss to initial position", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("archimonde boss casts fear", {
-        NextAction("archimonde cast fear immunity spell", ACTION_RAID + 1) }));
+        NextAction("archimonde set tremor totem", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("archimonde boss casting air burst", {
         NextAction("archimonde keep air burst away from tank", ACTION_EMERGENCY + 8) }));
@@ -128,16 +128,16 @@ void RaidHyjalSummitStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction("archimonde avoid doomfire", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("archimonde bot stood in doomfire", {
-        NextAction("archimonde remove doomfire dot", ACTION_EMERGENCY + 7) }));
+        NextAction("hyjal remove dangerous dot", ACTION_EMERGENCY + 7) }));
 }
 
-void RaidHyjalSummitStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
+void RaidHyjalStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
 {
     // General
-    multipliers.push_back(new HyjalSummitDelayDpsCooldownsMultiplier(botAI));
+    multipliers.push_back(new HyjalDelayDpsCooldownsMultiplier(botAI));
+    multipliers.push_back(new HyjalDisableDisperseAndTankFaceMultiplier(botAI));
 
     // Rage Winterchill
-    multipliers.push_back(new RageWinterchillDisableCombatFormationMoveMultiplier(botAI));
     multipliers.push_back(new RageWinterchillMeleeControlAvoidanceMultiplier(botAI));
     multipliers.push_back(new RageWinterchillRangedControlAvoidanceMultiplier(botAI));
 
@@ -149,7 +149,6 @@ void RaidHyjalSummitStrategy::InitMultipliers(std::vector<Multiplier*>& multipli
     multipliers.push_back(new AnetheronControlMisdirectionMultiplier(botAI));
 
     // Kaz'rogal
-    multipliers.push_back(new KazrogalDisableDisperseAndTankFaceMultiplier(botAI));
     multipliers.push_back(new KazrogalControlLowManaMovementMultiplier(botAI));
     multipliers.push_back(new KazrogalKeepAspectOfTheViperActiveMultiplier(botAI));
 
@@ -160,7 +159,6 @@ void RaidHyjalSummitStrategy::InitMultipliers(std::vector<Multiplier*>& multipli
     multipliers.push_back(new AzgalorRangedControlAvoidanceMultiplier(botAI));
 
     // Archimonde
-    multipliers.push_back(new ArchimondeDisableCombatFormationMoveMultiplier(botAI));
     multipliers.push_back(new ArchimondeControlDoomfireAvoidanceMultiplier(botAI));
     multipliers.push_back(new ArchimondeSetTremorTotemMultiplier(botAI));
 }

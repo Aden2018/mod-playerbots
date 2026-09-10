@@ -6,6 +6,8 @@
 
 #include "SWPEncounter_Muru.h"
 #include "AiObjectContext.h"
+#include "CharmInfo.h"
+#include "CreatureAI.h"
 #include "Playerbots.h"
 #include <algorithm>
 #include <limits>
@@ -57,16 +59,16 @@ float GetBerserkerStunReach(Player* bot)
         case CLASS_DRUID:
         case CLASS_ROGUE:
         case CLASS_WARRIOR:
-            return MURU_MELEE_ABILITY_REACH;
+            return MELEE_ABILITY_REACH;
 
         case CLASS_PALADIN:
-            return MURU_HAMMER_OF_JUSTICE_REACH;
+            return HAMMER_OF_JUSTICE_REACH;
 
         case CLASS_WARLOCK:
-            return MURU_RANGED_ABILITY_REACH;
+            return RANGED_ABILITY_REACH;
 
         default:
-            return bot->getRace() == RACE_TAUREN ? MURU_WAR_STOMP_REACH : 0.0f;
+            return bot->getRace() == RACE_TAUREN ? SELF_AOE_RACIAL_RADIUS : 0.0f;
     }
 }
 
@@ -76,20 +78,20 @@ float GetFuryMageInterruptReach(Player* bot)
     {
         case CLASS_ROGUE:
         case CLASS_WARRIOR:
-            return MURU_MELEE_ABILITY_REACH;
+            return MELEE_ABILITY_REACH;
 
         case CLASS_SHAMAN:
-            return MURU_WIND_SHEAR_REACH;
+            return WIND_SHEAR_REACH;
 
         case CLASS_DEATH_KNIGHT:
         case CLASS_MAGE:
         case CLASS_PALADIN:
         case CLASS_PRIEST:
         case CLASS_WARLOCK:
-            return MURU_RANGED_ABILITY_REACH;
+            return RANGED_ABILITY_REACH;
 
         case CLASS_HUNTER:
-            return MURU_SILENCING_SHOT_REACH;
+            return SILENCING_SHOT_REACH;
 
         default:
             return 0.0f;
@@ -120,7 +122,7 @@ Unit* SelectNearestQualifying(
     Unit* currentTarget = botAI->GetAiObjectContext()->GetValue<Unit*>("current target")->Get();
 
     Unit* best = nullptr;
-    float bestDistance = 0.0f;
+    float bestDistance = std::numeric_limits<float>::max();
 
     for (ObjectGuid const& guid : candidates)
     {
@@ -135,7 +137,7 @@ Unit* SelectNearestQualifying(
         if (candidate == currentTarget)
             return candidate;
 
-        if (!best || distance < bestDistance)
+        if (distance < bestDistance)
         {
             best = candidate;
             bestDistance = distance;
@@ -172,19 +174,19 @@ bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru)
 
         StampMuruDarknessWindow(
             muruDarknessStates[instanceId], now,
-            DARKNESS_PRE_EFFECT_MS + static_cast<uint32>(elapsedZoneMs),
+            MURU_DARKNESS_PRE_EFFECT_MS + static_cast<uint32>(elapsedZoneMs),
             static_cast<uint32>(remainingMs));
     }
     else if (Aura* preEffect = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS_PRE_EFFECT)))
     {
         int32 const duration = preEffect->GetDuration();
         uint32 const remainingPreEffectMs = duration < 0 ?
-            DARKNESS_PRE_EFFECT_MS :
-            std::min(static_cast<uint32>(duration), DARKNESS_PRE_EFFECT_MS);
+            MURU_DARKNESS_PRE_EFFECT_MS :
+            std::min(static_cast<uint32>(duration), MURU_DARKNESS_PRE_EFFECT_MS);
 
         StampMuruDarknessWindow(
-            muruDarknessStates[instanceId], now, DARKNESS_PRE_EFFECT_MS - remainingPreEffectMs,
-            remainingPreEffectMs + DARKNESS_AURA_MS);
+            muruDarknessStates[instanceId], now, MURU_DARKNESS_PRE_EFFECT_MS - remainingPreEffectMs,
+            remainingPreEffectMs + MURU_DARKNESS_AURA_MS);
     }
 
     auto const stateItr = muruDarknessStates.find(instanceId);
@@ -206,11 +208,25 @@ bool TryGetMuruDarknessEarlyState(Player* bot, Unit* muru, uint32 earlyWindowMs)
     if (!TryGetMuruDarknessActiveState(bot, muru))
         return false;
 
+    return PeekMuruDarknessEarlyState(bot, earlyWindowMs);
+}
+
+bool PeekMuruDarknessActiveState(Player* bot)
+{
+    auto const stateItr = muruDarknessStates.find(bot->GetInstanceId());
+    return stateItr != muruDarknessStates.end() && stateItr->second.expireMs > getMSTime();
+}
+
+bool PeekMuruDarknessEarlyState(Player* bot, uint32 earlyWindowMs)
+{
     auto const stateItr = muruDarknessStates.find(bot->GetInstanceId());
     if (stateItr == muruDarknessStates.end())
         return false;
 
     uint32 const now = getMSTime();
+    if (stateItr->second.expireMs <= now)
+        return false;
+
     return stateItr->second.startMs < now && now - stateItr->second.startMs < earlyWindowMs;
 }
 
@@ -272,6 +288,34 @@ void GatherMuruEncounterTargets(PlayerbotAI* botAI, MuruEncounterTargets& target
     ResolveLivingUnits(botAI, guids.berserkers, targets.berserkers);
 }
 
+Unit* SelectNearestMuruTargetByEntry(
+    Unit* currentTarget, uint32 entry, std::vector<Unit*> const& candidates, Position const& origin)
+{
+    Unit* selected = nullptr;
+    if (currentTarget && currentTarget->IsAlive() && currentTarget->GetEntry() == entry)
+        selected = currentTarget;
+
+    for (Unit* candidate : candidates)
+    {
+        if (!candidate || selected == candidate)
+            continue;
+
+        if (!selected)
+        {
+            selected = candidate;
+            continue;
+        }
+
+        if (candidate->GetExactDist2d(origin) + MURU_TARGET_SWITCH_MARGIN <
+            selected->GetExactDist2d(origin))
+        {
+            selected = candidate;
+        }
+    }
+
+    return selected;
+}
+
 Unit* FindMuruBerserkerToStun(PlayerbotAI* botAI)
 {
     float const reach = GetBerserkerStunReach(botAI->GetBot());
@@ -298,8 +342,28 @@ Unit* FindMuruFuryMageToSpellsteal(PlayerbotAI* botAI)
         return nullptr;
 
     return SelectNearestQualifying(
-        botAI, GetCachedMuruEncounterGuids(botAI).furyMages, MURU_RANGED_ABILITY_REACH,
+        botAI, GetCachedMuruEncounterGuids(botAI).furyMages, RANGED_ABILITY_REACH,
         &IsSpellFuryBuffedFuryMage);
+}
+
+Position const& GetAssignedVoidSentinelTankPosition(Unit* voidSentinel)
+{
+    ObjectGuid const sentinelGuid = voidSentinel->GetGUID();
+    Position const& northPosition = MURU_VOID_SENTINEL_N_TANK_POSITION;
+    Position const& eastPosition = MURU_VOID_SENTINEL_E_TANK_POSITION;
+
+    auto& assignments = muruVoidSentinelTankAssignments[voidSentinel->GetInstanceId()];
+    auto assignmentItr = assignments.find(sentinelGuid);
+    if (assignmentItr == assignments.end())
+    {
+        float const northDistance = voidSentinel->GetExactDist2d(northPosition);
+        float const eastDistance = voidSentinel->GetExactDist2d(eastPosition);
+
+        uint8 const assignedIndex = northDistance <= eastDistance ? 0 : 1;
+        assignmentItr = assignments.emplace(sentinelGuid, assignedIndex).first;
+    }
+
+    return assignmentItr->second == 0 ? northPosition : eastPosition;
 }
 
 bool IsTankingMuruVoidSentinel(PlayerbotAI* botAI)
@@ -355,7 +419,7 @@ Creature* FindMuruVoidZoneToAvoid(PlayerbotAI* botAI)
         if (!unit)
             continue;
 
-        float const distance = bot->GetDistance2d(unit);
+        float const distance = bot->GetExactDist2d(unit);
         if (distance >= nearestDistance)
             continue;
 
@@ -396,6 +460,37 @@ Creature* FindAvailableVoidSpawnForEnslave(PlayerbotAI* botAI)
     }
 
     return bestSpawn;
+}
+
+bool CommandControlledCreatureToAttack(Unit* controlled, Unit* target)
+{
+    if (!controlled || !controlled->IsAlive() || !target || controlled->GetVictim() == target)
+        return false;
+
+    controlled->ClearUnitState(UNIT_STATE_FOLLOW);
+    controlled->AttackStop();
+    controlled->SetTarget(target->GetGUID());
+
+    if (CharmInfo* charmInfo = controlled->GetCharmInfo())
+    {
+        charmInfo->SetIsCommandAttack(true);
+        charmInfo->SetIsAtStay(false);
+        charmInfo->SetIsFollowing(false);
+        charmInfo->SetIsCommandFollow(false);
+        charmInfo->SetIsReturning(false);
+    }
+
+    if (!controlled->IsPlayer() && controlled->IsCreature() &&
+        controlled->ToCreature()->IsAIEnabled)
+    {
+        controlled->ToCreature()->AI()->AttackStart(target);
+    }
+    else
+    {
+        controlled->Attack(target, true);
+    }
+
+    return true;
 }
 
 }

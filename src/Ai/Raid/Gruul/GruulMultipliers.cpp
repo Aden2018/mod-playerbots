@@ -13,12 +13,13 @@
 #include "MageActions.h"
 #include "Playerbots.h"
 #include "ReachTargetActions.h"
-#include "ShamanActions.h"
 
 using namespace GruulHelpers;
 using namespace EncounterHelpers;
 
-float GruulsLairDelayDpsCooldownsMultiplier::GetValue(Action* action)
+// General
+
+float GruulsLairDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -34,7 +35,9 @@ float GruulsLairDelayDpsCooldownsMultiplier::GetValue(Action* action)
     return blindeye && blindeye->GetHealthPct() > BLINDEYE_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarControlTankActionsMultiplier::GetValue(Action* action)
+// High King Maulgar <Lord of the Ogres>
+
+float HighKingMaulgarControlTankActionsMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -51,7 +54,7 @@ float HighKingMaulgarControlTankActionsMultiplier::GetValue(Action* action)
     return AI_VALUE2(Unit*, "find target", "high king maulgar") ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarRestrictTauntingMultiplier::GetValue(Action* action)
+float HighKingMaulgarRestrictTauntingMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -79,13 +82,13 @@ float HighKingMaulgarRestrictTauntingMultiplier::GetValue(Action* action)
     if (!kiggler)
         return 1.0f;
 
-    if (!GetKigglerMoonkinTank(bot))
+    if (!GetKigglerMoonkinTank(botAI))
         return 1.0f;
 
     return AI_VALUE(Unit*, "current target") == kiggler ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarDisableDpsAssistMultiplier::GetValue(Action* action)
+float HighKingMaulgarDisableDpsAssistMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -99,7 +102,7 @@ float HighKingMaulgarDisableDpsAssistMultiplier::GetValue(Action* action)
     return AI_VALUE2(Unit*, "find target", "high king maulgar") ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarAvoidWhirlwindMultiplier::GetValue(Action* action)
+float HighKingMaulgarAvoidWhirlwindMultiplier::GetValueInEncounter(Action* action)
 {
     if (!dynamic_cast<MovementAction*>(action) &&
         !dynamic_cast<CastReachTargetSpellAction*>(action))
@@ -120,10 +123,10 @@ float HighKingMaulgarAvoidWhirlwindMultiplier::GetValue(Action* action)
     if (PlayerbotAI::IsMainTank(bot))
         return 1.0f;
 
-    return bot->GetDistance2d(maulgar) < WHIRLWIND_SAFE_DISTANCE + 5.0f ? 0.0f : 1.0f;
+    return bot->GetExactDist2d(maulgar) < MAULGAR_WHIRLWIND_HOLD_DISTANCE ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarControlHunterActionsMultiplier::GetValue(Action* action)
+float HighKingMaulgarControlHunterActionsMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -135,21 +138,20 @@ float HighKingMaulgarControlHunterActionsMultiplier::GetValue(Action* action)
     if (!isMainTankMisdirect && !dynamic_cast<CastArcaneShotAction*>(action))
         return 1.0f;
 
-    // Krosh/Kiggler will be the last to die before Maulgar
-    // When only Maulgar is left, the standard Misdirection strategy is fine
+    // Krosh/Kiggler will be the last to die before Maulgar.
+    // When only Maulgar is left, the standard Misdirection strategy is fine.
+    Unit* krosh = AI_VALUE2(Unit*, "find target", "krosh firehand");
     if (isMainTankMisdirect &&
-        ((AI_VALUE2(Unit*, "find target", "krosh firehand")) ||
-         (AI_VALUE2(Unit*, "find target", "kiggler the crazed"))))
+        (krosh || AI_VALUE2(Unit*, "find target", "kiggler the crazed")))
     {
         return 0.0f;
     }
 
-    // Arcane Shot removes Spell Shield, which the mage tank needs to survive
-    Unit* krosh = AI_VALUE2(Unit*, "find target", "krosh firehand");
+    // Arcane Shot removes Spell Shield, which the mage tank needs to survive.
     return krosh && action->GetTarget() == krosh ? 0.0f : 1.0f;
 }
 
-float HighKingMaulgarControlMageTankActionsMultiplier::GetValue(Action* action)
+float HighKingMaulgarControlMageTankActionsMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -167,10 +169,12 @@ float HighKingMaulgarControlMageTankActionsMultiplier::GetValue(Action* action)
     if (!AI_VALUE2(Unit*, "find target", "krosh firehand"))
         return 1.0f;
 
-    return GetKroshMageTank(bot) == bot ? 0.0f : 1.0f;
+    return GetKroshMageTank(botAI) == bot ? 0.0f : 1.0f;
 }
 
-float GruulTheDragonkillerControlTankMovementMultiplier::GetValue(Action* action)
+// Gruul the Dragonkiller
+
+float GruulTheDragonkillerControlTankMovementMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -184,11 +188,10 @@ float GruulTheDragonkillerControlTankMovementMultiplier::GetValue(Action* action
         return 1.0f;
     }
 
-    Unit* gruul = AI_VALUE2(Unit*, "find target", "gruul the dragonkiller");
-    return gruul && gruul->GetVictim() == bot ? 0.0f : 1.0f;
+    return AI_VALUE2(Unit*, "find target", "gruul the dragonkiller") ? 0.0f : 1.0f;
 }
 
-float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValue(Action* action)
+float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValueInEncounter(Action* action)
 {
     if (!HasGroundSlam(bot))
         return 1.0f;
@@ -199,7 +202,43 @@ float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValue(Action* actio
         return 1.0f;
     }
 
-    return dynamic_cast<GruulTheDragonkillerShatterSpreadAction*>(action) ? 1.0f : 0.0f;
+    return dynamic_cast<GruulTheDragonkillerShatterSpreadAction*>(action) ||
+        dynamic_cast<GruulTheDragonkillerGetOutOfCaveInAction*>(action) ? 1.0f : 0.0f;
+}
+
+// When near a cave in, ignore the ranged spread, as well as standard movement actions like reaching
+// the target, with some exceptions for tanks (and full exception for the active tank on Gruul).
+float GruulTheDragonkillerControlAvoidanceMultiplier::GetValueInEncounter(Action* action)
+{
+    if (dynamic_cast<AttackAction*>(action))
+        return 1.0f;
+
+    bool const isReachTargetSpell = dynamic_cast<CastReachTargetSpellAction*>(action);
+
+    if (PlayerbotAI::IsTank(bot) &&
+        (isReachTargetSpell || dynamic_cast<ReachTargetAction*>(action)))
+    {
+        return 1.0f;
+    }
+
+    if (!isReachTargetSpell && !dynamic_cast<MovementAction*>(action))
+        return 1.0f;
+
+    if (dynamic_cast<GruulTheDragonkillerGetOutOfCaveInAction*>(action))
+        return 1.0f;
+
+    // The shatter spread multiplier takes over during Ground Slam (and allows the Cave In escape).
+    if (HasGroundSlam(bot))
+        return 1.0f;
+
+    Unit* gruul = AI_VALUE2(Unit*, "find target", "gruul the dragonkiller");
+    if (!gruul)
+        return 1.0f;
+
+    if (gruul->GetVictim() == bot)
+        return 1.0f;
+
+    return IsNearCaveIn(botAI, CAVE_IN_CONTROL_RADIUS) ? 0.0f : 1.0f;
 }
 
 // MoveTo does not check speed, and thus even with a snare of -100% or more, it starts a spline
@@ -208,13 +247,13 @@ float GruulTheDragonkillerStaySpreadForShatterMultiplier::GetValue(Action* actio
 // needed to solve the issue for Gruul because the snare he applies (Gronn Lord's Grasp) persists
 // 300ms beyond the Shatter sequence, meaning that bots would otherwise be unable to move for 5s
 // after the Shatter sequence, even though no in-game factors would prevent their movement.
-float GruulTheDragonkillerHoldWhileSnaredMultiplier::GetValue(Action* action)
+float GruulTheDragonkillerHoldWhileSnaredMultiplier::GetValueInEncounter(Action* action)
 {
     if (bot->GetSpeed(MOVE_RUN) > 0.0f)
         return 1.0f;
 
-    if (!AI_VALUE2(Unit*, "find target", "gruul the dragonkiller"))
+    if (!dynamic_cast<MovementAction*>(action))
         return 1.0f;
 
-    return dynamic_cast<MovementAction*>(action) ? 0.0f : 1.0f;
+    return AI_VALUE2(Unit*, "find target", "gruul the dragonkiller") ? 0.0f : 1.0f;
 }

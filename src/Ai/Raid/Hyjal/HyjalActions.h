@@ -15,18 +15,18 @@
 
 // General
 
-class HyjalSummitResetEncounterStatesAction : public Action
+class HyjalResetEncounterStatesAction : public Action
 {
 public:
-    HyjalSummitResetEncounterStatesAction(PlayerbotAI* botAI)
-        : Action(botAI, "hyjal summit reset encounter states") {}
+    HyjalResetEncounterStatesAction(PlayerbotAI* botAI)
+        : Action(botAI, "hyjal reset encounter states") {}
     bool Execute(Event event) override;
 };
 
-class HyjalSummitMisdirectBossToMainTankAction : public Action
+class HyjalMisdirectBossToMainTankAction : public Action
 {
 public:
-    HyjalSummitMisdirectBossToMainTankAction(
+    HyjalMisdirectBossToMainTankAction(
         PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
         : Action(botAI, name), _bossName(bossName) {}
     bool Execute(Event event) override;
@@ -35,10 +35,12 @@ private:
     std::string const _bossName;
 };
 
-class HyjalSummitMainTankPositionBossAction : public AttackAction
+// For all five bosses. _bailBelowHealthPct is the tank's own health, below which it stops walking
+// the boss.
+class HyjalMainTankPositionBossAction : public AttackAction
 {
 public:
-    HyjalSummitMainTankPositionBossAction(
+    HyjalMainTankPositionBossAction(
         PlayerbotAI* botAI, std::string const& name, std::string const& bossName,
         Position const& position, float bailBelowHealthPct = 0.0f)
         : AttackAction(botAI, name), _bossName(bossName), _position(position),
@@ -47,8 +49,17 @@ public:
 
 private:
     std::string const _bossName;
-    Position const& _position;
+    Position const _position;
     float const _bailBelowHealthPct;
+};
+
+// Remove Mark of Kaz'rogal and Doomfire in certain cases
+class HyjalRemoveDangerousDotAction : public Action
+{
+public:
+    HyjalRemoveDangerousDotAction(PlayerbotAI* botAI)
+        : Action(botAI, "hyjal remove dangerous dot") {}
+    bool Execute(Event event) override;
 };
 
 // Rage Winterchill
@@ -189,13 +200,6 @@ public:
     bool Execute(Event event) override;
 };
 
-class KazrogalCancelMarkAction : public Action
-{
-public:
-    KazrogalCancelMarkAction(PlayerbotAI* botAI) : Action(botAI, "kaz'rogal cancel mark") {}
-    bool Execute(Event event) override;
-};
-
 class KazrogalCancelImmunityAction : public Action
 {
 public:
@@ -245,11 +249,12 @@ public:
     bool Execute(Event event) override;
 };
 
-class AzgalorFirstAssistTankPositionDoomguardAction : public AttackAction
+// The Doomguard tank is the first assist tank, or the second when the first is Doomed.
+class AzgalorTankPositionDoomguardAction : public AttackAction
 {
 public:
-    AzgalorFirstAssistTankPositionDoomguardAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "azgalor first assist tank position doomguard") {}
+    AzgalorTankPositionDoomguardAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "azgalor tank position doomguard") {}
     bool Execute(Event event) override;
 };
 
@@ -263,16 +268,12 @@ public:
 
 // Archimonde
 
-class ArchimondeCastFearImmunitySpellAction : public Action
+class ArchimondeSetTremorTotemAction : public Action
 {
 public:
-    ArchimondeCastFearImmunitySpellAction(PlayerbotAI* botAI)
-        : Action(botAI, "archimonde cast fear immunity spell") {}
+    ArchimondeSetTremorTotemAction(PlayerbotAI* botAI)
+        : Action(botAI, "archimonde set tremor totem") {}
     bool Execute(Event event) override;
-
-private:
-    bool CastFearWardOnMainTank();
-    bool SetTremorTotem();
 };
 
 class ArchimondeKeepAirBurstAwayFromTankAction : public MovementAction
@@ -296,14 +297,6 @@ class ArchimondeAvoidDoomfireAction : public MovementAction
 public:
     ArchimondeAvoidDoomfireAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "archimonde avoid doomfire") {}
-    bool Execute(Event event) override;
-};
-
-class ArchimondeRemoveDoomfireDotAction : public Action
-{
-public:
-    ArchimondeRemoveDoomfireDotAction(PlayerbotAI* botAI)
-        : Action(botAI, "archimonde remove doomfire dot") {}
     bool Execute(Event event) override;
 };
 

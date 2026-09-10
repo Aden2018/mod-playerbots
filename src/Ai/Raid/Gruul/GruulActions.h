@@ -12,6 +12,8 @@
 #include "MovementActions.h"
 #include "Position.h"
 
+// General
+
 class GruulsLairResetEncounterStatesAction : public Action
 {
 public:
@@ -19,6 +21,8 @@ public:
         : Action(botAI, "gruul's lair reset encounter states") {}
     bool Execute(Event event) override;
 };
+
+// High King Maulgar <Lord of the Ogres>
 
 class HighKingMaulgarMeleeTanksPositionBossesAction : public AttackAction
 {
@@ -64,11 +68,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class HighKingMaulgarFleeFromBlastWaveDangerAction : public MovementAction
+class HighKingMaulgarBackAwayFromKroshAction : public MovementAction
 {
 public:
-    HighKingMaulgarFleeFromBlastWaveDangerAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "high king maulgar flee from blast wave danger") {}
+    HighKingMaulgarBackAwayFromKroshAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "high king maulgar back away from krosh") {}
     bool Execute(Event event) override;
 };
 
@@ -88,13 +92,7 @@ public:
     bool Execute(Event event) override;
 };
 
-class HighKingMaulgarCastFearWardOnMainTankAction : public Action
-{
-public:
-    HighKingMaulgarCastFearWardOnMainTankAction(PlayerbotAI* botAI)
-        : Action(botAI, "high king maulgar cast fear ward on main tank") {}
-    bool Execute(Event event) override;
-};
+// Gruul the Dragonkiller
 
 class GruulTheDragonkillerTanksPositionBossAction : public AttackAction
 {
@@ -124,6 +122,14 @@ private:
     Position _initialPosition;
     bool _hasInitialPosition = false;
     bool _hasReachedInitialPosition = false;
+};
+
+class GruulTheDragonkillerGetOutOfCaveInAction : public MovementAction
+{
+public:
+    GruulTheDragonkillerGetOutOfCaveInAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "gruul the dragonkiller get out of cave in") {}
+    bool Execute(Event event) override;
 };
 
 class GruulTheDragonkillerShatterSpreadAction : public MovementAction

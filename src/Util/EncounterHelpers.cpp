@@ -13,6 +13,7 @@
 #include "GenericSpellActions.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
+#include "InstanceScript.h"
 #include "HunterActions.h"
 #include "MageActions.h"
 #include "PaladinActions.h"
@@ -28,6 +29,24 @@
 
 namespace EncounterHelpers
 {
+
+// Calling InstanceScript::IsEncounterInProgress is a very cheap check to use as an initial gate
+// for triggers and multipliers that should run only during a boss fight. This will not work for
+// every single encounter, as some bosses are not scripted to report IN_PROGRESS (but at least in
+// TBC raids, that is rare: only Terestian Illhoof and Illidari Council do not). It's also possible
+// for a boss script to set IN_PROGRESS upon an event other than the pull; that's at least the case
+// with Kil'jaeden, who is set to IN_PROGRESS only after 1 of the 3 Hands of the Deceiver is killed
+// in phase 1. To avoid spamming this check across each trigger and multiplier, you can create a
+// derived class of Trigger or Multiplier to call this helper and then derive your triggers and
+// multipliers from the intermediate class.
+bool IsEncounterInProgress(Player* bot, uint32 mapId)
+{
+    if (bot->GetMapId() != mapId)
+        return false;
+
+    InstanceScript* instance = bot->GetInstanceScript();
+    return instance && instance->IsEncounterInProgress();
+}
 
 // For validating ground and collision in connection with issuing incremental movement. The caller
 // gives a destination and how far to travel towards it per tick. The helper projects that step,
@@ -82,10 +101,10 @@ bool CanTakeStepTowards(
     return true;
 }
 
-// Calculate incremental movement to a tank position. No ground or collision is validated, unlike
+// Calculate incremental movement to a position. No ground or collision is validated, unlike
 // CanTakeStepTowards(). The Z position passed for the MoveTo() action using this helper should
 // use the bot's Z, not the position's. Returns false once the bot is within arrivalDist.
-bool GetTankPositionStep(
+bool GetStepToPosition(
     Player* bot, Position const& position, float arrivalDist, Unit* facing, float& stepX,
     float& stepY, bool& backwards)
 {
@@ -98,10 +117,11 @@ bool GetTankPositionStep(
     float const toPosX = position.GetPositionX() - botX;
     float const toPosY = position.GetPositionY() - botY;
 
-    // Move backwards only when (1) the bot has aggro on the mob it is tanking, (2) the bot is in
+    // 'facing' is optional and is for tanks. Pass the mob being tanked to allow the step to be
+    // walked backwards when (1) the bot has aggro on the mob it is tanking, (2) the bot is in
     // melee range of the mob, and (3) the destination is on the opposite side of the bot from the
     // mob. Generally, the entire movement would be gated on (1) and (2) anyway, but there are some
-    // exceptions and thus the checks are made again in the helper.
+    // exceptions and thus the checks are made again here. Pass nullptr for a plain forward step.
     backwards = false;
     if (facing && facing->GetVictim() == bot && bot->IsWithinMeleeRange(facing))
     {
@@ -190,7 +210,7 @@ bool MarkTargetWithMoon(Player* bot, Unit* target)
 }
 
 // For clearing marks outside of combat so bots don't Leeroy on sight. This is best used when gated
-// behind an out of combat check (such as with IsInCombatValue).
+// behind an out-of-combat check (such as with IsInCombatValue).
 bool ClearTargetIcon(Player* bot, uint8 iconId)
 {
     Group* group = bot->GetGroup();
@@ -304,8 +324,7 @@ Player* GetGroupAssistTank(Player* bot, uint8 index)
     return nullptr;
 }
 
-// Return the first matching alive unit from PossibleTargetsValue within .sightDistance from config
-// Note that PossibleTargetsValue picks up only hostile units
+// DO NOT USE. TO BE REMOVED HERE ONCE ALL CALL SITES ARE MODIFIED.
 Unit* GetFirstAliveUnitByEntry(PlayerbotAI* botAI, uint32 entry)
 {
     auto const& units =
@@ -373,6 +392,30 @@ std::vector<Position> GetDynamicObjectPositions(Player* bot, float searchRadius,
     }
 
     return dynObjs;
+}
+
+// Ice Block, Divine Shield, and/or Cloak of Shadows can be used to nullify or ignore several
+// dangerous boss mechanics.
+uint32 GetSelfImmunitySpell(Player* bot)
+{
+    constexpr uint32 iceBlock = 45438;
+    constexpr uint32 divineShield = 642;
+    constexpr uint32 cloakOfShadows = 31224;
+
+    switch (bot->getClass())
+    {
+        case CLASS_MAGE:
+            return iceBlock;
+
+        case CLASS_PALADIN:
+            return divineShield;
+
+        case CLASS_ROGUE:
+            return cloakOfShadows;
+
+        default:
+            return 0;
+    }
 }
 
 // This function is primarily for use in multipliers during encounters where it is desirable

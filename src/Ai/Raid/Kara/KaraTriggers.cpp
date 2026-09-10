@@ -6,7 +6,6 @@
 
 #include "KaraTriggers.h"
 #include "EncounterHelpers.h"
-#include "InstanceScript.h"
 #include "KaraActions.h"
 #include "KaraHelpers.h"
 #include "Playerbots.h"
@@ -16,21 +15,23 @@ using namespace EncounterHelpers;
 
 // General
 
+// This will return true during Terestian Illhoof. It's not a problem as there is nothing to be
+// cleared that relates to him, but it is something to keep in mind going forward.
 bool KarazhanNoEncounterInProgressTrigger::IsActive()
 {
-    if (bot->GetMapId() != KARA_MAP_ID)
-        return false;
-
-    InstanceScript* instance = bot->GetInstanceScript();
-    return instance && !instance->IsEncounterInProgress();
+    return !IsEncounterInProgress(bot, KARA_MAP_ID);
 }
 
 bool KarazhanEnemiesCastFearTrigger::IsActive()
 {
-    if (bot->getClass() != CLASS_SHAMAN && bot->getClass() != CLASS_PRIEST)
+    if (bot->getClass() != CLASS_SHAMAN)
         return false;
 
-    return AI_VALUE2(Unit*, "find target", "nightbane") ||
+    if (AI_VALUE2(bool, "has totem", "tremor totem"))
+        return false;
+
+    Unit* nightbane = AI_VALUE2(Unit*, "find target", "nightbane");
+    return (nightbane && nightbane->GetPositionZ() <= NIGHTBANE_FLIGHT_Z) ||
         AI_VALUE2(Unit*, "find target", "spectral charger") ||
         AI_VALUE2(Unit*, "find target", "the big bad wolf");
 }
@@ -138,7 +139,7 @@ bool WizardOfOzNeedTargetPriorityTrigger::IsActive()
     if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
         return false;
 
-    for (const char* name : OZ_TARGETS)
+    for (char const* name : OZ_TARGETS)
     {
         if (AI_VALUE2(Unit*, "find target", name))
             return true;

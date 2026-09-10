@@ -35,7 +35,7 @@ bool ShirrakTankPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(
+    if (!GetStepToPosition(
             bot, SHIRRAK_TANK_POSITION, arrivalDist, shirrak, moveX, moveY, backwards))
     {
         return false;
@@ -48,7 +48,7 @@ bool ShirrakTankPositionBossAction::Execute(Event /*event*/)
 
 bool ShirrakFleeFocusFireAction::Execute(Event /*event*/)
 {
-    Creature* flare = bot->FindNearestCreature(NPC_FOCUS_FIRE, FLARE_SEARCH_RADIUS, true);
+    Creature* flare = bot->FindNearestCreature(NPC_FOCUS_FIRE, FLARE_SEARCH_RADIUS);
     if (!flare)
         return false;
 

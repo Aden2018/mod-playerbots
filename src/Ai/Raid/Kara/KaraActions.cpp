@@ -74,33 +74,8 @@ bool KarazhanResetEncounterStatesAction::Execute(Event /*event*/)
     return reset;
 }
 
-bool KarazhanCastFearProtectionSpellAction::Execute(Event /*event*/)
+bool KarazhanSetTremorTotemAction::Execute(Event /*event*/)
 {
-    if (bot->getClass() == CLASS_PRIEST)
-        return CastFearWardOnMainTank();
-
-    return SetTremorTotem();
-}
-
-bool KarazhanCastFearProtectionSpellAction::CastFearWardOnMainTank()
-{
-    constexpr uint32 fearWard = Id(KaraSpells::SPELL_FEAR_WARD);
-    Player* mainTank = GetGroupMainTank(bot);
-    if (!mainTank || mainTank->HasAura(fearWard))
-        return false;
-
-    return botAI->CanCastSpell(fearWard, mainTank) && botAI->CastSpell(fearWard, mainTank);
-}
-
-bool KarazhanCastFearProtectionSpellAction::SetTremorTotem()
-{
-    Unit* nightbane = AI_VALUE2(Unit*, "find target", "nightbane");
-    if (!nightbane || nightbane->GetPositionZ() > NIGHTBANE_FLIGHT_Z)
-        return false;
-
-    if (AI_VALUE2(bool, "has totem", "tremor totem"))
-        return false;
-
     constexpr uint32 tremorTotem = Id(KaraSpells::SPELL_TREMOR_TOTEM);
     return botAI->CanCastSpell(tremorTotem, bot) && botAI->CastSpell(tremorTotem, bot);
 }
@@ -136,7 +111,7 @@ bool ManaWarpStunCreatureBeforeWarpBreachAction::Execute(Event /*event*/)
         "shockwave",
     };
 
-    for (const char* spell : spells)
+    for (char const* spell : spells)
     {
         if (botAI->CanCastSpell(spell, target) && botAI->CastSpell(spell, target))
             return true;
@@ -212,7 +187,7 @@ bool AttumenTheHuntsmanHandlePhaseTwoAction::CurrentTankPositionAttumen(Unit* at
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, position, arrivalDist, attumen, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, position, arrivalDist, attumen, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
@@ -255,7 +230,7 @@ bool MoroesMarkTargetAction::Execute(Event /*event*/)
         "lord crispin ference",
     };
 
-    for (const char* name : moroesGuests)
+    for (char const* name : moroesGuests)
     {
         if (Unit* guest = AI_VALUE2(Unit*, "find target", name))
             return MarkTargetWithSkull(bot, guest);
@@ -308,7 +283,7 @@ bool MaidenOfVirtueTankPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, position, arrivalDist, maiden, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, position, arrivalDist, maiden, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
@@ -389,7 +364,7 @@ bool BigBadWolfPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, position, arrivalDist, wolf, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, position, arrivalDist, wolf, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
@@ -453,7 +428,7 @@ bool RomuloAndJulianneMarkTargetAction::Execute(Event /*event*/)
 
 bool WizardOfOzMarkTargetAction::Execute(Event /*event*/)
 {
-    for (const char* name : OZ_TARGETS)
+    for (char const* name : OZ_TARGETS)
     {
         if (Unit* target = AI_VALUE2(Unit*, "find target", name))
             return MarkTargetWithSkull(bot, target);
@@ -494,7 +469,7 @@ bool TheCuratorPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, position, arrivalDist, curator, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, position, arrivalDist, curator, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
@@ -516,7 +491,7 @@ bool TerestianIllhoofMarkTargetAction::Execute(Event /*event*/)
     static constexpr std::array illhoofTargets = {
         "demon chains", "kil'rek", "terestian illhoof", };
 
-    for (const char* name : illhoofTargets)
+    for (char const* name : illhoofTargets)
     {
         if (Unit* target = AI_VALUE2(Unit*, "find target", name))
             return MarkTargetWithSkull(bot, target);
@@ -856,7 +831,7 @@ bool NetherspiteAvoidBeamAndVoidZoneAction::Execute(Event /*event*/)
             float dy = candidateY - botY;
             float moveDistSq = dx*dx + dy*dy;
 
-            if (!found || moveDistSq < bestDistSq)
+            if (moveDistSq < bestDistSq)
             {
                 bestCandidate = Position(candidateX, candidateY, bot->GetPositionZ());
                 bestDistSq = moveDistSq;
@@ -1182,7 +1157,7 @@ bool NightbaneGroundPhaseTanksPositionBossAction::Execute(Event /*event*/)
     float moveX;
     float moveY;
     bool backwards;
-    if (!GetTankPositionStep(bot, destination, arrivalDist, nightbane, moveX, moveY, backwards))
+    if (!GetStepToPosition(bot, destination, arrivalDist, nightbane, moveX, moveY, backwards))
         return false;
 
     return MoveTo(

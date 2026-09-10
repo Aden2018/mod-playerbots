@@ -10,16 +10,16 @@
 #include "SWPEncounter_Muru.h"
 #include "SWPEncounter_Twins.h"
 #include "SWPMultipliers.h"
-#include "SWPSharedConstants.h"
+#include "SWPShared.h"
 
-void RaidSunwellStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
+void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // General
-    triggers.push_back(new TriggerNode("sunwell plateau no encounter in progress", {
-        NextAction("sunwell plateau reset encounter states", ACTION_EMERGENCY + 10) }));
+    triggers.push_back(new TriggerNode("sunwell no encounter in progress", {
+        NextAction("sunwell reset encounter states", ACTION_EMERGENCY + 10) }));
 
-    triggers.push_back(new TriggerNode("sunwell plateau bot has aura to remove", {
-        NextAction("sunwell plateau remove aura", ACTION_EMERGENCY) }));
+    triggers.push_back(new TriggerNode("sunwell bot has aura to remove", {
+        NextAction("sunwell remove aura", ACTION_EMERGENCY) }));
 
     // Trash
     triggers.push_back(new TriggerNode("volatile fiend self destructs when near", {
@@ -112,6 +112,9 @@ void RaidSunwellStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     // Eredar Twins
     triggers.push_back(new TriggerNode("eredar twins melee is at balcony", {
         NextAction("eredar twins melee jump from balcony", ACTION_EMERGENCY + 1) }));
+
+    triggers.push_back(new TriggerNode("eredar twins should announce alythess tank", {
+        NextAction("eredar twins announce alythess tank", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("eredar twins pulling bosses", {
         NextAction("eredar twins misdirect bosses to tanks", ACTION_RAID + 2) }));
@@ -220,10 +223,13 @@ void RaidSunwellStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         NextAction("kil'jaeden dragon buff and protect raid", ACTION_RAID + 3) }));
 }
 
-void RaidSunwellStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
+void RaidSwpStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
 {
     // General
-    multipliers.push_back(new SunwellPlateauNoEncounterDrinkingMultiplier(botAI));
+    multipliers.push_back(new SunwellNoEncounterDrinkingMultiplier(botAI));
+
+    // Trash
+    multipliers.push_back(new VolatileFiendRestrictApproachMultiplier(botAI));
 
     // Kalecgos
     multipliers.push_back(new KalecgosControlMisdirectionMultiplier(botAI));
@@ -279,6 +285,18 @@ namespace
 
 using namespace SwpHelpers;
 
+void AppendVolatileFiendMeleeDpsExclusions(
+    PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
+{
+    Player* bot = botAI->GetBot();
+    if (PlayerbotAI::IsRanged(bot) || PlayerbotAI::IsTank(bot))
+        return;
+
+    Creature* volatileFiend = botAI->GetCreature(AI_VALUE(ObjectGuid, "swp volatile fiend"));
+    if (volatileFiend && volatileFiend->IsAlive())
+        exclusions.insert(volatileFiend->GetGUID());
+}
+
 void AppendFelmystVaporPhaseMeleeExclusions(
     PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
 {
@@ -314,7 +332,7 @@ void AppendMuruTankExclusions(PlayerbotAI* botAI, AiObjectContext* context, Guid
     if (!IsMuruPhaseActive(muru))
         return;
 
-    bool const darknessActive = TryGetMuruDarknessActiveState(bot, muru);
+    bool const darknessActive = PeekMuruDarknessActiveState(bot);
     // Even during Darkness, the Sentinel Tank has full freedom to pick up Sentinels
     bool const distanceUnrestricted = darknessActive &&
         PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
@@ -360,10 +378,11 @@ void AppendKiljaedenShieldOrbExclusions(
 
 } // end anonymous namespace
 
-void RaidSunwellStrategy::AppendTargetExclusions(
+void RaidSwpStrategy::AppendTargetExclusions(
     GuidSet& exclusions, TargetValueExclusionType /*type*/)
 {
     AiObjectContext* context = botAI->GetAiObjectContext();
+    AppendVolatileFiendMeleeDpsExclusions(botAI, context, exclusions);
     AppendFelmystVaporPhaseMeleeExclusions(botAI, context, exclusions);
     AppendMuruTankExclusions(botAI, context, exclusions);
     AppendMuruDarkFiendExclusions(botAI, context, exclusions);

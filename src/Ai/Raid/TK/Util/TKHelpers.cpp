@@ -6,7 +6,6 @@
 
 #include "TKHelpers.h"
 #include "EncounterHelpers.h"
-#include "LootObjectStack.h"
 #include "Playerbots.h"
 #include "TKKaelthasBossAI.h"
 #include <limits>
@@ -218,6 +217,22 @@ Player* GetSecondaryEmberTank(Player* bot)
     return assistTank;
 }
 
+std::vector<Unit*> GetFlamePatches(Player* bot, float searchRadius)
+{
+    std::list<Creature*> creatureList;
+    bot->GetCreatureListWithEntryInGrid(creatureList, Id(TkNpcs::NPC_FLAME_PATCH), searchRadius);
+
+    std::vector<Unit*> flamePatches;
+    flamePatches.reserve(creatureList.size());
+    for (Creature* creature : creatureList)
+    {
+        if (creature && creature->IsAlive())
+            flamePatches.push_back(creature);
+    }
+
+    return flamePatches;
+}
+
 // Void Reaver
 
 std::unordered_map<uint32, std::vector<ArcaneOrbData>> voidReaverArcaneOrbs;
@@ -267,13 +282,13 @@ bool HasWrathOfTheAstromancer(Player* bot)
 
 std::unordered_map<uint32, uint32> advisorDpsWaitTimer;
 
-uint32 GetKaelthasPhase(Unit* kaelthas)
+uint32 GetKaelthasTkPhase(Unit* kaelthas)
 {
     if (!kaelthas)
         return PHASE_NONE;
 
     boss_kaelthas* kaelAI = dynamic_cast<boss_kaelthas*>(kaelthas->GetAI());
-    return kaelAI ? kaelAI->GetPhase() : PHASE_NONE;
+    return kaelAI ? kaelAI->GetPhase() : Id(PHASE_NONE);
 }
 
 // The non-attackable unit flag covers the period in phase 1 before the advisor activates.
@@ -435,7 +450,7 @@ bool HasEquippableItemForSlot(Player* bot, uint8 slot)
     {
         uint8 bag = (i == 0) ? INVENTORY_SLOT_BAG_0 : (INVENTORY_SLOT_BAG_START + i - 1);
         uint8 startSlot = (bag == INVENTORY_SLOT_BAG_0) ? INVENTORY_SLOT_ITEM_START : 0;
-        uint8 endSlot = (bag == INVENTORY_SLOT_BAG_0) ? INVENTORY_SLOT_ITEM_END
+        uint8 endSlot = (bag == INVENTORY_SLOT_BAG_0) ? uint8(INVENTORY_SLOT_ITEM_END)
             : (bot->GetBagByPos(bag) ? bot->GetBagByPos(bag)->GetBagSize() : uint8(0));
 
         for (uint8 bagSlot = startSlot; bagSlot < endSlot; ++bagSlot)

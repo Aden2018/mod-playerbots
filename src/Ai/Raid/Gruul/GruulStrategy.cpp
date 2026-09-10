@@ -29,8 +29,8 @@ void RaidGruulsLairStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("high king maulgar boss channeling whirlwind", {
         NextAction("high king maulgar run away from whirlwind", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("high king maulgar krosh casts blast wave", {
-        NextAction("high king maulgar flee from blast wave danger", ACTION_RAID + 3) }));
+    triggers.push_back(new TriggerNode("high king maulgar should stand back from krosh", {
+        NextAction("high king maulgar back away from krosh", ACTION_RAID + 3) }));
 
     triggers.push_back(new TriggerNode("high king maulgar wild fel stalker spawned", {
         NextAction("high king maulgar banish fel stalker", ACTION_RAID + 1) }));
@@ -38,15 +38,15 @@ void RaidGruulsLairStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("high king maulgar pulling ogre council", {
         NextAction("high king maulgar misdirect ogres to tanks", ACTION_RAID + 1) }));
 
-    triggers.push_back(new TriggerNode("high king maulgar boss casts intimidating roar", {
-        NextAction("high king maulgar cast fear ward on main tank", ACTION_RAID + 2) }));
-
     // Gruul the Dragonkiller
     triggers.push_back(new TriggerNode("gruul the dragonkiller should be tanked", {
         NextAction("gruul the dragonkiller tanks position boss", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("gruul the dragonkiller ranged should spread", {
         NextAction("gruul the dragonkiller spread ranged", ACTION_RAID) }));
+
+    triggers.push_back(new TriggerNode("gruul the dragonkiller in cave in", {
+        NextAction("gruul the dragonkiller get out of cave in", ACTION_EMERGENCY + 7) }));
 
     triggers.push_back(new TriggerNode("gruul the dragonkiller incoming shatter", {
         NextAction("gruul the dragonkiller shatter spread", ACTION_EMERGENCY + 6) }));
@@ -68,5 +68,6 @@ void RaidGruulsLairStrategy::InitMultipliers(std::vector<Multiplier*>& multiplie
     // Gruul the Dragonkiller
     multipliers.push_back(new GruulTheDragonkillerControlTankMovementMultiplier(botAI));
     multipliers.push_back(new GruulTheDragonkillerStaySpreadForShatterMultiplier(botAI));
+    multipliers.push_back(new GruulTheDragonkillerControlAvoidanceMultiplier(botAI));
     multipliers.push_back(new GruulTheDragonkillerHoldWhileSnaredMultiplier(botAI));
 }

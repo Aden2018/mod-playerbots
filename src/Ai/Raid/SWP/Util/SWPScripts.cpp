@@ -13,7 +13,7 @@
 #include "SWPEncounter_Kalec.h"
 #include "SWPEncounter_KJ.h"
 #include "SWPEncounter_Twins.h"
-#include "SWPSharedConstants.h"
+#include "SWPShared.h"
 #include <list>
 #include <vector>
 
@@ -104,7 +104,7 @@ void RequestInterruptForBotsNeedingFelmystFogMovement(Unit* contextUnit, Player*
             continue;
 
         Position ignored;
-        if (!TryGetFelmystFogSafeDestination(player, fogState.lane, ignored))
+        if (!TryGetFelmystFogCrossingDestination(player, fogState.lane, ignored))
             continue;
 
         botAI->RequestSpellInterrupt();
@@ -178,7 +178,7 @@ void RequestInterruptForEredarTwinsAlythessTargets(Creature* alythess)
     }
 }
 
-}
+} // end anonymous namespace
 
 class KalecgosPortalSpellListenerScript : public AllSpellScript
 {
@@ -313,6 +313,27 @@ public:
     }
 };
 
+class MuruVoidZoneSpellListenerScript : public AllSpellScript
+{
+public:
+    MuruVoidZoneSpellListenerScript() : AllSpellScript("MuruVoidZoneSpellListenerScript") {}
+
+    void OnSpellCast(
+        Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
+    {
+        if (spellInfo->Id != Id(SwpSpells::SPELL_ENTROPIUS_DARKNESS))
+            return;
+
+        Player* target = GetFirstPlayerSpellTarget(spell, caster);
+        if (!target)
+            return;
+
+        PlayerbotAI* botAI = GET_PLAYERBOT_AI(target);
+        if (botAI && botAI->HasStrategy("sunwell", BOT_STATE_COMBAT))
+            botAI->RequestSpellInterrupt();
+    }
+};
+
 class KiljaedenDarknessSpellListenerScript : public AllSpellScript
 {
 public:
@@ -341,27 +362,6 @@ public:
 
             botAI->RequestSpellInterrupt();
         }
-    }
-};
-
-class MuruVoidZoneSpellListenerScript : public AllSpellScript
-{
-public:
-    MuruVoidZoneSpellListenerScript() : AllSpellScript("MuruVoidZoneSpellListenerScript") {}
-
-    void OnSpellCast(
-        Spell* spell, Unit* caster, SpellInfo const* spellInfo, bool /*skipCheck*/) override
-    {
-        if (spellInfo->Id != Id(SwpSpells::SPELL_ENTROPIUS_DARKNESS))
-            return;
-
-        Player* target = GetFirstPlayerSpellTarget(spell, caster);
-        if (!target)
-            return;
-
-        PlayerbotAI* botAI = GET_PLAYERBOT_AI(target);
-        if (botAI && botAI->HasStrategy("sunwell", BOT_STATE_COMBAT))
-            botAI->RequestSpellInterrupt();
     }
 };
 
@@ -449,13 +449,15 @@ public:
     }
 };
 
-void AddSC_SunwellPlateauBotScripts()
+void AddSC_SunwellBotScripts()
 {
+    // AllSpellScript
     new KalecgosPortalSpellListenerScript();
     new FelmystSpellListenerScript();
     new EredarTwinsSpellListenerScript();
     new MuruVoidZoneSpellListenerScript();
     new KiljaedenDarknessSpellListenerScript();
+    // AllCreatureScript
     new SunwellBossUpdateScript();
     new KiljaedenArmageddonTargetCreatureScript();
 }

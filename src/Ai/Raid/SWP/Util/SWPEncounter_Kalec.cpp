@@ -30,7 +30,7 @@ void ClearExpiredActiveRift(KalecgosEncounterState& state, uint32 now)
     if (!state.activeRiftOpenedMs)
         return;
 
-    if (getMSTimeDiff(state.activeRiftOpenedMs, now) <= RIFT_ACTIVE_WINDOW_MS)
+    if (getMSTimeDiff(state.activeRiftOpenedMs, now) <= SPECTRAL_RIFT_ACTIVE_WINDOW_MS)
         return;
 
     state.activeRiftOpenedMs = 0;
@@ -62,7 +62,7 @@ bool CanReachPortalBeforeExpiry(Player* bot)
     if (!exhaustion)
         return true;
 
-    return exhaustion->GetDuration() <= static_cast<int32>(RIFT_ENTRY_WINDOW_MS);
+    return exhaustion->GetDuration() <= SPECTRAL_RIFT_ENTRY_WINDOW_MS;
 }
 
 bool IsPortalEligibleCandidate(Player* bot)
@@ -93,19 +93,44 @@ std::array<ObjectGuid, KALECGOS_TANK_COUNT> GetExpectedTankAssignmentGuids(Playe
     if (!group)
         return tankGuids;
 
+    ObjectGuid const mainTankGuid = PlayerbotAI::GetMainTankGuid(group);
+
+    Player* mainTank = nullptr;
+    std::vector<Player*> assistTanks;
+    std::vector<Player*> otherTanks;
+
     for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
     {
         Player* member = ref->GetSource();
-        if (!member || member->GetMapId() != SWP_MAP_ID)
+        if (!member)
             continue;
 
-        if (PlayerbotAI::IsMainTank(member))
-            tankGuids[0] = member->GetGUID();
-        else if (PlayerbotAI::IsAssistTankOfIndex(member, 0))
-            tankGuids[1] = member->GetGUID();
-        else if (PlayerbotAI::IsAssistTankOfIndex(member, 1))
-            tankGuids[2] = member->GetGUID();
+        if (member->GetGUID() == mainTankGuid)
+        {
+            mainTank = member;
+            continue;
+        }
+
+        if (!PlayerbotAI::IsTank(member))
+            continue;
+
+        if (group->IsAssistant(member->GetGUID()))
+            assistTanks.push_back(member);
+        else
+            otherTanks.push_back(member);
     }
+
+    assistTanks.insert(assistTanks.end(), otherTanks.begin(), otherTanks.end());
+
+    auto const assignSlot = [&tankGuids](uint8 slot, Player* tank)
+    {
+        if (tank && tank->GetMapId() == SWP_MAP_ID)
+            tankGuids[slot] = tank->GetGUID();
+    };
+
+    assignSlot(0, mainTank);
+    for (uint8 index = 0; index < KALECGOS_TANK_COUNT - 1 && index < assistTanks.size(); ++index)
+        assignSlot(index + 1, assistTanks[index]);
 
     return tankGuids;
 }

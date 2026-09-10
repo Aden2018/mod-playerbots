@@ -20,30 +20,31 @@ class Creature;
 
 // General
 
-class SunwellPlateauResetEncounterStatesAction : public Action
+class SunwellResetEncounterStatesAction : public Action
 {
 public:
-    SunwellPlateauResetEncounterStatesAction(PlayerbotAI* botAI)
-        : Action(botAI, "sunwell plateau reset encounter states") {}
+    SunwellResetEncounterStatesAction(PlayerbotAI* botAI)
+        : Action(botAI, "sunwell reset encounter states") {}
     bool Execute(Event event) override;
 };
 
-class SunwellPlateauRemoveAuraAction : public Action
+class SunwellRemoveDebuffWithImmunityAction : public Action
 {
 public:
-    SunwellPlateauRemoveAuraAction(PlayerbotAI* botAI)
-        : Action(botAI, "sunwell plateau remove aura") {}
+    SunwellRemoveDebuffWithImmunityAction(PlayerbotAI* botAI, std::string const name)
+        : Action(botAI, name) {}
+    bool Execute(Event event) override;
+};
+
+class SunwellRemoveAuraAction : public Action
+{
+public:
+    SunwellRemoveAuraAction(PlayerbotAI* botAI)
+        : Action(botAI, "sunwell remove aura") {}
     bool Execute(Event event) override;
 };
 
 // Trash
-
-namespace SwpHelpers
-{
-
-ObjectGuid FindSwpVolatileFiendGuid(Player* bot);
-
-}
 
 class VolatileFiendKeepEnemyAwayFromGroupAction : public AttackAction
 {
@@ -61,10 +62,10 @@ public:
     bool Execute(Event event) override;
 };
 
-class SunwellPlateauMisdirectBossToMainTankAction : public Action
+class SunwellMisdirectBossToMainTankAction : public Action
 {
 public:
-    SunwellPlateauMisdirectBossToMainTankAction(
+    SunwellMisdirectBossToMainTankAction(
         PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
         : Action(botAI, name), _bossName(bossName) {}
     bool Execute(Event event) override;
@@ -118,14 +119,6 @@ public:
 
 private:
     bool _initialRangedPositionReached = false;
-};
-
-class KalecgosRemoveArcaneBuffetAction : public Action
-{
-public:
-    KalecgosRemoveArcaneBuffetAction(PlayerbotAI* botAI)
-        : Action(botAI, "kalecgos remove arcane buffet") {}
-    bool Execute(Event event) override;
 };
 
 class KalecgosSathrovarrTankStandWithKalecAction : public MovementAction
@@ -317,6 +310,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class EredarTwinsAnnounceAlythessTankAction : public Action
+{
+public:
+    EredarTwinsAnnounceAlythessTankAction(PlayerbotAI* botAI)
+        : Action(botAI, "eredar twins announce alythess tank") {}
+    bool Execute(Event event) override;
+};
+
 class EredarTwinsMisdirectBossesToTanksAction : public Action
 {
 public:
@@ -364,14 +365,6 @@ class EredarTwinsStackInRoomCenterAction : public MovementAction
 public:
     EredarTwinsStackInRoomCenterAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "eredar twins stack in room center") {}
-    bool Execute(Event event) override;
-};
-
-class EredarTwinsRemoveFlameSearAction : public Action
-{
-public:
-    EredarTwinsRemoveFlameSearAction(PlayerbotAI* botAI)
-        : Action(botAI, "eredar twins remove flame sear") {}
     bool Execute(Event event) override;
 };
 
@@ -461,9 +454,6 @@ public:
     MuruTanksMoveSentinelToSafePositionAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "m'uru tanks move sentinel to safe position") {}
     bool Execute(Event event) override;
-
-private:
-    Position const& GetAssignedVoidSentinelTankPosition(Unit* voidSentinel);
 };
 
 class MuruSecondAssistTankGuardRangedAction : public MovementAction
@@ -522,7 +512,6 @@ public:
 
 protected:
     Unit* GetControlledVoidSpawn() const;
-    bool CommandControlledCreatureToAttack(Unit* controlled, Unit* target) const;
     Unit* GetVoidSpawnVolleyPriorityTarget(Unit* voidSpawn) const;
 };
 
@@ -609,8 +598,8 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool TryGetPosition(Position& position) const;
-    bool TryAdjustForArmageddon(Position& position);
+    bool TryGetMeleePosition(Position& position) const;
+    bool TryAdjustMeleeForArmageddon(Position& position);
 };
 
 class KiljaedenPositionRangedAndAvoidArmageddonsAction : public MovementAction
@@ -621,16 +610,8 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool TryGetPosition(Position& position) const;
-    bool TryAdjustForArmageddon(Position& position);
-};
-
-class KiljaedenRemoveFireBloomAction : public Action
-{
-public:
-    KiljaedenRemoveFireBloomAction(PlayerbotAI* botAI)
-        : Action(botAI, "kil'jaeden remove fire bloom") {}
-    bool Execute(Event event) override;
+    bool TryGetRangedPosition(Position& position) const;
+    bool TryAdjustRangedForArmageddon(Position& position);
 };
 
 class KiljaedenStackForShieldOfTheBlueAction : public MovementAction

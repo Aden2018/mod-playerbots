@@ -8,7 +8,6 @@
 #include "AiFactory.h"
 #include "BTHelpers.h"
 #include "EncounterHelpers.h"
-#include "InstanceScript.h"
 #include "Playerbots.h"
 #include "SharedDefines.h"
 #include "Timer.h"
@@ -18,13 +17,10 @@ using namespace EncounterHelpers;
 
 // General
 
+// NEED TO ADJUST FOR ILLIDARI COUNCIL
 bool BlackTempleNoEncounterInProgressTrigger::IsActive()
 {
-    if (bot->GetMapId() != BLACK_TEMPLE_MAP_ID)
-        return false;
-
-    InstanceScript* instance = bot->GetInstanceScript();
-    return instance && !instance->IsEncounterInProgress();
+    return !IsEncounterInProgress(bot, BLACK_TEMPLE_MAP_ID);
 }
 
 // High Warlord Naj'entus

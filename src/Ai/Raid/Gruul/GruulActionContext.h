@@ -19,7 +19,7 @@ public:
         creators["gruul's lair reset encounter states"] =
             &RaidGruulsLairActionContext::gruuls_lair_reset_encounter_states;
 
-        // High King Maulgar
+        // High King Maulgar <Lord of the Ogres>
         creators["high king maulgar melee tanks position bosses"] =
             &RaidGruulsLairActionContext::high_king_maulgar_melee_tanks_position_bosses;
 
@@ -35,8 +35,8 @@ public:
         creators["high king maulgar run away from whirlwind"] =
             &RaidGruulsLairActionContext::high_king_maulgar_run_away_from_whirlwind;
 
-        creators["high king maulgar flee from blast wave danger"] =
-            &RaidGruulsLairActionContext::high_king_maulgar_flee_from_blast_wave_danger;
+        creators["high king maulgar back away from krosh"] =
+            &RaidGruulsLairActionContext::high_king_maulgar_back_away_from_krosh;
 
         creators["high king maulgar banish fel stalker"] =
             &RaidGruulsLairActionContext::high_king_maulgar_banish_fel_stalker;
@@ -44,15 +44,15 @@ public:
         creators["high king maulgar misdirect ogres to tanks"] =
             &RaidGruulsLairActionContext::high_king_maulgar_misdirect_ogres_to_tanks;
 
-        creators["high king maulgar cast fear ward on main tank"] =
-            &RaidGruulsLairActionContext::high_king_maulgar_cast_fear_ward_on_main_tank;
-
         // Gruul the Dragonkiller
         creators["gruul the dragonkiller tanks position boss"] =
             &RaidGruulsLairActionContext::gruul_the_dragonkiller_tanks_position_boss;
 
         creators["gruul the dragonkiller spread ranged"] =
             &RaidGruulsLairActionContext::gruul_the_dragonkiller_spread_ranged;
+
+        creators["gruul the dragonkiller get out of cave in"] =
+            &RaidGruulsLairActionContext::gruul_the_dragonkiller_get_out_of_cave_in;
 
         creators["gruul the dragonkiller shatter spread"] =
             &RaidGruulsLairActionContext::gruul_the_dragonkiller_shatter_spread;
@@ -80,17 +80,14 @@ private:
     static Action* high_king_maulgar_run_away_from_whirlwind(PlayerbotAI* botAI) {
         return new HighKingMaulgarRunAwayFromWhirlwindAction(botAI);
     }
-    static Action* high_king_maulgar_flee_from_blast_wave_danger(PlayerbotAI* botAI) {
-        return new HighKingMaulgarFleeFromBlastWaveDangerAction(botAI);
+    static Action* high_king_maulgar_back_away_from_krosh(PlayerbotAI* botAI) {
+        return new HighKingMaulgarBackAwayFromKroshAction(botAI);
     }
     static Action* high_king_maulgar_banish_fel_stalker(PlayerbotAI* botAI) {
         return new HighKingMaulgarBanishFelStalkerAction(botAI);
     }
     static Action* high_king_maulgar_misdirect_ogres_to_tanks(PlayerbotAI* botAI) {
         return new HighKingMaulgarMisdirectOgresToTanksAction(botAI);
-    }
-    static Action* high_king_maulgar_cast_fear_ward_on_main_tank(PlayerbotAI* botAI) {
-        return new HighKingMaulgarCastFearWardOnMainTankAction(botAI);
     }
 
     // Gruul the Dragonkiller
@@ -99,6 +96,9 @@ private:
     }
     static Action* gruul_the_dragonkiller_spread_ranged(PlayerbotAI* botAI) {
         return new GruulTheDragonkillerSpreadRangedAction(botAI);
+    }
+    static Action* gruul_the_dragonkiller_get_out_of_cave_in(PlayerbotAI* botAI) {
+        return new GruulTheDragonkillerGetOutOfCaveInAction(botAI);
     }
     static Action* gruul_the_dragonkiller_shatter_spread(PlayerbotAI* botAI) {
         return new GruulTheDragonkillerShatterSpreadAction(botAI);
