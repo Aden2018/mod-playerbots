@@ -20,7 +20,7 @@ public:
     SscHazardPositionsValue(
         PlayerbotAI* botAI, std::string const& name, uint32 spellId, float searchRadius)
         : CalculatedValue<std::vector<Position>>(
-              botAI, name, SscHelpers::HAZARD_CACHE_INTERVAL),
+              botAI, name, SscHelpers::HAZARD_CACHE_INTERVAL_MS),
           _spellId(spellId), _searchRadius(searchRadius) {}
 
 protected:
@@ -34,12 +34,60 @@ private:
     float const _searchRadius;
 };
 
+class SscLurkerGuardiansValue : public CalculatedValue<GuidVector>
+{
+public:
+    SscLurkerGuardiansValue(PlayerbotAI* botAI)
+        : CalculatedValue<GuidVector>(
+              botAI, "ssc lurker guardians", SscHelpers::LURKER_GUARDIAN_CACHE_INTERVAL_MS) {}
+
+protected:
+    GuidVector Calculate() override { return SscHelpers::FindLurkerGuardianGuids(bot); }
+};
+
+class SscLeotherasValue : public CalculatedValue<ObjectGuid>
+{
+public:
+    SscLeotherasValue(PlayerbotAI* botAI)
+        : CalculatedValue<ObjectGuid>(
+              botAI, "ssc leotheras", SscHelpers::LEOTHERAS_CACHE_INTERVAL_MS) {}
+
+protected:
+    ObjectGuid Calculate() override { return SscHelpers::FindLeotherasGuid(bot); }
+};
+
+class SscShadowOfLeotherasValue : public CalculatedValue<ObjectGuid>
+{
+public:
+    SscShadowOfLeotherasValue(PlayerbotAI* botAI)
+        : CalculatedValue<ObjectGuid>(
+              botAI, "ssc shadow of leotheras", SscHelpers::LEOTHERAS_CACHE_INTERVAL_MS) {}
+
+protected:
+    ObjectGuid Calculate() override { return SscHelpers::FindShadowOfLeotherasGuid(bot); }
+};
+
+class SscSpitfireTotemValue : public CalculatedValue<ObjectGuid>
+{
+public:
+    SscSpitfireTotemValue(PlayerbotAI* botAI)
+        : CalculatedValue<ObjectGuid>(
+              botAI, "ssc spitfire totem", SscHelpers::SPITFIRE_TOTEM_CACHE_INTERVAL_MS) {}
+
+protected:
+    ObjectGuid Calculate() override { return SscHelpers::FindSpitfireTotemGuid(bot); }
+};
+
 class RaidSscValueContext : public NamedObjectContext<UntypedValue>
 {
 public:
     RaidSscValueContext()
     {
         creators["ssc toxic pool"] = &RaidSscValueContext::ssc_toxic_pool;
+        creators["ssc lurker guardians"] = &RaidSscValueContext::ssc_lurker_guardians;
+        creators["ssc leotheras"] = &RaidSscValueContext::ssc_leotheras;
+        creators["ssc shadow of leotheras"] = &RaidSscValueContext::ssc_shadow_of_leotheras;
+        creators["ssc spitfire totem"] = &RaidSscValueContext::ssc_spitfire_totem;
     }
 
 private:
@@ -47,6 +95,18 @@ private:
         return new SscHazardPositionsValue(
             botAI, "ssc toxic pool", SscHelpers::Id(SscHelpers::SscSpells::SPELL_TOXIC_POOL),
             SscHelpers::TOXIC_POOL_SEARCH_RADIUS);
+    }
+    static UntypedValue* ssc_lurker_guardians(PlayerbotAI* botAI) {
+        return new SscLurkerGuardiansValue(botAI);
+    }
+    static UntypedValue* ssc_leotheras(PlayerbotAI* botAI) {
+        return new SscLeotherasValue(botAI);
+    }
+    static UntypedValue* ssc_shadow_of_leotheras(PlayerbotAI* botAI) {
+        return new SscShadowOfLeotherasValue(botAI);
+    }
+    static UntypedValue* ssc_spitfire_totem(PlayerbotAI* botAI) {
+        return new SscSpitfireTotemValue(botAI);
     }
 };
 

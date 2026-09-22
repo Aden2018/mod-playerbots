@@ -21,6 +21,8 @@
 using namespace SwpHelpers;
 using namespace EncounterHelpers;
 
+// General
+
 bool SunwellResetEncounterStatesAction::Execute(Event /*event*/)
 {
     ObjectGuid const guid = bot->GetGUID();
@@ -71,6 +73,10 @@ bool SunwellResetEncounterStatesAction::Execute(Event /*event*/)
     // Kil'jaeden
     reset |= kiljaedenDragonOrbUseTimes.erase(guid.GetCounter()) > 0;
 
+    // A drake lost as Kil'jaeden dies leaves its rider stale-rooted after the encounter, when the
+    // in-combat release (KiljaedenReleaseStaleRootAction) can no longer run.
+    reset |= ReleaseStaleRootFlag(bot);
+
     // Records shared across the raid, so one bot clears them all
     if (!IsMechanicTrackerBot(bot, SWP_MAP_ID))
         return reset;
@@ -92,13 +98,6 @@ bool SunwellResetEncounterStatesAction::Execute(Event /*event*/)
     reset |= kiljaedenHandControlClaims.erase(instanceId) > 0;
 
     return reset;
-}
-
-// Clear Kalecgos's Arcane Buffet, the Eredar Twins' Flame Sear, and Kil'jaeden's Fire Bloom.
-bool SunwellRemoveDebuffWithImmunityAction::Execute(Event /*event*/)
-{
-    uint32 const spellId = GetSelfImmunitySpell(bot);
-    return spellId && botAI->CanCastSpell(spellId, bot) && botAI->CastSpell(spellId, bot);
 }
 
 bool SunwellRemoveAuraAction::Execute(Event /*event*/)
@@ -124,6 +123,8 @@ bool SunwellRemoveAuraAction::Execute(Event /*event*/)
     bot->RemoveAura(Id(SwpSpells::SPELL_BURN));
     return true;
 }
+
+// Trash
 
 bool VolatileFiendKeepEnemyAwayFromGroupAction::Execute(Event /*event*/)
 {
@@ -176,6 +177,15 @@ bool ApocalypseGuardAttackWithHolyMagicAction::Execute(Event /*event*/)
     }
 
     return botAI->CanCastSpell("smite", target) && botAI->CastSpell("smite", target);
+}
+
+// Shared Bosses
+
+// Clear Kalecgos's Arcane Buffet, the Eredar Twins' Flame Sear, and Kil'jaeden's Fire Bloom.
+bool SunwellRemoveDebuffWithImmunityAction::Execute(Event /*event*/)
+{
+    uint32 const spellId = GetSelfImmunitySpell(bot);
+    return spellId && botAI->CanCastSpell(spellId, bot) && botAI->CastSpell(spellId, bot);
 }
 
 bool SunwellMisdirectBossToMainTankAction::Execute(Event /*event*/)

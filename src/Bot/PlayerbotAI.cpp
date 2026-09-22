@@ -254,8 +254,13 @@ void PlayerbotAI::UpdateAI(uint32 elapsed, bool minimal)
 
     // Early return if bot is in invalid state
     if (!bot || !bot->GetSession() || !bot->IsInWorld() || bot->IsBeingTeleported() ||
-        bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+        bot->GetSession()->IsLoggingOut() || bot->IsDuringRemoveFromWorld())
         return;
+
+    // Bots send no movement opcodes, so m_lastFallZ stays frozen and Player::IsFalling() (a Z test
+    // against it) blocks LFG teleports. Unit::IsFalling() is the flag test, so real falls keep theirs.
+    if (!bot->Unit::IsFalling())
+        bot->SetFallInformation(0, bot->GetPositionZ());
 
     // Handle cheat options (set bot health and power if cheats are enabled)
     if (bot->IsAlive() &&
@@ -508,7 +513,7 @@ void PlayerbotAI::UpdateAIInternal([[maybe_unused]] uint32 elapsed, bool minimal
     HandleCommands();
 
     // logout if logout timer is ready or if instant logout is possible
-    if (bot->GetSession()->isLogingOut())
+    if (bot->GetSession()->IsLoggingOut())
     {
         WorldSession* botWorldSessionPtr = bot->GetSession();
         bool logout = botWorldSessionPtr->ShouldLogOut(time(nullptr));
@@ -728,7 +733,7 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const& text, Player& fr
     // TODO: missing implementation to port
     /*else if (filtered == "logout")
     {
-        if (!(bot->IsStunnedByLogout() || bot->GetSession()->isLogingOut()))
+        if (!(bot->IsStunnedByLogout() || bot->GetSession()->IsLoggingOut()))
         {
             if (type == CHAT_MSG_WHISPER)
                 TellPlayer(&fromPlayer, BOT_TEXT("logout_start"));
@@ -739,7 +744,7 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const& text, Player& fr
     }
     else if (filtered == "logout cancel")
     {
-        if (bot->IsStunnedByLogout() || bot->GetSession()->isLogingOut())
+        if (bot->IsStunnedByLogout() || bot->GetSession()->IsLoggingOut())
         {
             if (type == CHAT_MSG_WHISPER)
                 TellPlayer(&fromPlayer, BOT_TEXT("logout_cancel"));
@@ -861,7 +866,7 @@ void PlayerbotAI::Reset(bool full)
     bool logout = botWorldSessionPtr->ShouldLogOut(time(nullptr));
 
     // cancel logout
-    if (!logout && bot->GetSession()->isLogingOut())
+    if (!logout && bot->GetSession()->IsLoggingOut())
     {
         WorldPackets::Character::LogoutCancel data = WorldPacket(CMSG_LOGOUT_CANCEL);
         bot->GetSession()->HandleLogoutCancelOpcode(data);
@@ -1057,7 +1062,7 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fro
     }
     else if (filtered == "logout")
     {
-        if (bot->GetSession()->isLogingOut())
+        if (bot->GetSession()->IsLoggingOut())
             return;
 
         // Verify the command came from this bot's master. Also handles nullptr
@@ -1097,7 +1102,7 @@ void PlayerbotAI::HandleCommand(uint32 type, std::string const text, Player* fro
     }
     else if (filtered == "logout cancel")
     {
-        if (!bot->GetSession()->isLogingOut())
+        if (!bot->GetSession()->IsLoggingOut())
             return;
 
         if (type == CHAT_MSG_WHISPER)
@@ -1634,9 +1639,9 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
 {
     static const std::vector<std::string> allInstanceStrategies =
     {
-        "aq20", "blacktemple", "bwl", "karazhan", "gruulslair", "hyjal", "icc", "magtheridon",
-        "moltencore", "naxx", "onyxia", "rs", "ssc", "sunwell", "tbc-ac", "tbc-hfr", "tbc-mech",
-        "tbc-mgt", "tbc-seth", "tbc-ub", "tempestkeep", "ulduar", "voa", "wotlk-an", "wotlk-cos",
+        "aq20", "blacktemple", "bwl", "gruulslair", "hyjal", "icc", "karazhan", "magtheridon",
+        "moltencore", "naxx", "onyxia", "rs", "ssc", "sunwell", "tbc-ac", "tbc-mech", "tbc-mgt",
+        "tbc-ramp", "tbc-seth", "tbc-ub", "tempestkeep", "ulduar", "voa", "wotlk-an", "wotlk-cos",
         "wotlk-dtk", "wotlk-eoe", "wotlk-fos", "wotlk-gd", "wotlk-hol", "wotlk-hos", "wotlk-nex",
         "wotlk-occ", "wotlk-ok", "wotlk-os", "wotlk-pos", "wotlk-toc", "wotlk-uk", "wotlk-up",
         "wotlk-vh", "zulaman"
@@ -1673,7 +1678,7 @@ void PlayerbotAI::ApplyInstanceStrategies(uint32 mapId, bool tellMaster)
             strategyName = "hyjal";  // The Battle for Mount Hyjal (Hyjal Summit)
             break;
         case 543:
-            strategyName = "tbc-hfr";  // Hellfire Citadel: Hellfire Ramparts
+            strategyName = "tbc-ramp";  // Hellfire Citadel: Hellfire Ramparts
             break;
         case 544:
             strategyName = "magtheridon";  // Magtheridon's Lair
@@ -3425,9 +3430,7 @@ bool PlayerbotAI::CanCastSpell(uint32 spellid, Unit* target, bool checkHasSpell,
     spell->m_targets.SetUnitTarget(target);
     spell->m_CastItem = castItem;
     if (itemTarget == nullptr)
-    {
         itemTarget = aiObjectContext->GetValue<Item*>("item for spell", spellid)->Get();
-    }
     spell->m_targets.SetItemTarget(itemTarget);
     SpellCastResult result = spell->CheckCast(true);
     delete spell;
@@ -4599,7 +4602,7 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
 {
     // bot is in an invalid state, not safe to process
     if (!bot || !bot->GetSession() || !bot->IsInWorld() || bot->IsBeingTeleported() ||
-        bot->GetSession()->isLogingOut() || bot->IsDuringRemoveFromWorld())
+        bot->GetSession()->IsLoggingOut() || bot->IsDuringRemoveFromWorld())
         return false;
 
     // always allow packet handling (e.g. group invites, trade, loot, friend requests etc)
@@ -4736,7 +4739,7 @@ bool PlayerbotAI::AllowActive(ActivityType activityType)
         for (auto& player : sRandomPlayerbotMgr.GetPlayers())
         {
             if (!player || !player->GetSession() || !player->IsInWorld() || player->IsDuringRemoveFromWorld() ||
-                player->GetSession()->isLogingOut())
+                player->GetSession()->IsLoggingOut())
                 continue;
 
             PlayerbotAI* playerAI = GET_PLAYERBOT_AI(player);

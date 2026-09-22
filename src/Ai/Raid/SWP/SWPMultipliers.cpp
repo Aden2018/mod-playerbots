@@ -35,7 +35,7 @@ using namespace EncounterHelpers;
 // Without this, bots are able to drink after Kil'jaeden's Hands go down.
 float SunwellNoEncounterDrinkingMultiplier::GetValueInEncounter(Action* action)
 {
-    return dynamic_cast<DrinkAction*>(action) ? 0.0f : 1.0f;
+    return dynamic_cast<DrinkAction*>(action) || dynamic_cast<EatAction*>(action) ? 0.0f : 1.0f;
 }
 
 // Trash
@@ -62,9 +62,9 @@ float VolatileFiendRestrictApproachMultiplier::GetValue(Action* action)
         0.0f : 1.0f;
 }
 
-// Kalecgos
+// Shared Boss
 
-float KalecgosControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
+float SunwellControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -75,7 +75,14 @@ float KalecgosControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
     if (!dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
         return 1.0f;
 
-    return AI_VALUE2(Unit*, "find target", "kalecgos") ? 0.0f : 1.0f;
+    if (AI_VALUE2(Unit*, "find target", "entropius"))
+        return 1.0f;
+
+    return AI_VALUE2(Unit*, "find target", "kalecgos") ||
+        AI_VALUE2(Unit*, "find target", "brutallus") ||
+        AI_VALUE2(Unit*, "find target", "grand warlock alythess") ||
+        AI_VALUE2(Unit*, "find target", "m'uru") ||
+        AI_VALUE2(Unit*, "find target", "kil'jaeden") ? 0.0f : 1.0f;
 }
 
 float KalecgosWaitToDecurseMultiplier::GetValueInEncounter(Action* action)
@@ -212,20 +219,6 @@ float KalecgosDelayCooldownsForSathrovarrMultiplier::GetValueInEncounter(Action*
 }
 
 // Brutallus
-
-float BrutallusControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
-{
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
-    if (bot->getClass() != CLASS_HUNTER)
-        return 1.0f;
-
-    if (!dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
-        return 1.0f;
-
-    return AI_VALUE2(Unit*, "find target", "brutallus") ? 0.0f : 1.0f;
-}
 
 float BrutallusControlMovementMultiplier::GetValueInEncounter(Action* action)
 {
@@ -477,7 +470,7 @@ float FelmystDelayCooldownsMultiplier::GetValueInEncounter(Action* action)
 
 // Eredar Twins
 
-float EredarTwinsDisableAutomaticTargetingMultiplier::GetValueInEncounter(Action* action)
+float EredarTwinsDisableAutoTargetingMultiplier::GetValueInEncounter(Action* action)
 {
     if (botAI->GetState() == BOT_STATE_NON_COMBAT)
         return 1.0f;
@@ -487,20 +480,6 @@ float EredarTwinsDisableAutomaticTargetingMultiplier::GetValueInEncounter(Action
     {
         return 1.0f;
     }
-
-    return AI_VALUE2(Unit*, "find target", "grand warlock alythess") ? 0.0f : 1.0f;
-}
-
-float EredarTwinsControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
-{
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
-    if (bot->getClass() != CLASS_HUNTER)
-        return 1.0f;
-
-    if (!dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
-        return 1.0f;
 
     return AI_VALUE2(Unit*, "find target", "grand warlock alythess") ? 0.0f : 1.0f;
 }
@@ -676,23 +655,6 @@ float MuruDisableDefaultTargetingMultiplier::GetValueInEncounter(Action* action)
     // Disable secondary dots on void spawn
     Unit* currentTarget = AI_VALUE(Unit*, "current target");
     return currentTarget && currentTarget->GetEntry() == Id(SwpNpcs::NPC_VOID_SPAWN) ? 0.0f : 1.0f;
-}
-
-float MuruControlMisdirectionMultiplier::GetValueInEncounter(Action* action)
-{
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
-    if (bot->getClass() != CLASS_HUNTER)
-        return 1.0f;
-
-    if (!dynamic_cast<CastMisdirectionOnMainTankAction*>(action))
-        return 1.0f;
-
-    if (AI_VALUE2(Unit*, "find target", "entropius"))
-        return 1.0f;
-
-    return AI_VALUE2(Unit*, "find target", "m'uru") ? 0.0f : 1.0f;
 }
 
 float MuruControlMovementMultiplier::GetValueInEncounter(Action* action)

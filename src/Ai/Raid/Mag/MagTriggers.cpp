@@ -35,7 +35,7 @@ bool MagtheridonAssistTanksShouldTankChannelersTrigger::IsActiveInEncounter()
         return false;
 
     if (GetChanneler(bot, NORTHWEST_CHANNELER_DB_GUID) &&
-        PlayerbotAI::IsAssistTankOfIndex(bot, 0, false))
+        PlayerbotAI::IsAssistTankOfIndex(bot, 0, true))
     {
         return true;
     }
@@ -62,8 +62,7 @@ bool MagtheridonDeterminingKillOrderTrigger::IsActiveInEncounter()
 
 bool MagtheridonBurningAbyssalSpawnedTrigger::IsActiveInEncounter()
 {
-    return bot->getClass() == CLASS_WARLOCK &&
-        AI_VALUE2(Unit*, "find target", "burning abyssal"); // NTS: This should probably be a value
+    return bot->getClass() == CLASS_WARLOCK && !GetBurningAbyssals(botAI).empty();
 }
 
 bool MagtheridonShouldBeTankedTrigger::IsActiveInEncounter()
@@ -88,11 +87,6 @@ bool MagtheridonShouldSpreadRangedTrigger::IsActiveInEncounter()
     if (!magtheridon || !IsMagtheridonActive(magtheridon) || magtheridon->GetVictim() == bot)
         return false;
 
-    /* constexpr uint32 dpsWaitMs = 6 * IN_MILLISECONDS;
-    auto it = dpsWaitTimer.find(magtheridon->GetInstanceId());
-    if (it == dpsWaitTimer.end() || getMSTimeDiff(it->second, getMSTime()) < dpsWaitMs)
-        return false; */
-
     if (!IsCubeClicker(bot))
         return true;
 
@@ -105,16 +99,19 @@ bool MagtheridonShouldSpreadRangedTrigger::IsActiveInEncounter()
 
 bool MagtheridonStandingInDebrisTrigger::IsActiveInEncounter()
 {
-    if (!AI_VALUE2(Unit*, "find target", "magtheridon"))
+    if (!IsCeilingCollapsed(bot) || !AI_VALUE2(Unit*, "find target", "magtheridon"))
         return false;
 
-    return IsPositionInActiveDebris(bot, bot->GetPositionX(), bot->GetPositionY());
+    return IsPositionInActiveDebris(botAI, bot->GetPositionX(), bot->GetPositionY());
 }
 
 bool MagtheridonIncomingBlastNovaTrigger::IsActiveInEncounter()
 {
+    if (!IsCubeClicker(bot))
+        return false;
+
     Unit* magtheridon = AI_VALUE2(Unit*, "find target", "magtheridon");
-    return magtheridon && IsMagtheridonActive(magtheridon) && IsCubeClicker(bot);
+    return magtheridon && IsMagtheridonActive(magtheridon);
 }
 
 bool MagtheridonShouldManageTimersAndAssignmentsTrigger::IsActiveInEncounter()

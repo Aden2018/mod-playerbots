@@ -10,14 +10,16 @@
 #include "Action.h"
 #include "AttackAction.h"
 #include "MovementActions.h"
+#include <string>
+#include <vector>
 
 // General
 
-class SerpentShrineCavernResetEncounterStatesAction : public Action
+class SscResetEncounterStatesAction : public Action
 {
 public:
-    SerpentShrineCavernResetEncounterStatesAction(PlayerbotAI* botAI)
-        : Action(botAI, "serpent shrine cavern reset encounter states") {}
+    SscResetEncounterStatesAction(PlayerbotAI* botAI)
+        : Action(botAI, "ssc reset encounter states") {}
     bool Execute(Event event) override;
 };
 
@@ -39,30 +41,42 @@ public:
     bool Execute(Event event) override;
 };
 
+// Shared Bosses
+
+// Misdirect to the main tank, or to an assist tank at assistTankIndex. Used for
+// Morogrim Tidewalker, Lady Vashj, and Coilfang Striders.
+class SscMisdirectTargetToTankAction : public Action
+{
+public:
+    static constexpr int8 MAIN_TANK = -1;
+
+    SscMisdirectTargetToTankAction(
+        PlayerbotAI* botAI, std::string const& name, std::string const& targetName,
+        int8 assistTankIndex = MAIN_TANK)
+        : Action(botAI, name), _targetName(targetName), _assistTankIndex(assistTankIndex) {}
+    bool Execute(Event event) override;
+
+protected:
+    std::string const _targetName;
+    int8 const _assistTankIndex;
+};
+
 // Hydross the Unstable <Duke of Currents>
 
-class HydrossTheUnstablePositionFrostTankAction : public AttackAction
+// One action for the frost and nature tanks. Each tank has a phase, a mark, a position, and a
+// timer for swapping. The action itself is mirrored between the tanks.
+class HydrossTheUnstablePositionAndSwapTanksAction : public AttackAction
 {
 public:
-    HydrossTheUnstablePositionFrostTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "hydross the unstable position frost tank") {}
+    HydrossTheUnstablePositionAndSwapTanksAction(
+        PlayerbotAI* botAI, std::string const& name, bool frostTank)
+        : AttackAction(botAI, name), _frostTank(frostTank) {}
     bool Execute(Event event) override;
-};
 
-class HydrossTheUnstablePositionNatureTankAction : public AttackAction
-{
-public:
-    HydrossTheUnstablePositionNatureTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "hydross the unstable position nature tank") {}
-    bool Execute(Event event) override;
-};
+private:
+    bool StepTo(Position const& position, Unit* hydross);
 
-class HydrossTheUnstablePrioritizeElementalAddsAction : public AttackAction
-{
-public:
-    HydrossTheUnstablePrioritizeElementalAddsAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "hydross the unstable prioritize elemental adds") {}
-    bool Execute(Event event) override;
+    bool const _frostTank;
 };
 
 class HydrossTheUnstableFrostPhaseSpreadOutAction : public MovementAction
@@ -79,10 +93,6 @@ public:
     HydrossTheUnstableMisdirectBossToTankAction(PlayerbotAI* botAI)
         : Action(botAI, "hydross the unstable misdirect boss to tank") {}
     bool Execute(Event event) override;
-
-private:
-    bool TryMisdirectToFrostTank(Unit* hydross);
-    bool TryMisdirectToNatureTank(Unit* hydross);
 };
 
 class HydrossTheUnstableStopDpsUponPhaseChangeAction : public Action
@@ -133,13 +143,16 @@ public:
     TheLurkerBelowTanksPickUpAddsAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "the lurker below tanks pick up adds") {}
     bool Execute(Event event) override;
+
+private:
+    ObjectGuid ClaimGuardianForTank(std::vector<Unit*> const& guardians, size_t myIndex);
 };
 
-class TheLurkerBelowManageSpoutTimerAction : public Action
+class TheLurkerBelowMeleeMoveDirectlyToTargetAction : public MovementAction
 {
 public:
-    TheLurkerBelowManageSpoutTimerAction(PlayerbotAI* botAI)
-        : Action(botAI, "the lurker below manage spout timer") {}
+    TheLurkerBelowMeleeMoveDirectlyToTargetAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "the lurker below melee move directly to target") {}
     bool Execute(Event event) override;
 };
 
@@ -153,19 +166,19 @@ public:
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindDemonFormTankAttackBossAction : public AttackAction
+class LeotherasTheBlindWarlockTankAttackBossAction : public AttackAction
 {
 public:
-    LeotherasTheBlindDemonFormTankAttackBossAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "leotheras the blind demon form tank attack boss") {}
+    LeotherasTheBlindWarlockTankAttackBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "leotheras the blind warlock tank attack boss") {}
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindMeleeTanksDontAttackDemonFormAction : public Action
+class LeotherasTheBlindTanksBuildRageOnDemonFormAction : public AttackAction
 {
 public:
-    LeotherasTheBlindMeleeTanksDontAttackDemonFormAction(PlayerbotAI* botAI)
-        : Action(botAI, "leotheras the blind melee tanks don't attack demon form") {}
+    LeotherasTheBlindTanksBuildRageOnDemonFormAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "leotheras the blind tanks build rage on demon form") {}
     bool Execute(Event event) override;
 };
 
@@ -177,11 +190,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindMeleeDpsRunAwayFromBossAction : public MovementAction
+class LeotherasTheBlindMeleeRunAwayFromChaosBlastAction : public MovementAction
 {
 public:
-    LeotherasTheBlindMeleeDpsRunAwayFromBossAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "leotheras the blind melee dps run away from boss") {}
+    LeotherasTheBlindMeleeRunAwayFromChaosBlastAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "leotheras the blind melee run away from chaos blast") {}
     bool Execute(Event event) override;
 };
 
@@ -195,21 +208,30 @@ public:
 private:
     bool HandleFeralTankStrategy(Unit* innerDemon);
     bool HandleHealerStrategy(Unit* innerDemon);
+    bool HandleHunterStrategy(Unit* innerDemon);
 };
 
-class LeotherasTheBlindFinalPhaseAssignDpsPriorityAction : public AttackAction
+class LeotherasTheBlindFinalPhaseAttackBossAction : public AttackAction
 {
 public:
-    LeotherasTheBlindFinalPhaseAssignDpsPriorityAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "leotheras the blind final phase assign dps priority") {}
+    LeotherasTheBlindFinalPhaseAttackBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "leotheras the blind final phase attack boss") {}
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindMisdirectBossToDemonFormTankAction : public AttackAction
+class LeotherasTheBlindFinalPhaseSeparateBossFromDemonAction : public MovementAction
 {
 public:
-    LeotherasTheBlindMisdirectBossToDemonFormTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "leotheras the blind misdirect boss to demon form tank") {}
+    LeotherasTheBlindFinalPhaseSeparateBossFromDemonAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "leotheras the blind final phase separate boss from demon") {}
+    bool Execute(Event event) override;
+};
+
+class LeotherasTheBlindMisdirectBossToWarlockTankAction : public Action
+{
+public:
+    LeotherasTheBlindMisdirectBossToWarlockTankAction(PlayerbotAI* botAI)
+        : Action(botAI, "leotheras the blind misdirect boss to warlock tank") {}
     bool Execute(Event event) override;
 };
 
@@ -223,35 +245,11 @@ public:
 
 // Fathom-Lord Karathress
 
-class FathomLordKarathressMainTankPositionBossAction : public AttackAction
+class FathomLordKarathressTanksPositionTargetsAction : public AttackAction
 {
 public:
-    FathomLordKarathressMainTankPositionBossAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "fathom-lord karathress main tank position boss") {}
-    bool Execute(Event event) override;
-};
-
-class FathomLordKarathressFirstAssistTankPositionCaribdisAction : public AttackAction
-{
-public:
-    FathomLordKarathressFirstAssistTankPositionCaribdisAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "fathom-lord karathress first assist tank position caribdis") {}
-    bool Execute(Event event) override;
-};
-
-class FathomLordKarathressSecondAssistTankPositionSharkkisAction : public AttackAction
-{
-public:
-    FathomLordKarathressSecondAssistTankPositionSharkkisAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "fathom-lord karathress second assist tank position sharkkis") {}
-    bool Execute(Event event) override;
-};
-
-class FathomLordKarathressThirdAssistTankPositionTidalvessAction : public AttackAction
-{
-public:
-    FathomLordKarathressThirdAssistTankPositionTidalvessAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "fathom-lord karathress third assist tank position tidalvess") {}
+    FathomLordKarathressTanksPositionTargetsAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "fathom-lord karathress tanks position targets") {}
     bool Execute(Event event) override;
 };
 
@@ -263,11 +261,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class FathomLordKarathressMisdirectBossesToTanksAction : public AttackAction
+class FathomLordKarathressMisdirectBossesToTanksAction : public Action
 {
 public:
     FathomLordKarathressMisdirectBossesToTanksAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "fathom-lord karathress misdirect bosses to tanks") {}
+        : Action(botAI, "fathom-lord karathress misdirect bosses to tanks") {}
     bool Execute(Event event) override;
 };
 
@@ -287,15 +285,15 @@ public:
     bool Execute(Event event) override;
 };
 
-// Morogrim Tidewalker
-
-class MorogrimTidewalkerMisdirectBossToMainTankAction : public AttackAction
+class FathomLordKarathressDropFromCycloneAction : public MovementAction
 {
 public:
-    MorogrimTidewalkerMisdirectBossToMainTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "morogrim tidewalker misdirect boss to main tank") {}
+    FathomLordKarathressDropFromCycloneAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "fathom-lord karathress drop from cyclone") {}
     bool Execute(Event event) override;
 };
+
+// Morogrim Tidewalker
 
 class MorogrimTidewalkerMoveBossToTankPositionAction : public AttackAction
 {
@@ -351,27 +349,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class LadyVashjMisdirectBossToMainTankAction : public AttackAction
-{
-public:
-    LadyVashjMisdirectBossToMainTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "lady vashj misdirect boss to main tank") {}
-    bool Execute(Event event) override;
-};
-
 class LadyVashjAssignPhase2AndPhase3DpsPriorityAction : public AttackAction
 {
 public:
     LadyVashjAssignPhase2AndPhase3DpsPriorityAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "lady vashj assign phase 2 and phase 3 dps priority") {}
-    bool Execute(Event event) override;
-};
-
-class LadyVashjMisdirectStriderToFirstAssistTankAction : public AttackAction
-{
-public:
-    LadyVashjMisdirectStriderToFirstAssistTankAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "lady vashj misdirect strider to first assist tank") {}
     bool Execute(Event event) override;
 };
 

@@ -100,19 +100,18 @@ float GetFuryMageInterruptReach(Player* bot)
 
 bool IsFlurriedBerserker(Unit* berserker)
 {
-    return berserker->HasAura(Id(SwpSpells::SPELL_FLURRY)) &&
+    return berserker && berserker->HasAura(Id(SwpSpells::SPELL_FLURRY)) &&
         !berserker->HasUnitState(UNIT_STATE_STUNNED);
 }
 
 bool IsCastingFelFireball(Unit* furyMage)
 {
-    return furyMage->HasUnitState(UNIT_STATE_CASTING) &&
-        furyMage->FindCurrentSpellBySpellId(Id(SwpSpells::SPELL_FEL_FIREBALL));
+    return furyMage && furyMage->FindCurrentSpellBySpellId(Id(SwpSpells::SPELL_FEL_FIREBALL));
 }
 
 bool IsSpellFuryBuffedFuryMage(Unit* furyMage)
 {
-    return furyMage->HasAura(Id(SwpSpells::SPELL_SPELL_FURY));
+    return furyMage && furyMage->HasAura(Id(SwpSpells::SPELL_SPELL_FURY));
 }
 
 Unit* SelectNearestQualifying(
@@ -314,6 +313,30 @@ Unit* SelectNearestMuruTargetByEntry(
     }
 
     return selected;
+}
+
+bool IsMuruAddInVoidSentinelPulse(Unit* add, std::vector<Unit*> const& voidSentinels)
+{
+    if (!add)
+        return false;
+
+    if (add->GetEntry() != Id(SwpNpcs::NPC_SHADOWSWORD_FURY_MAGE) &&
+        add->GetEntry() != Id(SwpNpcs::NPC_SHADOWSWORD_BERSERKER) &&
+        add->GetEntry() != Id(SwpNpcs::NPC_VOID_SPAWN))
+    {
+        return false;
+    }
+
+    for (Unit* voidSentinel : voidSentinels)
+    {
+        if (voidSentinel &&
+            add->GetExactDist2d(voidSentinel) < MURU_MELEE_ADD_MIN_DIST_FROM_SENTINEL)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 Unit* FindMuruBerserkerToStun(PlayerbotAI* botAI)

@@ -28,14 +28,6 @@ public:
     bool Execute(Event event) override;
 };
 
-class SunwellRemoveDebuffWithImmunityAction : public Action
-{
-public:
-    SunwellRemoveDebuffWithImmunityAction(PlayerbotAI* botAI, std::string const name)
-        : Action(botAI, name) {}
-    bool Execute(Event event) override;
-};
-
 class SunwellRemoveAuraAction : public Action
 {
 public:
@@ -59,6 +51,16 @@ class ApocalypseGuardAttackWithHolyMagicAction : public Action
 public:
     ApocalypseGuardAttackWithHolyMagicAction(PlayerbotAI* botAI)
         : Action(botAI, "apocalypse guard attack with holy magic") {}
+    bool Execute(Event event) override;
+};
+
+// Shared Bosses
+
+class SunwellRemoveDebuffWithImmunityAction : public Action
+{
+public:
+    SunwellRemoveDebuffWithImmunityAction(PlayerbotAI* botAI, std::string const name)
+        : Action(botAI, name) {}
     bool Execute(Event event) override;
 };
 
@@ -437,7 +439,7 @@ public:
     bool Execute(Event event) override;
 
 private:
-    Unit* ResolveMuruDpsTarget(Unit* currentTarget);
+    Unit* ResolveMuruDpsTarget(Unit* currentTarget, bool& shouldDropTarget);
 };
 
 class MuruKillDarkFiendsWithDispelAction : public Action
@@ -590,11 +592,11 @@ private:
     bool PickUpSinisterReflections(Creature* reflection);
 };
 
-class KiljaedenPositionMeleeAction : public MovementAction
+class KiljaedenPositionMeleeAndAvoidArmageddonsAction : public MovementAction
 {
 public:
-    KiljaedenPositionMeleeAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "kil'jaeden position melee") {}
+    KiljaedenPositionMeleeAndAvoidArmageddonsAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "kil'jaeden position melee and avoid armageddons") {}
     bool Execute(Event event) override;
 
 private:
@@ -630,14 +632,6 @@ public:
     bool Execute(Event event) override;
 };
 
-class KiljaedenReleaseStaleRootAction : public Action
-{
-public:
-    KiljaedenReleaseStaleRootAction(PlayerbotAI* botAI)
-        : Action(botAI, "kil'jaeden release stale root") {}
-    bool Execute(Event event) override;
-};
-
 class KiljaedenDragonBuffAndProtectRaidAction : public Action
 {
 public:
@@ -648,6 +642,14 @@ public:
 private:
     bool ExecuteDuringDarknessOfAThousandSouls(Unit* kiljaeden, Unit* dragon);
     bool ExecuteOutsideDarknessOfAThousandSouls(Unit* dragon);
+};
+
+class KiljaedenReleaseStaleRootAction : public Action
+{
+public:
+    KiljaedenReleaseStaleRootAction(PlayerbotAI* botAI)
+        : Action(botAI, "kil'jaeden release stale root") {}
+    bool Execute(Event event) override;
 };
 
 #endif

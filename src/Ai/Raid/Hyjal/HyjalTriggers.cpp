@@ -97,7 +97,7 @@ bool AnetheronRangedShouldSpreadTrigger::IsActiveInEncounter()
     return !GetInfernalToAttack(botAI, anetheron);
 }
 
-bool AnetheronBotIsNearInfernoTargetTrigger::IsActiveInEncounter()
+bool AnetheronNearInfernoTargetTrigger::IsActiveInEncounter()
 {
     Unit* anetheron = AI_VALUE2(Unit*, "find target", "anetheron");
     if (!anetheron || anetheron->GetVictim() == bot)
@@ -110,7 +110,7 @@ bool AnetheronBotIsNearInfernoTargetTrigger::IsActiveInEncounter()
     return bot->GetExactDist2d(infernoTarget) < INFERNAL_ESCAPE_DISTANCE;
 }
 
-bool AnetheronBotIsTargetedByInfernalTrigger::IsActiveInEncounter()
+bool AnetheronTargetedByInfernalTrigger::IsActiveInEncounter()
 {
     Unit* anetheron = AI_VALUE2(Unit*, "find target", "anetheron");
     if (!anetheron || anetheron->GetVictim() == bot)
@@ -170,7 +170,7 @@ bool KazrogalCanSplitMalevolentCleaveDamageTrigger::IsActiveInEncounter()
     if (bot->getClass() != CLASS_PALADIN)
         return true;
 
-    return !botsBelowManaThreshold.contains(bot->GetGUID());
+    return !AI_VALUE(bool, "kaz'rogal below mana threshold");
 }
 
 bool KazrogalRangedShouldAvoidWarStompTrigger::IsActiveInEncounter()
@@ -181,10 +181,10 @@ bool KazrogalRangedShouldAvoidWarStompTrigger::IsActiveInEncounter()
     if (!AI_VALUE2(Unit*, "find target", "kaz'rogal"))
         return false;
 
-    return !botsBelowManaThreshold.contains(bot->GetGUID());
+    return !AI_VALUE(bool, "kaz'rogal below mana threshold");
 }
 
-bool KazrogalBotIsLowOnManaTrigger::IsActiveInEncounter()
+bool KazrogalLowOnManaTrigger::IsActiveInEncounter()
 {
     if (!IsKazrogalManaUser(botAI))
         return false;
@@ -200,11 +200,11 @@ bool KazrogalBotIsLowOnManaTrigger::IsActiveInEncounter()
 
     if (bot->GetPower(POWER_MANA) <= MARK_DANGER_MANA)
     {
-        botsBelowManaThreshold.insert(bot->GetGUID());
+        SET_AI_VALUE(bool, "kaz'rogal below mana threshold", true);
         return true;
     }
 
-    return botsBelowManaThreshold.contains(bot->GetGUID());
+    return AI_VALUE(bool, "kaz'rogal below mana threshold");
 }
 
 bool KazrogalHunterShouldPreserveManaTrigger::IsActiveInEncounter()
@@ -365,7 +365,7 @@ bool AzgalorShouldDivideDpsTrigger::IsActiveInEncounter()
 
 // Archimonde
 
-bool ArchimondeBossCastsFearTrigger::IsActiveInEncounter()
+bool ArchimondeShamanShouldProtectAgainstFearTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_SHAMAN)
         return false;
@@ -377,7 +377,7 @@ bool ArchimondeBossCastsFearTrigger::IsActiveInEncounter()
     return !HasProtectionOfElune(bot);
 }
 
-bool ArchimondeBossCastingAirBurstTrigger::IsActiveInEncounter()
+bool ArchimondeCastingAirBurstTrigger::IsActiveInEncounter()
 {
     Unit* archimonde = AI_VALUE2(Unit*, "find target", "archimonde");
     if (!archimonde || archimonde->GetVictim() == bot)
@@ -401,7 +401,7 @@ bool ArchimondeRangedShouldSpreadTrigger::IsActiveInEncounter()
     return !HasProtectionOfElune(bot);
 }
 
-bool ArchimondeBotIsNearDoomfireTrigger::IsActiveInEncounter()
+bool ArchimondeNearDoomfireTrigger::IsActiveInEncounter()
 {
     if (!AI_VALUE2(Unit*, "find target", "archimonde"))
         return false;
@@ -412,7 +412,7 @@ bool ArchimondeBotIsNearDoomfireTrigger::IsActiveInEncounter()
     return IsNearDoomfire(botAI, DOOMFIRE_CONTROL_RADIUS);
 }
 
-bool ArchimondeBotStoodInDoomfireTrigger::IsActiveInEncounter()
+bool ArchimondeStoodInDoomfireTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_MAGE && bot->getClass() != CLASS_ROGUE &&
         bot->getClass() != CLASS_PALADIN)
