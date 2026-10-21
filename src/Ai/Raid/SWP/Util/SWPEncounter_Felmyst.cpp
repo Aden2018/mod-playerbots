@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <list>
+#include <mutex>
 
 using namespace EncounterHelpers;
 
@@ -19,20 +20,38 @@ namespace SwpHelpers
 
 // Note: Felmyst's CombatReach is 10.0f
 
-std::unordered_map<uint32, FelmystEncounterState> felmystEncounterStates;
-
 namespace
 {
 
+std::mutex felmystStateMutex;
+std::unordered_map<uint32, FelmystEncounterState> felmystStates;
+
+FelmystDemonicVaporGuids const& GetCachedDemonicVapors(Player* bot)
+{
+    static FelmystDemonicVaporGuids const none;
+    PlayerbotAI* botAI = GET_PLAYERBOT_AI(bot);
+    if (!botAI)
+        return none;
+
+    return botAI->GetAiObjectContext()
+        ->GetValue<FelmystDemonicVaporGuids>("felmyst demonic vapors")->RefGet();
+}
+
+Creature* GetLivingCreature(Player* bot, ObjectGuid const& guid)
+{
+    Creature* creature = ObjectAccessor::GetCreature(*bot, guid);
+    return creature && creature->IsAlive() ? creature : nullptr;
+}
+
 void ResetDemonicVaporFlightState(uint32 instanceId)
 {
-    auto const stateItr = felmystEncounterStates.find(instanceId);
-    if (stateItr == felmystEncounterStates.end())
+    FelmystEncounterState* state = FindFelmystState(instanceId);
+    if (!state)
         return;
 
-    stateItr->second.demonicVaporRegionIndices.clear();
-    stateItr->second.demonicVaporUsedRegionMask = 0;
-    stateItr->second.demonicVaporFirstRegionIndex = 0;
+    state->demonicVaporRegionIndices.clear();
+    state->demonicVaporUsedRegionMask = 0;
+    state->demonicVaporFirstRegionIndex = 0;
 }
 
 void ResetDemonicVaporFlightStateIfGrounded(Player* bot)
@@ -60,7 +79,6 @@ bool TryGetGroundStackCenter(
             positionY = felmyst->GetPositionY() + behindDistance * std::sin(behindAngle);
             return true;
         }
-
         case FelmystGroundStack::Left:
         case FelmystGroundStack::Right:
         {
@@ -72,7 +90,6 @@ bool TryGetGroundStackCenter(
             positionY = felmyst->GetPositionY() + std::sin(sideAngle) * sideDistance;
             return true;
         }
-
         default:
             return false;
     }
@@ -100,12 +117,15 @@ FogLane GetFogLaneFromLocation(FogLocation location)
         case FogLocation::LeftTop:
         case FogLocation::RightTop:
             return FogLane::Top;
+
         case FogLocation::LeftMiddle:
         case FogLocation::RightMiddle:
             return FogLane::Middle;
+
         case FogLocation::LeftBottom:
         case FogLocation::RightBottom:
             return FogLane::Bottom;
+
         default:
             return FogLane::None;
     }
@@ -229,10 +249,10 @@ FogLocation GetDestinationFogLocation(Unit* felmyst)
 
 bool IsNearLandingPosition(Position const& destination)
 {
-    bool const nearRight =
-        destination.GetExactDist2d(FELMYST_RIGHT_LANDING_POSITION) <= FELMYST_LOCATION_MATCH_DISTANCE;
-    bool const nearLeft =
-        destination.GetExactDist2d(FELMYST_LEFT_LANDING_POSITION) <= FELMYST_LOCATION_MATCH_DISTANCE;
+    bool const nearRight = destination.GetExactDist2d(FELMYST_RIGHT_LANDING_POSITION) <=
+        FELMYST_LOCATION_MATCH_DISTANCE;
+    bool const nearLeft = destination.GetExactDist2d(FELMYST_LEFT_LANDING_POSITION) <=
+        FELMYST_LOCATION_MATCH_DISTANCE;
 
     return nearRight || nearLeft;
 }
@@ -530,32 +550,46 @@ Position ClosestPointOnSegment(Position const& p, Position const& segA, Position
 
 } // end anonymous namespace
 
-std::vector<Creature*> GetDemonicVaporHazards(Player* bot)
+FelmystDemonicVaporGuids FindFelmystDemonicVaporGuids(Player* bot)
 {
-    std::vector<Creature*> hazards;
-    constexpr float searchRadius = 100.0f;
+    FelmystDemonicVaporGuids guids;
 
-    auto const addHazards = [&](uint32 entry)
+    auto const addGuids = [bot](uint32 entry, GuidVector& out)
     {
         std::list<Creature*> creatures;
-        bot->GetCreatureListWithEntryInGrid(creatures, entry, searchRadius);
+        bot->GetCreatureListWithEntryInGrid(creatures, entry, DEMONIC_VAPOR_SEARCH_RADIUS);
         for (Creature* creature : creatures)
         {
-            if (!creature || !creature->IsAlive())
-                continue;
-
-            if (entry == Id(SwpNpcs::NPC_DEMONIC_VAPOR) &&
-                creature->GetSummonerGUID() == bot->GetGUID())
-            {
-                continue;
-            }
-
-            hazards.push_back(creature);
+            if (creature && creature->IsAlive())
+                out.push_back(creature->GetGUID());
         }
     };
 
-    addHazards(Id(SwpNpcs::NPC_DEMONIC_VAPOR));
-    addHazards(Id(SwpNpcs::NPC_DEMONIC_VAPOR_TRAIL));
+    addGuids(Id(SwpNpcs::NPC_DEMONIC_VAPOR), guids.heads);
+    addGuids(Id(SwpNpcs::NPC_DEMONIC_VAPOR_TRAIL), guids.trails);
+    return guids;
+}
+
+std::vector<Creature*> GetDemonicVaporHazards(Player* bot)
+{
+    FelmystDemonicVaporGuids const& guids = GetCachedDemonicVapors(bot);
+
+    std::vector<Creature*> hazards;
+    hazards.reserve(guids.heads.size() + guids.trails.size());
+
+    for (ObjectGuid const& guid : guids.heads)
+    {
+        Creature* head = GetLivingCreature(bot, guid);
+        if (head && head->GetSummonerGUID() != bot->GetGUID())
+            hazards.push_back(head);
+    }
+
+    for (ObjectGuid const& guid : guids.trails)
+    {
+        if (Creature* trail = GetLivingCreature(bot, guid))
+            hazards.push_back(trail);
+    }
+
     return hazards;
 }
 
@@ -832,18 +866,18 @@ bool TryGetFelmystRangedPosition(Player* bot, Unit* felmyst, Position& position)
     return TryGetFelmystGroundStackPosition(bot, felmyst, stack, position);
 }
 
-Creature* GetFelmystDemonicVaporSummonedByBot(Player* bot)
+Creature* GetFelmystDemonicVaporSummonedBy(Player* bot, Player* summoner)
 {
-    std::list<Creature*> vapors;
-    constexpr float searchRadius = 50.0f;
-    bot->GetCreatureListWithEntryInGrid(vapors, Id(SwpNpcs::NPC_DEMONIC_VAPOR), searchRadius);
+    if (!summoner)
+        return nullptr;
 
-    for (Creature* creature : vapors)
+    for (ObjectGuid const& guid : GetCachedDemonicVapors(bot).heads)
     {
-        if (creature && creature->IsAlive() &&
-            creature->GetSummonerGUID() == bot->GetGUID())
+        Creature* head = GetLivingCreature(bot, guid);
+        if (head && head->GetSummonerGUID() == summoner->GetGUID() &&
+            summoner->GetDistance2d(head) <= DEMONIC_VAPOR_SUMMONER_RADIUS)
         {
-            return creature;
+            return head;
         }
     }
 
@@ -853,7 +887,7 @@ Creature* GetFelmystDemonicVaporSummonedByBot(Player* bot)
 bool IsFelmystDemonicVaporHeadNearBot(Player* bot)
 {
     constexpr float kiteDistanceThreshold = 15.0f;
-    Creature* vapor = GetFelmystDemonicVaporSummonedByBot(bot);
+    Creature* vapor = GetFelmystDemonicVaporSummonedBy(bot, bot);
     return vapor && bot->GetExactDist2d(vapor) <= kiteDistanceThreshold;
 }
 
@@ -878,11 +912,11 @@ FogPassState const* AdvanceFelmystFogPassTracker(Unit* felmyst)
     uint32 const instanceId = felmyst->GetInstanceId();
     if (!felmyst->IsFlying() || IsFelmystLanding(felmyst))
     {
-        felmystEncounterStates[instanceId].fogPass = FogPassState{};
+        FelmystState(instanceId).fogPass = FogPassState{};
         return nullptr;
     }
 
-    FogPassState& tracker = felmystEncounterStates[instanceId].fogPass;
+    FogPassState& tracker = FelmystState(instanceId).fogPass;
 
     const FogLocation currentLocation = GetCurrentFogLocation(felmyst);
     const FogLane currentLane = GetFogLaneFromLocation(currentLocation);
@@ -935,8 +969,7 @@ FelmystEncounterState const* GetFelmystAirborneState(Unit* felmyst)
     if (!felmyst || !felmyst->IsFlying())
         return nullptr;
 
-    auto const stateItr = felmystEncounterStates.find(felmyst->GetInstanceId());
-    return stateItr != felmystEncounterStates.end() ? &stateItr->second : nullptr;
+    return FindFelmystState(felmyst->GetInstanceId());
 }
 
 } // end anonymous namespace
@@ -1000,9 +1033,8 @@ void ClearFelmystDemonicVaporKiteState(Player* bot)
     uint32 const instanceId = bot->GetInstanceId();
     ObjectGuid const guid = bot->GetGUID();
 
-    auto const stateItr = felmystEncounterStates.find(instanceId);
-    if (stateItr != felmystEncounterStates.end())
-        stateItr->second.demonicVaporRegionIndices.erase(guid);
+    if (FelmystEncounterState* state = FindFelmystState(instanceId))
+        state->demonicVaporRegionIndices.erase(guid);
 
     ResetDemonicVaporFlightStateIfGrounded(bot);
 }
@@ -1020,8 +1052,8 @@ bool TryGetFelmystDemonicVaporKiteDestination(Player* bot, Position& destination
         return false;
     }
 
-    auto& regionIndices = felmystEncounterStates[instanceId].demonicVaporRegionIndices;
-    uint8& usedRegionMask = felmystEncounterStates[instanceId].demonicVaporUsedRegionMask;
+    auto& regionIndices = FelmystState(instanceId).demonicVaporRegionIndices;
+    uint8& usedRegionMask = FelmystState(instanceId).demonicVaporUsedRegionMask;
     auto const regionItr = regionIndices.find(guid);
     std::vector<uint8> preferredAnchors;
 
@@ -1041,14 +1073,12 @@ bool TryGetFelmystDemonicVaporKiteDestination(Player* bot, Position& destination
         uint8 preferredSide = SelectPreferredDemonicVaporSide(
             bot, preferredLane, allowedSides);
 
-        auto const firstRegionStateItr = felmystEncounterStates.find(instanceId);
+        FelmystEncounterState const* firstRegionState = FindFelmystState(instanceId);
         if (allowedSides == (DEMONIC_VAPOR_LEFT_SIDE | DEMONIC_VAPOR_RIGHT_SIDE) &&
-            firstRegionStateItr != felmystEncounterStates.end() &&
-            firstRegionStateItr->second.demonicVaporFirstRegionIndex <
-            DEMONIC_VAPOR_KITE_ANCHORS.size())
+            firstRegionState &&
+            firstRegionState->demonicVaporFirstRegionIndex < DEMONIC_VAPOR_KITE_ANCHORS.size())
         {
-            uint8 const firstAnchorIndex =
-                firstRegionStateItr->second.demonicVaporFirstRegionIndex;
+            uint8 const firstAnchorIndex = firstRegionState->demonicVaporFirstRegionIndex;
             preferredSide = FlipVaporSide(
                 DEMONIC_VAPOR_KITE_ANCHORS[firstAnchorIndex].sideMask);
         }
@@ -1084,7 +1114,7 @@ bool TryGetFelmystDemonicVaporKiteDestination(Player* bot, Position& destination
 
             regionIndices[guid] = anchorIndex;
             usedRegionMask |= GetDemonicVaporAnchorMask(anchorIndex);
-            felmystEncounterStates[instanceId].demonicVaporFirstRegionIndex = anchorIndex;
+            FelmystState(instanceId).demonicVaporFirstRegionIndex = anchorIndex;
             return true;
         }
 
@@ -1107,14 +1137,14 @@ bool TryGetFelmystFogOfCorruptionStageState(Unit* felmyst, FogOfCorruptionState&
     if (!felmyst->IsFlying())
     {
         ResetDemonicVaporFlightState(instanceId);
-        felmystEncounterStates[instanceId].fogPass = FogPassState{};
-        felmystEncounterStates[instanceId].fogOfCorruption = FogOfCorruptionState{};
+        FelmystState(instanceId).fogPass = FogPassState{};
+        FelmystState(instanceId).fogOfCorruption = FogOfCorruptionState{};
         return false;
     }
 
     AdvanceFelmystFogPassTracker(felmyst);
 
-    FogOfCorruptionState& tracker = felmystEncounterStates[instanceId].fogOfCorruption;
+    FogOfCorruptionState& tracker = FelmystState(instanceId).fogOfCorruption;
     bool const hasTracker = tracker.phase != FogPhase::None;
 
     const FogLocation currentLocation = GetCurrentFogLocation(felmyst);
@@ -1159,7 +1189,7 @@ bool TryGetFelmystFogOfCorruptionStageState(Unit* felmyst, FogOfCorruptionState&
         return true;
     }
 
-    felmystEncounterStates[instanceId].fogOfCorruption = FogOfCorruptionState{};
+    FelmystState(instanceId).fogOfCorruption = FogOfCorruptionState{};
     return false;
 }
 
@@ -1183,8 +1213,7 @@ void RecordFelmystIncomingEncapsulateTarget(Player* target, uint32 durationMs)
         return;
 
     uint32 const now = getMSTime();
-    IncomingEncapsulateState& state =
-        felmystEncounterStates[target->GetInstanceId()].incomingEncapsulate;
+    IncomingEncapsulateState& state = FelmystState(target->GetInstanceId()).incomingEncapsulate;
 
     if (state.targetGuid != target->GetGUID())
         state.delayMs = now + ENCAPSULATE_DELAY_MS;
@@ -1201,10 +1230,9 @@ Player* GetFelmystEncapsulateTarget(Player* bot)
         return nullptr;
 
     uint32 const now = getMSTime();
-    auto const incomingItr = felmystEncounterStates.find(bot->GetInstanceId());
-    if (incomingItr != felmystEncounterStates.end())
+    if (FelmystEncounterState* felmystState = FindFelmystState(bot->GetInstanceId()))
     {
-        auto& incomingState = incomingItr->second.incomingEncapsulate;
+        auto& incomingState = felmystState->incomingEncapsulate;
         Player* incomingTarget = nullptr;
         for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
         {
@@ -1219,12 +1247,12 @@ Player* GetFelmystEncapsulateTarget(Player* bot)
         if (incomingTarget && incomingTarget->HasAura(Id(SwpSpells::SPELL_ENCAPSULATE)))
         {
             incomingState.auraObserved = true;
-            felmystEncounterStates[bot->GetInstanceId()].encapsulateOccurredThisGroundPhase = true;
+            felmystState->encapsulateOccurredThisGroundPhase = true;
             return incomingTarget;
         }
 
         if (!incomingTarget || incomingState.auraObserved || incomingState.expireMs <= now)
-            incomingItr->second.incomingEncapsulate = IncomingEncapsulateState{};
+            felmystState->incomingEncapsulate = IncomingEncapsulateState{};
         else
             return incomingState.delayMs <= now ? incomingTarget : nullptr;
     }
@@ -1238,7 +1266,7 @@ Player* GetFelmystEncapsulateTarget(Player* bot)
         if (!member || !member->IsAlive() || !member->HasAura(Id(SwpSpells::SPELL_ENCAPSULATE)))
             continue;
 
-        felmystEncounterStates[bot->GetInstanceId()].encapsulateOccurredThisGroundPhase = true;
+        FelmystState(bot->GetInstanceId()).encapsulateOccurredThisGroundPhase = true;
 
         float distance = bot->GetExactDist(member);
         if (distance < closestDistance)
@@ -1251,11 +1279,24 @@ Player* GetFelmystEncapsulateTarget(Player* bot)
     return closestTarget;
 }
 
+bool ShouldMoveAwayFromFelmystEncapsulateTarget(
+    Player* bot, Unit* felmyst, Player* encapsulateTarget)
+{
+    if (!felmyst || !encapsulateTarget || encapsulateTarget == bot ||
+        felmyst->GetVictim() == bot)
+    {
+        return false;
+    }
+
+    FelmystGroundStack const botStack = GetClosestFelmystGroundStack(bot, felmyst, bot);
+    return botStack != FelmystGroundStack::None &&
+        botStack == GetClosestFelmystGroundStack(bot, felmyst, encapsulateTarget);
+}
+
 bool DidEncapsulateOccurThisGroundPhase(Player* bot)
 {
-    auto const stateItr = felmystEncounterStates.find(bot->GetInstanceId());
-    return stateItr != felmystEncounterStates.end() &&
-        stateItr->second.encapsulateOccurredThisGroundPhase;
+    FelmystEncounterState const* state = FindFelmystState(bot->GetInstanceId());
+    return state && state->encapsulateOccurredThisGroundPhase;
 }
 
 Player* GetFelmystGasNovaDispelTarget(Player* bot)
@@ -1329,12 +1370,12 @@ Player* GetFelmystFlightLeader(Player* player)
     if (!group)
         return nullptr;
 
-    FelmystEncounterState& state = felmystEncounterStates[player->GetInstanceId()];
+    FelmystEncounterState& state = FelmystState(player->GetInstanceId());
 
-    auto const isEligible = [](Player* member) -> bool
+    auto const isEligible = [player](Player* member) -> bool
     {
         return member && member->IsAlive() && member->GetMapId() == SWP_MAP_ID &&
-            !GetFelmystDemonicVaporSummonedByBot(member);
+            !GetFelmystDemonicVaporSummonedBy(player, member);
     };
 
     // Keep the then-current flight leader if still eligible to maintain consistency. Notably, if
@@ -1375,6 +1416,27 @@ Player* GetFelmystFlightLeader(Player* player)
         state.flightLeaderGuid = fallbackBot->GetGUID();
 
     return fallbackBot;
+}
+
+// Shared encounter state
+
+FelmystEncounterState& FelmystState(uint32 instanceId)
+{
+    std::lock_guard lock(felmystStateMutex);
+    return felmystStates[instanceId];
+}
+
+FelmystEncounterState* FindFelmystState(uint32 instanceId)
+{
+    std::lock_guard lock(felmystStateMutex);
+    auto it = felmystStates.find(instanceId);
+    return it != felmystStates.end() ? &it->second : nullptr;
+}
+
+bool FelmystResetInstance(uint32 instanceId)
+{
+    std::lock_guard lock(felmystStateMutex);
+    return felmystStates.erase(instanceId) > 0;
 }
 
 }

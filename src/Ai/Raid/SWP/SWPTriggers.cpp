@@ -19,23 +19,11 @@
 using namespace SwpHelpers;
 using namespace EncounterHelpers;
 
-// General
+// Shared
 
 bool SunwellNoEncounterInProgressTrigger::IsActive()
 {
-    // InstanceScript reports IN_PROGRESS for every SWP boss from JustEngagedWith until kill/evade,
-    // except for Kil'jaeden, which does not commence until the first Hand dies.
-    if (IsEncounterInProgress(bot, SWP_MAP_ID))
-        return false;
-
-    // Use a distance gate to avoid searching for Hands through the entire instance.
-    if (bot->GetMapId() != SWP_MAP_ID)
-        return false;
-
-    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) > SUNWELL_CENTER_RADIUS)
-        return true;
-
-    return AI_VALUE(GuidVector, "kiljaeden hands").empty();
+    return !IsEncounterInProgress(bot, SWP_MAP_ID);
 }
 
 bool SunwellAuraToRemoveTrigger::IsActive()
@@ -75,6 +63,17 @@ bool ApocalypseGuardProtectedByInfernalDefenseTrigger::IsActive()
     return AI_VALUE2(Unit*, "find target", "apocalypse guard");
 }
 
+// Shared Bosses
+
+bool SunwellHunterShouldMisdirectTrigger::IsActiveInEncounter()
+{
+    if (bot->getClass() != CLASS_HUNTER)
+        return false;
+
+    Unit* boss = AI_VALUE2(Unit*, "find target", _bossName);
+    return boss && boss->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT;
+}
+
 // Kalecgos
 
 bool KalecgosShouldCommunicateBossHealthTrigger::IsActiveInEncounter()
@@ -110,15 +109,6 @@ bool KalecgosShouldCommunicateBossHealthTrigger::IsActiveInEncounter()
     }
 
     return bot == spectralBot || bot == surfaceBot;
-}
-
-bool KalecgosPullingBossTrigger::IsActiveInEncounter()
-{
-    if (bot->getClass() != CLASS_HUNTER)
-        return false;
-
-    Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos");
-    return kalecgos && kalecgos->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT;
 }
 
 bool KalecgosRequiresTankRotationTrigger::IsActiveInEncounter()
@@ -196,15 +186,6 @@ bool KalecgosBotsDontObserveGravityTrigger::IsActiveInEncounter()
 
 // Brutallus
 
-bool BrutallusPullingBossTrigger::IsActiveInEncounter()
-{
-    if (bot->getClass() != CLASS_HUNTER)
-        return false;
-
-    Unit* brutallus = AI_VALUE2(Unit*, "find target", "brutallus");
-    return brutallus && brutallus->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT;
-}
-
 bool BrutallusRequiresTwoTanksTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsTank(bot))
@@ -250,7 +231,7 @@ bool BrutallusBurnOnNonTankTrigger::IsActiveInEncounter()
 
 // Felmyst
 
-bool FelmystPullingBossTrigger::IsActiveInEncounter()
+bool FelmystHunterShouldMisdirectTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_HUNTER)
         return false;
@@ -280,9 +261,8 @@ bool FelmystGroundPhaseShouldBeTankedTrigger::IsActiveInEncounter()
 
     if (felmyst->IsFlying())
     {
-        auto const stateItr = felmystEncounterStates.find(bot->GetInstanceId());
-        if (stateItr != felmystEncounterStates.end())
-            stateItr->second.encapsulateOccurredThisGroundPhase = false;
+        if (FelmystEncounterState* state = FindFelmystState(bot->GetInstanceId()))
+            state->encapsulateOccurredThisGroundPhase = false;
 
         return false;
     }
@@ -301,9 +281,8 @@ bool FelmystRangedShouldPositionToDispelAndFleeTrigger::IsActiveInEncounter()
 
     if (felmyst->IsFlying())
     {
-        auto const stateItr = felmystEncounterStates.find(bot->GetInstanceId());
-        if (stateItr != felmystEncounterStates.end())
-            stateItr->second.encapsulateOccurredThisGroundPhase = false;
+        if (FelmystEncounterState* state = FindFelmystState(bot->GetInstanceId()))
+            state->encapsulateOccurredThisGroundPhase = false;
 
         return false;
     }
@@ -333,9 +312,8 @@ bool FelmystMeleeShouldStayTogetherTrigger::IsActiveInEncounter()
 
     if (felmyst->IsFlying())
     {
-        auto const stateItr = felmystEncounterStates.find(bot->GetInstanceId());
-        if (stateItr != felmystEncounterStates.end())
-            stateItr->second.encapsulateOccurredThisGroundPhase = false;
+        if (FelmystEncounterState* state = FindFelmystState(bot->GetInstanceId()))
+            state->encapsulateOccurredThisGroundPhase = false;
 
         return false;
     }
@@ -348,13 +326,17 @@ bool FelmystMeleeShouldStayTogetherTrigger::IsActiveInEncounter()
 
 bool FelmystEncapsulateOnMageOrPaladinTrigger::IsActiveInEncounter()
 {
-    if (bot->getClass() != CLASS_MAGE && bot->getClass() != CLASS_PALADIN)
+    bool const isPaladin = bot->getClass() == CLASS_PALADIN;
+    if (!isPaladin && bot->getClass() != CLASS_MAGE)
         return false;
 
     if (!bot->HasAura(Id(SwpSpells::SPELL_ENCAPSULATE)))
         return false;
 
-    return !PlayerbotAI::IsMainTank(bot);
+    if (isPaladin)
+        return !PlayerbotAI::IsMainTank(bot);
+
+    return true;
 }
 
 bool FelmystNearEncapsulatedPlayerTrigger::IsActiveInEncounter()
@@ -363,18 +345,8 @@ bool FelmystNearEncapsulatedPlayerTrigger::IsActiveInEncounter()
     if (!felmyst || felmyst->IsFlying())
         return false;
 
-    Player* encapsulateTarget = GetFelmystEncapsulateTarget(bot);
-    if (!encapsulateTarget || encapsulateTarget == bot)
-        return false;
-
-    if (PlayerbotAI::IsMainTank(bot))
-        return false;
-
-    FelmystGroundStack const botStack = GetClosestFelmystGroundStack(bot, felmyst, bot);
-    FelmystGroundStack const targetStack = GetClosestFelmystGroundStack(
-        bot, felmyst, encapsulateTarget);
-
-    return botStack != FelmystGroundStack::None && botStack == targetStack;
+    return ShouldMoveAwayFromFelmystEncapsulateTarget(
+        bot, felmyst, GetFelmystEncapsulateTarget(bot));
 }
 
 bool FelmystPlayerHasGasNovaTrigger::IsActiveInEncounter()
@@ -395,7 +367,7 @@ bool FelmystShouldAvoidDemonicVaporTrailsTrigger::IsActiveInEncounter()
     if (!felmyst || !felmyst->IsFlying())
         return false;
 
-    if (GetFelmystDemonicVaporSummonedByBot(bot))
+    if (GetFelmystDemonicVaporSummonedBy(bot, bot))
         return false;
 
     FogOfCorruptionState fogState;
@@ -435,10 +407,7 @@ bool FelmystMeleeCannotReachFlyingBossTrigger::IsActiveInEncounter()
         return false;
 
     Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
-    if (!felmyst)
-        return false;
-
-    if (AI_VALUE(Unit*, "current target") != felmyst)
+    if (!felmyst || AI_VALUE(Unit*, "current target") != felmyst)
         return false;
 
     return IsFelmystAirPhaseTargetSuppressed(felmyst);
@@ -450,10 +419,7 @@ bool FelmystPlayerIsCharmedByFogTrigger::IsActiveInEncounter()
         return false;
 
     Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
-    if (!felmyst)
-        return false;
-
-    return GetFelmystCharmedTarget(bot, felmyst);
+    return felmyst && GetFelmystCharmedTarget(bot, felmyst);
 }
 
 bool FelmystShouldHoldDpsWhileLandingTrigger::IsActiveInEncounter()
@@ -479,21 +445,12 @@ bool EredarTwinsShouldAnnounceAlythessTankTrigger::IsActiveInEncounter()
     if (!IsMechanicTrackerBot(bot, SWP_MAP_ID))
         return false;
 
-    auto const itr = eredarTwinsTankAssignments.find(bot->GetInstanceId());
-    if (itr != eredarTwinsTankAssignments.end() && itr->second.announcementMs)
+    EredarTwinsEncounterState const* state = FindEredarTwinsState(bot->GetInstanceId());
+    if (state && state->tankAssignment && state->tankAssignment->announcementMs)
         return false;
 
     return AI_VALUE2(Unit*, "find target", "grand warlock alythess") ||
         AI_VALUE2(Unit*, "find target", "lady sacrolash");
-}
-
-bool EredarTwinsPullingBossesTrigger::IsActiveInEncounter()
-{
-    if (bot->getClass() != CLASS_HUNTER)
-        return false;
-
-    Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
-    return alythess && alythess->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT;
 }
 
 bool EredarTwinsSacrolashRequiresTwoTanksTrigger::IsActiveInEncounter()
@@ -609,7 +566,7 @@ bool EredarTwinsSacrolashVictimHasConflagrationTrigger::IsActiveInEncounter()
 
 // M'uru
 
-bool MuruVoidSentinelOrEntropiusHasAppearedTrigger::IsActiveInEncounter()
+bool MuruHunterShouldMisdirectNewEnemyTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_HUNTER)
         return false;
@@ -632,12 +589,12 @@ bool MuruRangedShouldStackOrSpreadTrigger::IsActiveInEncounter()
     return PlayerbotAI::IsRanged(bot) && AI_VALUE2(Unit*, "find target", "m'uru");
 }
 
-bool MuruDeterminingDpsPriorityTrigger::IsActiveInEncounter()
+bool MuruShouldAssignDpsPriorityTrigger::IsActiveInEncounter()
 {
     return PlayerbotAI::IsDps(bot) && AI_VALUE2(Unit*, "find target", "m'uru");
 }
 
-bool MuruVoidSentinelPulsesShadowTrigger::IsActiveInEncounter()
+bool MuruVoidSentinelShouldBeTankedTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsTank(bot))
         return false;
@@ -677,7 +634,7 @@ bool MuruDarkFiendsSpawnedTrigger::IsActiveInEncounter()
     if (!AI_VALUE2(Unit*, "find target", "m'uru"))
         return false;
 
-    return bot->FindNearestCreature(Id(SwpNpcs::NPC_DARK_FIEND), DARK_FIEND_DISPEL_SEARCH_RADIUS);
+    return GetNearestMuruDarkFiend(botAI, DARK_FIEND_DISPEL_SEARCH_RADIUS);
 }
 
 bool MuruDarknessIsComingTrigger::IsActiveInEncounter()
@@ -692,9 +649,9 @@ bool MuruDarknessIsComingTrigger::IsActiveInEncounter()
     return TryGetMuruDarknessActiveState(bot, muru);
 }
 
-bool MuruBerserkerIsBuffedWithFlurryTrigger::IsActiveInEncounter()
+bool MuruBerserkerHasFlurryTrigger::IsActiveInEncounter()
 {
-    // No stuns and can't be a Tauren. Too bad.
+    // These classes have no stuns and can't be Tauren.
     if (bot->getClass() == CLASS_MAGE || bot->getClass() == CLASS_PRIEST ||
         bot->getClass() == CLASS_WARLOCK)
     {
@@ -709,7 +666,7 @@ bool MuruBerserkerIsBuffedWithFlurryTrigger::IsActiveInEncounter()
 
 bool MuruFuryMageCastingFelFireballTrigger::IsActiveInEncounter()
 {
-    // Do Druids have no interrupts...?
+    // Druids are seriously the only class with no interrupts?
     if (bot->getClass() == CLASS_DRUID)
         return false;
 
@@ -719,7 +676,7 @@ bool MuruFuryMageCastingFelFireballTrigger::IsActiveInEncounter()
     return FindMuruFuryMageToInterrupt(botAI);
 }
 
-bool MuruFuryMageIsBuffedWithSpellFuryTrigger::IsActiveInEncounter()
+bool MuruFuryMageHasSpellFuryTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_MAGE)
         return false;
@@ -756,7 +713,7 @@ bool MuruWarlockHasEnslavedVoidSpawnTrigger::IsActiveInEncounter()
     return charm && charm->IsAlive() && charm->GetEntry() == Id(SwpNpcs::NPC_VOID_SPAWN);
 }
 
-bool MuruEntropiusDarknessPoolsSpawnDarkFiendsTrigger::IsActiveInEncounter()
+bool MuruEntropiusSummonsVoidZonesTrigger::IsActiveInEncounter()
 {
     if (!AI_VALUE2(Unit*, "find target", "entropius"))
         return false;
@@ -764,7 +721,7 @@ bool MuruEntropiusDarknessPoolsSpawnDarkFiendsTrigger::IsActiveInEncounter()
     if (FindMuruVoidZoneToAvoid(botAI))
         return true;
 
-    return bot->FindNearestCreature(Id(SwpNpcs::NPC_DARK_FIEND), DARK_FIEND_AVOID_SEARCH_RADIUS);
+    return GetNearestMuruDarkFiend(botAI, DARK_FIEND_AVOID_SEARCH_RADIUS);
 }
 
 bool MuruTheSingularityIsNearTrigger::IsActiveInEncounter()
@@ -779,27 +736,27 @@ bool MuruTheSingularityIsNearTrigger::IsActiveInEncounter()
 
 // Kil'jaeden <The Deceiver>
 
-bool KiljaedenShouldCoordinateOrbUseTrigger::IsActive()
+bool KiljaedenShouldCoordinateOrbUseTrigger::IsActiveInEncounter()
 {
     if (!IsMechanicTrackerBot(bot, SWP_MAP_ID))
         return false;
 
-    auto const stateItr = kiljaedenEncounterStates.find(bot->GetInstanceId());
-    if (stateItr != kiljaedenEncounterStates.end() && stateItr->second.dragonOrbAnnouncementMs)
+    KiljaedenEncounterState const* state = FindKiljaedenState(bot->GetInstanceId());
+    if (state && state->dragonOrbAnnouncementMs)
         return false;
 
-    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) > SUNWELL_CENTER_RADIUS)
+    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) < HAND_SEARCH_RADIUS)
         return false;
 
-    return !AI_VALUE(GuidVector, "kiljaeden hands").empty();
+    return AI_VALUE2(Unit*, "find target", "hand of the deceiver");
 }
 
-bool KiljaedenHandsOfTheDeceiverAreActiveTrigger::IsActive()
+bool KiljaedenHandsOfTheDeceiverAreActiveTrigger::IsActiveInEncounter()
 {
-    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) > SUNWELL_CENTER_RADIUS)
+    if (bot->GetExactDist2d(SUNWELL_CENTER_POSITION) < HAND_SEARCH_RADIUS)
         return false;
 
-    return !AI_VALUE(GuidVector, "kiljaeden hands").empty();
+    return AI_VALUE2(Unit*, "find target", "hand of the deceiver");
 }
 
 bool KiljaedenTanksShouldHoldBossAndReflectionsTrigger::IsActiveInEncounter()
@@ -890,16 +847,13 @@ bool KiljaedenDragonOrbIsActiveTrigger::IsActiveInEncounter()
     if (!kiljaeden || kiljaeden->GetHealthPct() > KILJAEDEN_PHASE3_HP_THRESHOLD)
         return false;
 
-    if (GetKiljaedenDragonOrbUser(bot) != bot)
-        return false;
-
-    if (HasKiljaedenDragonAura(bot))
+    if (GetKiljaedenDragonOrbUser(bot) != bot || HasKiljaedenDragonAura(bot))
         return false;
 
     bool orbInUse = false;
     bool result = false;
 
-    for (ObjectGuid const& orbGuid : AI_VALUE(GuidVector, "kiljaeden dragon orbs"))
+    for (auto const& orbGuid : context->GetValue<GuidVector>("kiljaeden dragon orbs")->RefGet())
     {
         GameObject* orb = botAI->GetGameObject(orbGuid);
         if (!orb)

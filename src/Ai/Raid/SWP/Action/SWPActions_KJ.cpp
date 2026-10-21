@@ -25,12 +25,12 @@ using namespace EncounterHelpers;
 bool KiljaedenAnnounceDragonOrbUserAction::Execute(Event /*event*/)
 {
     uint32 const instanceId = bot->GetInstanceId();
-    auto const stateItr = kiljaedenEncounterStates.find(instanceId);
+    /* KiljaedenEncounterState const* state = FindKiljaedenState(instanceId);
 
-    if (stateItr != kiljaedenEncounterStates.end() && stateItr->second.dragonOrbAnnouncementMs)
-        return false;
+    if (state && state->dragonOrbAnnouncementMs)
+        return false; */
 
-    kiljaedenEncounterStates[instanceId].dragonOrbAnnouncementMs = getMSTime();
+    KiljaedenState(instanceId).dragonOrbAnnouncementMs = getMSTime();
 
     Player* orbUser = GetKiljaedenDragonOrbUser(bot);
     std::string text;
@@ -65,9 +65,6 @@ bool KiljaedenMarkHandOfTheDeceiverAction::Execute(Event /*event*/)
     if (!group)
         return false;
 
-    // The standard FindTargetValue doesn't work here because zone combat isn't set when the Hands
-    // are pulled so individual bots need to take action to get the Hands on their threat lists
-    // for FindTargetValue. This is particularly problematic if the MechanicTracker is a healer.
     std::vector<Unit*> const hands = GetKiljaedenHands(botAI);
     if (hands.empty())
         return false;
@@ -148,29 +145,29 @@ bool KiljaedenControlHandsOfTheDeceiverAction::CastStunOnHand(Unit* hand)
     switch (bot->getClass())
     {
         case CLASS_DRUID:
+        {
             return (botAI->HasStrategy("bear", BOT_STATE_COMBAT) && castSpell("bash")) ||
                 (botAI->HasStrategy("cat", BOT_STATE_COMBAT) &&
                  bot->GetComboPoints() >= 4 && castSpell("maim"));
-
+        }
         case CLASS_MAGE:
             return castSpell("deep freeze");
-
         case CLASS_PALADIN:
             return castSpell("hammer of justice");
-
         case CLASS_ROGUE:
             return bot->GetComboPoints() >= 4 && castSpell("kidney shot");
-
         case CLASS_WARLOCK:
             return castSpell("shadowfury");
-
         case CLASS_WARRIOR:
+        {
             return castSpell("concussion blow") ||
                 castSelfAoe("shockwave", SHOCKWAVE_RADIUS);
-
+        }
         default:
+        {
             return bot->getRace() == RACE_TAUREN &&
                 castSelfAoe("war stomp", SELF_AOE_RACIAL_RADIUS);
+        }
     }
 }
 
@@ -185,17 +182,15 @@ bool KiljaedenControlHandsOfTheDeceiverAction::CastSilenceOnHand(Unit* hand)
     {
         case CLASS_HUNTER:
             return castSpell("silencing shot");
-
         case CLASS_PRIEST:
             return castSpell("silence");
-
         case CLASS_DEATH_KNIGHT:
             return castSpell("strangulate");
-
         default:
+        {
             return bot->getRace() == RACE_BLOODELF &&
-                bot->GetExactDist(hand) < SELF_AOE_RACIAL_RADIUS &&
-                castSpell("arcane torrent");
+                bot->GetExactDist(hand) < SELF_AOE_RACIAL_RADIUS && castSpell("arcane torrent");
+        }
     }
 }
 
@@ -215,12 +210,16 @@ bool KiljaedenPositionAndMoveTanksAction::Execute(Event /*event*/)
     }
 
     Position const& position = KILJAEDEN_TANK_POSITION;
-    if (bot->GetExactDist2d(position) <= 2.0f)
+    constexpr float arrivalDist = 2.0f;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetStepToPosition(bot, position, arrivalDist, nullptr, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
-        SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
-        false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 // When Reflections activate after 3s, they begin attack with SMART_ACTION_ATTACK_START, which sets
@@ -240,21 +239,25 @@ bool KiljaedenPositionAndMoveTanksAction::PickUpSinisterReflections(Creature* re
     switch (bot->getClass())
     {
         case CLASS_DEATH_KNIGHT:
+        {
             return castSpell("death and decay", RANGED_ABILITY_REACH) ||
                 castSpell("icy touch", ICY_TOUCH_REACH);
-
+        }
         case CLASS_DRUID:
+        {
             return castSpell("feral charge - bear", CHARGE_REACH) ||
                 castSpell("challenging roar", TAUNT_SHOUT_RADIUS);
-
+        }
         case CLASS_PALADIN:
+        {
             return castSpell("avenger's shield", RANGED_ABILITY_REACH) ||
                 castSpell("consecration", CONSECRATION_RADIUS);
-
+        }
         case CLASS_WARRIOR:
+        {
             return castSpell("charge", CHARGE_REACH) ||
                 castSpell("challenging shout", TAUNT_SHOUT_RADIUS);
-
+        }
         default:
             return false;
     }
@@ -269,12 +272,16 @@ bool KiljaedenPositionMeleeAndAvoidArmageddonsAction::Execute(Event /*event*/)
     if (!TryAdjustMeleeForArmageddon(position))
         return false;
 
-    if (bot->GetExactDist2d(position) <= 2.0f)
+    constexpr float arrivalDist = 2.0f;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetStepToPosition(bot, position, arrivalDist, nullptr, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
-        SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
-        false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KiljaedenPositionMeleeAndAvoidArmageddonsAction::TryGetMeleePosition(Position& position) const
@@ -315,12 +322,9 @@ bool KiljaedenPositionMeleeAndAvoidArmageddonsAction::TryAdjustMeleeForArmageddo
     Position& position)
 {
     PruneExpiredKiljaedenArmageddons(bot->GetInstanceId());
-    auto armageddonItr = kiljaedenEncounterStates.find(bot->GetInstanceId());
-    if (armageddonItr == kiljaedenEncounterStates.end() ||
-        armageddonItr->second.armageddons.empty())
-    {
+    KiljaedenEncounterState const* state = FindKiljaedenState(bot->GetInstanceId());
+    if (!state || state->armageddons.empty())
         return true;
-    }
 
     Unit* kiljaeden = AI_VALUE2(Unit*, "find target", "kil'jaeden");
     if (!kiljaeden || IsKiljaedenCastingDarknessOfAThousandSouls(kiljaeden) ||
@@ -337,7 +341,7 @@ bool KiljaedenPositionMeleeAndAvoidArmageddonsAction::TryAdjustMeleeForArmageddo
 
     auto const isSafePosition = [&](Position const& pos)
     {
-        for (KiljaedenArmageddon const& armageddon : armageddonItr->second.armageddons)
+        for (KiljaedenArmageddon const& armageddon : state->armageddons)
         {
             if (pos.GetExactDist2d(
                     armageddon.destination.GetPositionX(),
@@ -376,24 +380,28 @@ bool KiljaedenPositionRangedAndAvoidArmageddonsAction::Execute(Event /*event*/)
     if (!TryAdjustRangedForArmageddon(position))
         return false;
 
-    if (bot->GetExactDist2d(position) <= 2.0f)
+    constexpr float arrivalDist = 2.0f;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetStepToPosition(bot, position, arrivalDist, nullptr, moveX, moveY, backwards))
         return false;
 
     return MoveTo(
-        SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
-        false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KiljaedenPositionRangedAndAvoidArmageddonsAction::TryGetRangedPosition(Position& position) const
 {
     EnsureKiljaedenRangedAssignments(bot);
 
-    auto const instanceItr = kiljaedenEncounterStates.find(bot->GetInstanceId());
-    if (instanceItr == kiljaedenEncounterStates.end())
+    KiljaedenEncounterState const* state = FindKiljaedenState(bot->GetInstanceId());
+    if (!state)
         return false;
 
-    auto const assignmentItr = instanceItr->second.rangedAssignments.find(bot->GetGUID());
-    if (assignmentItr == instanceItr->second.rangedAssignments.end())
+    auto const assignmentItr = state->rangedAssignments.find(bot->GetGUID());
+    if (assignmentItr == state->rangedAssignments.end())
         return false;
 
     return TryGetKiljaedenRangedSlotPosition(assignmentItr->second, position);
@@ -402,15 +410,12 @@ bool KiljaedenPositionRangedAndAvoidArmageddonsAction::TryGetRangedPosition(Posi
 bool KiljaedenPositionRangedAndAvoidArmageddonsAction::TryAdjustRangedForArmageddon(Position& position)
 {
     EnsureKiljaedenRangedArmageddonAssignments(bot);
-    auto const armageddonAssignmentItr =
-        kiljaedenEncounterStates.find(bot->GetInstanceId());
-
-    if (armageddonAssignmentItr == kiljaedenEncounterStates.end())
+    KiljaedenEncounterState const* state = FindKiljaedenState(bot->GetInstanceId());
+    if (!state)
         return true;
 
-    auto const tempAssignmentItr =
-        armageddonAssignmentItr->second.rangedArmageddonAssignments.find(bot->GetGUID());
-    if (tempAssignmentItr == armageddonAssignmentItr->second.rangedArmageddonAssignments.end())
+    auto const tempAssignmentItr = state->rangedArmageddonAssignments.find(bot->GetGUID());
+    if (tempAssignmentItr == state->rangedArmageddonAssignments.end())
         return true;
 
     return TryGetKiljaedenRangedSlotPosition(tempAssignmentItr->second, position);
@@ -439,12 +444,20 @@ bool KiljaedenStackForShieldOfTheBlueAction::Execute(Event /*event*/)
         }
     }
 
-    if (bot->GetExactDist2d(destX, destY) <= 1.0f)
+    constexpr float arrivalDist = 1.0f;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetStepToPosition(
+            bot, Position(destX, destY, bot->GetPositionZ()), arrivalDist, nullptr, moveX, moveY,
+            backwards))
+    {
         return false;
+    }
 
     bot->CastStop();
     return MoveTo(
-        SWP_MAP_ID, destX, destY, bot->GetPositionZ(), false, false, false, false,
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
         MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
@@ -456,7 +469,7 @@ bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
     float closestInUseOrbDistance = std::numeric_limits<float>::max();
     bool orbInUse = false;
 
-    for (ObjectGuid const& orbGuid : AI_VALUE(GuidVector, "kiljaeden dragon orbs"))
+    for (auto const& orbGuid : context->GetValue<GuidVector>("kiljaeden dragon orbs")->RefGet())
     {
         GameObject* orb = botAI->GetGameObject(orbGuid);
         if (!orb)
@@ -506,7 +519,7 @@ bool KiljaedenUseDragonOrbAction::Execute(Event /*event*/)
     if (closestOrb->IsAtInteractDistance(*bot, closestOrb->GetInteractionDistance()))
     {
         closestOrb->Use(bot);
-        kiljaedenDragonOrbUseTimes[bot->GetGUID().GetCounter()] = getMSTime();
+        KiljaedenState(bot->GetInstanceId()).dragonOrbUsers.insert(bot->GetGUID());
         return true;
     }
 

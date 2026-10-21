@@ -31,25 +31,12 @@ enum class BrutallusRangedBurnState : uint8
     ReturningToNormalPosition
 };
 
-struct BrutallusEncounterState
-{
-    std::unordered_map<ObjectGuid, uint8> rangedAssignments;
-    std::unordered_map<ObjectGuid, uint8> meleeAssignments;
-    std::unordered_map<ObjectGuid, uint8> rangedBurnPadAssignments;
-    std::unordered_map<ObjectGuid, BrutallusRangedBurnState> rangedBurnStates;
-    uint32 rangedAssignmentRebuildMs = 0;
-    uint32 meleeAssignmentRebuildMs = 0;
-};
-
-extern std::unordered_map<uint32, BrutallusEncounterState> brutallusEncounterStates;
-
 struct BrutallusMeleeRingLayout
 {
     float radius;
     uint8 slotCount;
 };
 
-// Throttle assigned position rebuilds since they should be stable during the encounter.
 inline constexpr uint32 BRUTALLUS_ASSIGNMENT_REBUILD_INTERVAL_MS = 1000;
 
 inline constexpr float BRUTALLUS_ASSIST_TANK_ANGLE_OFFSET = -(2.0f * M_PI / 3.0f);
@@ -97,7 +84,7 @@ inline Position const BRUTALLUS_MAIN_TANK_POSITION = { 1483.528f, 595.346f, 23.5
 
 float GetBrutallusMainTankAngle(Unit* brutallus, Player* mainTank);
 float GetBrutallusAssistTankAngle(Unit* brutallus, Player* assistTank, float mainTankAngle);
-Position GetBrutallusPositionAtAngle(Player* bot, Unit* brutallus, float angle, float radius);
+Position GetBrutallusPositionAtAngle(Player* bot, Unit const &brutallus, float angle, float radius);
 bool TryGetBrutallusAssignedPositionIndex(Player* bot, uint8& positionIndex);
 bool TryGetBrutallusRangedPosition(
     Player* bot, Unit* brutallus, Player* mainTank, Player* assistTank,
@@ -110,6 +97,22 @@ bool TryGetBrutallusLaneTraversalPosition(
     float currentX, float currentY, Position& position);
 bool ReleaseBrutallusBurnPad(Player* bot);
 bool HasBrutallusBurn(Player* bot);
+
+// Shared encounter state
+
+struct BrutallusEncounterState
+{
+    std::unordered_map<ObjectGuid, uint8> rangedAssignments;
+    std::unordered_map<ObjectGuid, uint8> meleeAssignments;
+    std::unordered_map<ObjectGuid, uint8> rangedBurnPadAssignments;
+    std::unordered_map<ObjectGuid, BrutallusRangedBurnState> rangedBurnStates;
+    uint32 rangedAssignmentRebuildMs = 0;
+    uint32 meleeAssignmentRebuildMs = 0;
+};
+
+BrutallusEncounterState& BrutallusState(uint32 instanceId);
+BrutallusEncounterState* FindBrutallusState(uint32 instanceId);
+bool BrutallusResetInstance(uint32 instanceId);
 
 }
 

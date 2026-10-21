@@ -23,11 +23,11 @@ bool KalecgosAnnounceBossHealthAction::Execute(Event /*event*/)
     if (!kalecgos)
         return false;
 
-    auto const stateItr = kalecgosEncounterStates.find(bot->GetInstanceId());
-    if (stateItr == kalecgosEncounterStates.end())
+    KalecgosEncounterState* foundState = FindKalecgosState(bot->GetInstanceId());
+    if (!foundState)
         return false;
 
-    KalecgosEncounterState& state = stateItr->second;
+    KalecgosEncounterState& state = *foundState;
     std::string text;
 
     if (!IsInSpectralRealm(bot))
@@ -143,7 +143,7 @@ bool KalecgosEnterSpectralRiftAction::ShouldTankEnter()
     return true;
 }
 
-bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
+bool KalecgosSpreadRangedAction::Execute(Event /*event*/)
 {
     if (!_initialRangedPositionReached)
     {
@@ -156,9 +156,23 @@ bool KalecgosDisperseRangedAction::Execute(Event /*event*/)
             return false;
         }
 
-        return MoveInside(
-            SWP_MAP_ID, initialPos.GetPositionX(), initialPos.GetPositionY(),
-            initialPos.GetPositionZ(), initialRangedRadius, MovementPriority::MOVEMENT_COMBAT);
+        // The point on the circle MoveInside() would head for, so the ranged still fan out
+        float const angle = GetFollowAngle();
+        Position const rimPosition(
+            initialPos.GetPositionX() + std::cos(angle) * initialRangedRadius,
+            initialPos.GetPositionY() + std::sin(angle) * initialRangedRadius,
+            initialPos.GetPositionZ());
+
+        constexpr float arrivalDist = 0.0f;
+        float moveX;
+        float moveY;
+        bool backwards;
+        if (!GetStepToPosition(bot, rimPosition, arrivalDist, nullptr, moveX, moveY, backwards))
+            return false;
+
+        return MoveTo(
+            SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+            MovementPriority::MOVEMENT_COMBAT, true, false);
     }
 
     if (Unit* kalecgos = AI_VALUE2(Unit*, "find target", "kalecgos"))
@@ -188,13 +202,19 @@ bool KalecgosSathrovarrTankStandWithKalecAction::Execute(Event /*event*/)
     if (!kalec || sathrovarr->GetVictim() != kalec)
         return false;
 
-    Position const position = kalec->GetPosition();
-    if (bot->GetExactDist2d(position) <= 3.0f)
+    constexpr float arrivalDist = 3.0f;
+    float moveX;
+    float moveY;
+    bool backwards;
+    if (!GetStepToPosition(
+            bot, kalec->GetPosition(), arrivalDist, nullptr, moveX, moveY, backwards))
+    {
         return false;
+    }
 
     return MoveTo(
-        SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
-        false, false, false, false, MovementPriority::MOVEMENT_COMBAT, true, false);
+        SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, false);
 }
 
 bool KalecgosReturnToSpectralRealmGroundAction::Execute(Event /*event*/)

@@ -10,10 +10,16 @@
 #include "Action.h"
 #include "AttackAction.h"
 #include "MovementActions.h"
+#include "Position.h"
+#include "SSCHelpers.h"
+#include <optional>
 #include <string>
 #include <vector>
 
-// General
+class GameObject;
+class Item;
+
+// Shared
 
 class SscResetEncounterStatesAction : public Action
 {
@@ -21,6 +27,40 @@ public:
     SscResetEncounterStatesAction(PlayerbotAI* botAI)
         : Action(botAI, "ssc reset encounter states") {}
     bool Execute(Event event) override;
+};
+
+// Used for Morogrim Tidewalker and Lady Vashj.
+class SscMisdirectToMainTankAction : public Action
+{
+public:
+    SscMisdirectToMainTankAction(
+        PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
+        : Action(botAI, name), _bossName(bossName) {}
+    bool Execute(Event event) override;
+
+private:
+    std::string const _bossName;
+};
+
+// Used for Hydross the Unstable and Leotheras the Blind.
+class SscStopAttackingAction : public Action
+{
+public:
+    SscStopAttackingAction(PlayerbotAI* botAI, std::string const& name)
+        : Action(botAI, name) {}
+    bool Execute(Event event) override;
+};
+
+// Used for Hydross the Unstable, Leotheras the Blind, and Fathom-Lord Karathress.
+class SscSpreadRangedAction : public MovementAction
+{
+public:
+    SscSpreadRangedAction(PlayerbotAI* botAI, std::string const& name, float distance)
+        : MovementAction(botAI, name), _distance(distance) {}
+    bool Execute(Event event) override;
+
+private:
+    float const _distance;
 };
 
 // Trash
@@ -41,30 +81,8 @@ public:
     bool Execute(Event event) override;
 };
 
-// Shared Bosses
-
-// Misdirect to the main tank, or to an assist tank at assistTankIndex. Used for
-// Morogrim Tidewalker, Lady Vashj, and Coilfang Striders.
-class SscMisdirectTargetToTankAction : public Action
-{
-public:
-    static constexpr int8 MAIN_TANK = -1;
-
-    SscMisdirectTargetToTankAction(
-        PlayerbotAI* botAI, std::string const& name, std::string const& targetName,
-        int8 assistTankIndex = MAIN_TANK)
-        : Action(botAI, name), _targetName(targetName), _assistTankIndex(assistTankIndex) {}
-    bool Execute(Event event) override;
-
-protected:
-    std::string const _targetName;
-    int8 const _assistTankIndex;
-};
-
 // Hydross the Unstable <Duke of Currents>
 
-// One action for the frost and nature tanks. Each tank has a phase, a mark, a position, and a
-// timer for swapping. The action itself is mirrored between the tanks.
 class HydrossTheUnstablePositionAndSwapTanksAction : public AttackAction
 {
 public:
@@ -75,39 +93,22 @@ public:
 
 private:
     bool StepTo(Position const& position, Unit* hydross);
-
     bool const _frostTank;
 };
 
-class HydrossTheUnstableFrostPhaseSpreadOutAction : public MovementAction
+class HydrossTheUnstableMisdirectToTankAction : public Action
 {
 public:
-    HydrossTheUnstableFrostPhaseSpreadOutAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "hydross the unstable frost phase spread out") {}
+    HydrossTheUnstableMisdirectToTankAction(PlayerbotAI* botAI)
+        : Action(botAI, "hydross the unstable misdirect to tank") {}
     bool Execute(Event event) override;
 };
 
-class HydrossTheUnstableMisdirectBossToTankAction : public Action
+class HydrossTheUnstableManagePhaseTimersAction : public Action
 {
 public:
-    HydrossTheUnstableMisdirectBossToTankAction(PlayerbotAI* botAI)
-        : Action(botAI, "hydross the unstable misdirect boss to tank") {}
-    bool Execute(Event event) override;
-};
-
-class HydrossTheUnstableStopDpsUponPhaseChangeAction : public Action
-{
-public:
-    HydrossTheUnstableStopDpsUponPhaseChangeAction(PlayerbotAI* botAI)
-        : Action(botAI, "hydross the unstable stop dps upon phase change") {}
-    bool Execute(Event event) override;
-};
-
-class HydrossTheUnstableManageTimersAction : public Action
-{
-public:
-    HydrossTheUnstableManageTimersAction(PlayerbotAI* botAI)
-        : Action(botAI, "hydross the unstable manage timers") {}
+    HydrossTheUnstableManagePhaseTimersAction(PlayerbotAI* botAI)
+        : Action(botAI, "hydross the unstable manage phase timers") {}
     bool Execute(Event event) override;
 };
 
@@ -135,17 +136,29 @@ public:
     TheLurkerBelowSpreadRangedInArcAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "the lurker below spread ranged in arc") {}
     bool Execute(Event event) override;
+    bool ResetRangedPosition()
+    {
+        if (!_hasRangedPosition)
+            return false;
+
+        _hasRangedPosition = false;
+        return true;
+    }
+
+private:
+    Position _rangedPosition;
+    bool _hasRangedPosition = false;
 };
 
-class TheLurkerBelowTanksPickUpAddsAction : public AttackAction
+class TheLurkerBelowTanksPickUpGuardiansAction : public AttackAction
 {
 public:
-    TheLurkerBelowTanksPickUpAddsAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "the lurker below tanks pick up adds") {}
+    TheLurkerBelowTanksPickUpGuardiansAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "the lurker below tanks pick up guardians") {}
     bool Execute(Event event) override;
 
 private:
-    ObjectGuid ClaimGuardianForTank(std::vector<Unit*> const& guardians, size_t myIndex);
+    ObjectGuid ClaimGuardianForTank(std::vector<Unit*> const& guardians, int8 myIndex);
 };
 
 class TheLurkerBelowMeleeMoveDirectlyToTargetAction : public MovementAction
@@ -156,21 +169,21 @@ public:
     bool Execute(Event event) override;
 };
 
-// Leotheras the Blind
-
-class LeotherasTheBlindPositionRangedAction : public MovementAction
+class TheLurkerBelowMeleeGetOutOfWaterAction : public MovementAction
 {
 public:
-    LeotherasTheBlindPositionRangedAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "leotheras the blind position ranged") {}
+    TheLurkerBelowMeleeGetOutOfWaterAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "the lurker below melee get out of water") {}
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindWarlockTankAttackBossAction : public AttackAction
+// Leotheras the Blind
+
+class LeotherasTheBlindWarlockTankAttackDemonFormAction : public AttackAction
 {
 public:
-    LeotherasTheBlindWarlockTankAttackBossAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "leotheras the blind warlock tank attack boss") {}
+    LeotherasTheBlindWarlockTankAttackDemonFormAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "leotheras the blind warlock tank attack demon form") {}
     bool Execute(Event event) override;
 };
 
@@ -182,6 +195,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class LeotherasTheBlindRangedKeepDistanceAction : public MovementAction
+{
+public:
+    LeotherasTheBlindRangedKeepDistanceAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "leotheras the blind ranged keep distance") {}
+    bool Execute(Event event) override;
+};
+
 class LeotherasTheBlindRunAwayFromWhirlwindAction : public MovementAction
 {
 public:
@@ -190,11 +211,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindMeleeRunAwayFromChaosBlastAction : public MovementAction
+class LeotherasTheBlindMeleeRunFromChaosBlastAction : public MovementAction
 {
 public:
-    LeotherasTheBlindMeleeRunAwayFromChaosBlastAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "leotheras the blind melee run away from chaos blast") {}
+    LeotherasTheBlindMeleeRunFromChaosBlastAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "leotheras the blind melee run from chaos blast") {}
     bool Execute(Event event) override;
 };
 
@@ -227,11 +248,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class LeotherasTheBlindMisdirectBossToWarlockTankAction : public Action
+class LeotherasTheBlindMisdirectDemonFormToTankAction : public Action
 {
 public:
-    LeotherasTheBlindMisdirectBossToWarlockTankAction(PlayerbotAI* botAI)
-        : Action(botAI, "leotheras the blind misdirect boss to warlock tank") {}
+    LeotherasTheBlindMisdirectDemonFormToTankAction(PlayerbotAI* botAI)
+        : Action(botAI, "leotheras the blind misdirect demon form to tank") {}
     bool Execute(Event event) override;
 };
 
@@ -241,6 +262,9 @@ public:
     LeotherasTheBlindManageDpsWaitTimersAction(PlayerbotAI* botAI)
         : Action(botAI, "leotheras the blind manage dps wait timers") {}
     bool Execute(Event event) override;
+
+private:
+    bool TrackWhirlwindEnd(Unit* leotheras, std::optional<uint32>& whirlwindEnd, uint32 now);
 };
 
 // Fathom-Lord Karathress
@@ -261,11 +285,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class FathomLordKarathressMisdirectBossesToTanksAction : public Action
+class FathomLordKarathressMisdirectToTanksAction : public Action
 {
 public:
-    FathomLordKarathressMisdirectBossesToTanksAction(PlayerbotAI* botAI)
-        : Action(botAI, "fathom-lord karathress misdirect bosses to tanks") {}
+    FathomLordKarathressMisdirectToTanksAction(PlayerbotAI* botAI)
+        : Action(botAI, "fathom-lord karathress misdirect to tanks") {}
     bool Execute(Event event) override;
 };
 
@@ -275,6 +299,9 @@ public:
     FathomLordKarathressAssignDpsPriorityAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "fathom-lord karathress assign dps priority") {}
     bool Execute(Event event) override;
+
+private:
+    bool ApproachCaribdis(Unit* caribdis);
 };
 
 class FathomLordKarathressManageDpsTimerAction : public Action
@@ -285,33 +312,41 @@ public:
     bool Execute(Event event) override;
 };
 
-class FathomLordKarathressDropFromCycloneAction : public MovementAction
+class FathomLordKarathressDropToGroundAfterCycloneAction : public MovementAction
 {
 public:
-    FathomLordKarathressDropFromCycloneAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "fathom-lord karathress drop from cyclone") {}
+    FathomLordKarathressDropToGroundAfterCycloneAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "fathom-lord karathress drop to ground after cyclone") {}
     bool Execute(Event event) override;
 };
 
 // Morogrim Tidewalker
 
-class MorogrimTidewalkerMoveBossToTankPositionAction : public AttackAction
+class MorogrimTidewalkerPositionMainTankAction : public AttackAction
 {
 public:
-    MorogrimTidewalkerMoveBossToTankPositionAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "morogrim tidewalker move boss to tank position") {}
+    MorogrimTidewalkerPositionMainTankAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "morogrim tidewalker position main tank") {}
     bool Execute(Event event) override;
 
 private:
-    bool MoveToPhase1TankPosition();
-    bool MoveToPhase2TankPosition();
+    bool MoveToPhase1TankPosition(Unit* tidewalker);
+    bool MoveToPhase2TankPosition(Unit* tidewalker);
 };
 
-class MorogrimTidewalkerPhase2RepositionRangedAction : public MovementAction
+class MorogrimTidewalkerStackRangedBehindBossAction : public MovementAction
 {
 public:
-    MorogrimTidewalkerPhase2RepositionRangedAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "morogrim tidewalker phase 2 reposition ranged") {}
+    MorogrimTidewalkerStackRangedBehindBossAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "morogrim tidewalker stack ranged behind boss") {}
+    bool Execute(Event event) override;
+};
+
+class MorogrimTidewalkerReturnToBossAction : public MovementAction
+{
+public:
+    MorogrimTidewalkerReturnToBossAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "morogrim tidewalker return to boss") {}
     bool Execute(Event event) override;
 };
 
@@ -323,6 +358,10 @@ public:
     LadyVashjMainTankPositionBossAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "lady vashj main tank position boss") {}
     bool Execute(Event event) override;
+
+private:
+    bool MoveToPhase1TankPosition(Unit* vashj);
+    bool MoveAwayFromElementalsAndStriders(Unit* vashj);
 };
 
 class LadyVashjPhase1SpreadRangedInArcAction : public MovementAction
@@ -330,6 +369,61 @@ class LadyVashjPhase1SpreadRangedInArcAction : public MovementAction
 public:
     LadyVashjPhase1SpreadRangedInArcAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "lady vashj phase 1 spread ranged in arc") {}
+    bool Execute(Event event) override;
+    bool HasReachedRangedPosition() const { return _reachedRangedPosition; }
+    bool ResetRangedPosition()
+    {
+        if (!_hasRangedPosition)
+            return false;
+
+        _hasRangedPosition = false;
+        _reachedRangedPosition = false;
+        return true;
+    }
+
+private:
+    Position _rangedPosition;
+    bool _hasRangedPosition = false;
+    bool _reachedRangedPosition = false;
+};
+
+class LadyVashjAssignStationSlotsAction : public Action
+{
+public:
+    LadyVashjAssignStationSlotsAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj assign station slots") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjPhase2PositionAtStationAction : public MovementAction
+{
+public:
+    LadyVashjPhase2PositionAtStationAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj phase 2 position at station") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjPhase3PositionRangedAction : public MovementAction
+{
+public:
+    LadyVashjPhase3PositionRangedAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj phase 3 position ranged") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjPhase3MoveIntoSightAction : public MovementAction
+{
+public:
+    LadyVashjPhase3MoveIntoSightAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj phase 3 move into sight") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjAssignGroundingShamanAction : public Action
+{
+public:
+    LadyVashjAssignGroundingShamanAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj assign grounding shaman") {}
     bool Execute(Event event) override;
 };
 
@@ -349,27 +443,63 @@ public:
     bool Execute(Event event) override;
 };
 
-class LadyVashjAssignPhase2AndPhase3DpsPriorityAction : public AttackAction
+class LadyVashjAssignTargetPriorityAction : public AttackAction
 {
 public:
-    LadyVashjAssignPhase2AndPhase3DpsPriorityAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "lady vashj assign phase 2 and phase 3 dps priority") {}
+    LadyVashjAssignTargetPriorityAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "lady vashj assign target priority") {}
     bool Execute(Event event) override;
 };
 
-class LadyVashjTankAttackAndMoveAwayStriderAction : public AttackAction
+class LadyVashjTankApplyFearWardAction : public Action
 {
 public:
-    LadyVashjTankAttackAndMoveAwayStriderAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "lady vashj tank attack and move away strider") {}
+    LadyVashjTankApplyFearWardAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj tank apply fear ward") {}
     bool Execute(Event event) override;
 };
 
-class LadyVashjTeleportToTaintedElementalAction : public AttackAction
+class LadyVashjPositionCoilfangStriderAction : public MovementAction
 {
 public:
-    LadyVashjTeleportToTaintedElementalAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "lady vashj teleport to tainted elemental") {}
+    LadyVashjPositionCoilfangStriderAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj position coilfang strider") {}
+    bool Execute(Event event) override;
+
+private:
+    bool MoveStriderToHoldPosition(Unit* strider);
+    bool MoveStriderAwayFromVashj(Unit* strider, Unit* vashj);
+};
+
+class LadyVashjPositionCoilfangEliteAction : public MovementAction
+{
+public:
+    LadyVashjPositionCoilfangEliteAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj position coilfang elite") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjTankWaitInTheMiddleAction : public MovementAction
+{
+public:
+    LadyVashjTankWaitInTheMiddleAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj tank wait in the middle") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjAssignTaintedCoreLooterAction : public Action
+{
+public:
+    LadyVashjAssignTaintedCoreLooterAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj assign tainted core looter") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjAttackTaintedElementalAction : public AttackAction
+{
+public:
+    LadyVashjAttackTaintedElementalAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "lady vashj attack tainted elemental") {}
     bool Execute(Event event) override;
 };
 
@@ -389,43 +519,80 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool LineUpFirstCorePasser(Player* designatedLooter);
-    bool LineUpSecondCorePasser(Player* firstCorePasser, Unit* closestTrigger);
-    bool LineUpThirdCorePasser(
-        Player* designatedLooter, Player* firstCorePasser,
-        Player* secondCorePasser, Unit* closestTrigger);
-    bool LineUpFourthCorePasser(
-        Player* firstCorePasser, Player* secondCorePasser,
-        Player* thirdCorePasser, Unit* closestTrigger);
-    bool IsFirstCorePasserInPosition(Player* firstCorePasser);
-    bool IsSecondCorePasserInPosition(Player* secondCorePasser);
-    bool IsThirdCorePasserInPosition(Player* thirdCorePasser);
-    bool IsFourthCorePasserInPosition(Player* fourthCorePasser);
-    bool UseCoreOnNearestGenerator(const uint32 instanceId);
+    bool MoveToCoreSpot(SscHelpers::VashjCorePassingChain& chain, int8 index);
+    bool ThrowCore(
+        SscHelpers::VashjCorePassingChain& chain, size_t next, Item* core, GameObject* generator);
+    bool UseCoreOnGenerator(Item* core, GameObject* generator);
+};
+
+class LadyVashjDestroyTaintedCoreAction : public Action
+{
+public:
+    LadyVashjDestroyTaintedCoreAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj destroy tainted core") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjCommandPetTargetAction : public Action
+{
+public:
+    LadyVashjCommandPetTargetAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj command pet target") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjReturnToTheGroundAction : public Action
+{
+public:
+    LadyVashjReturnToTheGroundAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj return to the ground") {}
+    bool Execute(Event event) override;
 };
 
 class LadyVashjAvoidToxicSporesAction : public MovementAction
 {
 public:
-    LadyVashjAvoidToxicSporesAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "lady vashj avoid toxic spores") {}
+    LadyVashjAvoidToxicSporesAction(
+        PlayerbotAI* botAI, std::string const& name = "lady vashj avoid toxic spores")
+        : MovementAction(botAI, name) {}
     bool Execute(Event event) override;
-    static std::vector<Unit*> GetAllSporeDropTriggers(Player* bot);
 
 private:
-    Position FindSafestNearbyPosition(
-        std::vector<Unit*> const& spores, Position const& position,
-        float maxRadius, float hazardRadius);
-    bool IsPathSafeFromSpores(
-        Position const& start, Position const& end,
-        std::vector<Unit*> const& spores, float hazardRadius);
+    bool StepTowardBreakoutSpot(Unit* vashj);
+    Position _breakoutSpot;
+    bool _hasBreakoutSpot = false;
+    uint32 _breakoutStartTime = 0;
 };
 
-class LadyVashjUseFreeActionAbilitiesAction : public Action
+class LadyVashjMeleeMoveAroundToxicSporesAction : public LadyVashjAvoidToxicSporesAction
 {
 public:
-    LadyVashjUseFreeActionAbilitiesAction(PlayerbotAI* botAI)
-        : Action(botAI, "lady vashj use free action abilities") {}
+    LadyVashjMeleeMoveAroundToxicSporesAction(PlayerbotAI* botAI)
+        : LadyVashjAvoidToxicSporesAction(botAI, "lady vashj melee move around toxic spores") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjRangedReachAroundToxicSporesAction : public MovementAction
+{
+public:
+    LadyVashjRangedReachAroundToxicSporesAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "lady vashj ranged reach around toxic spores") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjPaladinUseHandOfFreedomAction : public Action
+{
+public:
+    LadyVashjPaladinUseHandOfFreedomAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj paladin use hand of freedom") {}
+    bool Execute(Event event) override;
+};
+
+class LadyVashjRogueUseCloakOfShadowsAction : public Action
+{
+public:
+    LadyVashjRogueUseCloakOfShadowsAction(PlayerbotAI* botAI)
+        : Action(botAI, "lady vashj rogue use cloak of shadows") {}
     bool Execute(Event event) override;
 };
 

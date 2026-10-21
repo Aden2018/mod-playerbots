@@ -21,7 +21,7 @@
 using namespace KaraHelpers;
 using namespace EncounterHelpers;
 
-// General
+// Shared
 
 bool KarazhanResetEncounterStatesAction::Execute(Event /*event*/)
 {
@@ -49,9 +49,7 @@ bool KarazhanResetEncounterStatesAction::Execute(Event /*event*/)
         reset = true;
     }
 
-    reset |= currentRedBlocker.erase(instanceId) > 0;
-    reset |= currentGreenBlocker.erase(instanceId) > 0;
-    reset |= currentBlueBlocker.erase(instanceId) > 0;
+    reset |= KaraResetBeamBlockers(instanceId);
 
     Action* wolfAction = context->GetAction("big bad wolf little red riding hood run away");
     if (wolfAction &&
@@ -63,21 +61,33 @@ bool KarazhanResetEncounterStatesAction::Execute(Event /*event*/)
     if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
         return reset;
 
-    if (!AI_VALUE2(bool, "combat", "self target"))
-        reset |= ClearTargetIcon(bot, RtiTargetValue::skullIndex);
+    reset |= ClearStrategyTargetIcon(bot, RtiTargetValue::skullIndex, {
+        Id(KaraNpcs::NPC_BARONESS_DOROTHEA_MILLSTIPE),
+        Id(KaraNpcs::NPC_LADY_CATRIONA_VON_INDI),
+        Id(KaraNpcs::NPC_LADY_KEIRA_BERRYBUCK),
+        Id(KaraNpcs::NPC_BARON_RAFE_DREUGER),
+        Id(KaraNpcs::NPC_LORD_ROBIN_DARIS),
+        Id(KaraNpcs::NPC_LORD_CRISPIN_FERENCE),
+        Id(KaraNpcs::NPC_ROMULO),
+        Id(KaraNpcs::NPC_JULIANNE),
+        Id(KaraNpcs::NPC_DOROTHEE),
+        Id(KaraNpcs::NPC_TITO),
+        Id(KaraNpcs::NPC_ROAR),
+        Id(KaraNpcs::NPC_STRAWMAN),
+        Id(KaraNpcs::NPC_TINHEAD),
+        Id(KaraNpcs::NPC_KILREK),
+        Id(KaraNpcs::NPC_TERESTIAN_ILLHOOF),
+    });
 
-    reset |= attumenDpsWaitTimer.erase(instanceId) > 0;
-    reset |= netherspiteDpsWaitTimer.erase(instanceId) > 0;
-    reset |= nightbaneDpsWaitTimer.erase(instanceId) > 0;
-    reset |= nightbaneFlightPhaseStartTimer.erase(instanceId) > 0;
+    reset |= KaraResetInstance(instanceId);
 
     return reset;
 }
 
 bool KarazhanSetTremorTotemAction::Execute(Event /*event*/)
 {
-    constexpr uint32 tremorTotem = Id(KaraSpells::SPELL_TREMOR_TOTEM);
-    return botAI->CanCastSpell(tremorTotem, bot) && botAI->CastSpell(tremorTotem, bot);
+    return botAI->CanCastSpell(Id(KaraSpells::SPELL_TREMOR_TOTEM), bot) &&
+        botAI->CastSpell(Id(KaraSpells::SPELL_TREMOR_TOTEM), bot);
 }
 
 // Trash
@@ -191,14 +201,14 @@ bool AttumenTheHuntsmanHandlePhaseTwoAction::CurrentTankPositionAttumen(Unit* at
         return false;
 
     return MoveTo(
-        KARA_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false,
-        false, false, MovementPriority::MOVEMENT_COMBAT, true, backwards);
+        KARA_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_COMBAT, true, backwards);
 }
 
-// Mounted Attumen's CombatReach is 0 [sic] yards
+// Mounted Attumen's CombatReach is 0 yards so defaults to 1.5 yards
 bool AttumenTheHuntsmanHandlePhaseTwoAction::StackBehindAttumen(Unit* attumen)
 {
-    float const distanceBehind = bot->getClass() == CLASS_HUNTER? 8.0f : 2.0f;
+    float const distanceBehind = bot->getClass() == CLASS_HUNTER ? 8.0f : 2.0f;
     float const orientation = attumen->GetOrientation() + M_PI;
     float const rearX = attumen->GetPositionX() + std::cos(orientation) * distanceBehind;
     float const rearY = attumen->GetPositionY() + std::sin(orientation) * distanceBehind;
@@ -207,14 +217,14 @@ bool AttumenTheHuntsmanHandlePhaseTwoAction::StackBehindAttumen(Unit* attumen)
         return false;
 
     return MoveTo(
-        KARA_MAP_ID, rearX, rearY, attumen->GetPositionZ(), false, false,
-        false, false, MovementPriority::MOVEMENT_FORCED, true, false);
+        KARA_MAP_ID, rearX, rearY, attumen->GetPositionZ(), false, false, false, false,
+        MovementPriority::MOVEMENT_FORCED, true, false);
 }
 
 bool AttumenTheHuntsmanSetDpsTimerAction::Execute(Event /*event*/)
 {
     uint32 const now = getMSTime();
-    return attumenDpsWaitTimer.try_emplace(bot->GetInstanceId(), now).second;
+    return EmplaceIfUnset(KaraState(bot->GetInstanceId()).attumenDpsWaitTimer, now);
 }
 
 // Moroes
@@ -899,14 +909,15 @@ bool NetherspiteManageTimersAndTrackersAction::Execute(Event /*event*/)
     if (!netherspite)
         return false;
 
-    uint32 const instanceId = netherspite->GetInstanceId();
+    std::optional<uint32>& dpsWaitTimer =
+        KaraState(netherspite->GetInstanceId()).netherspiteDpsWaitTimer;
     uint32 const now = getMSTime();
     bool const isMechanicTracker = IsMechanicTrackerBot(bot, KARA_MAP_ID);
     bool didSomething = false;
 
     if (IsBanishPhase(netherspite))
     {
-        if (isMechanicTracker && netherspiteDpsWaitTimer.erase(instanceId) > 0)
+        if (isMechanicTracker && ResetIfSet(dpsWaitTimer))
             didSomething = true;
 
         Action* redAction = context->GetAction("netherspite block red beam");
@@ -930,7 +941,7 @@ bool NetherspiteManageTimersAndTrackersAction::Execute(Event /*event*/)
             didSomething = true;
         }
     }
-    else if (isMechanicTracker && netherspiteDpsWaitTimer.try_emplace(instanceId, now).second)
+    else if (isMechanicTracker && EmplaceIfUnset(dpsWaitTimer, now))
     {
         didSomething = true;
     }
@@ -1433,7 +1444,7 @@ bool NightbaneManageTimersAndTrackersAction::Execute(Event /*event*/)
     if (!nightbane)
         return false;
 
-    uint32 const instanceId = nightbane->GetInstanceId();
+    KaraInstanceState& state = KaraState(nightbane->GetInstanceId());
     uint32 const now = getMSTime();
     bool const isMechanicTracker = IsMechanicTrackerBot(bot, KARA_MAP_ID);
     bool didSomething = false;
@@ -1449,14 +1460,14 @@ bool NightbaneManageTimersAndTrackersAction::Execute(Event /*event*/)
 
         if (isMechanicTracker)
         {
-            didSomething |= nightbaneFlightPhaseStartTimer.erase(instanceId) > 0;
-            didSomething |= nightbaneDpsWaitTimer.try_emplace(instanceId, now).second;
+            didSomething |= ResetIfSet(state.nightbaneFlightPhaseStartTimer);
+            didSomething |= EmplaceIfUnset(state.nightbaneDpsWaitTimer, now);
         }
     }
     else if (isMechanicTracker)
     {
-        didSomething |= nightbaneDpsWaitTimer.erase(instanceId) > 0;
-        didSomething |= nightbaneFlightPhaseStartTimer.try_emplace(instanceId, now).second;
+        didSomething |= ResetIfSet(state.nightbaneDpsWaitTimer);
+        didSomething |= EmplaceIfUnset(state.nightbaneFlightPhaseStartTimer, now);
     }
 
     return didSomething;

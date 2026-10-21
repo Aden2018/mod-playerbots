@@ -96,30 +96,25 @@ struct FogSafeThreshold
     bool safeSideIsNorth;  // true = safe side has higher X (north), false = lower X (south)
 };
 
-struct FelmystEncounterState
+struct FelmystDemonicVaporGuids
 {
-    IncomingEncapsulateState incomingEncapsulate;
-    bool encapsulateOccurredThisGroundPhase = false;
-    std::unordered_map<ObjectGuid, uint8> demonicVaporRegionIndices;
-    uint8 demonicVaporUsedRegionMask = 0;
-    uint8 demonicVaporFirstRegionIndex = 0;
-    FogOfCorruptionState fogOfCorruption;
-    FogPassState fogPass;
-    uint32 landingDpsWaitStartMs = 0;
-    uint32 landingTouchdownMs = 0;
-    ObjectGuid flightLeaderGuid = ObjectGuid::Empty;
+    GuidVector heads;
+    GuidVector trails;
 };
 
-extern std::unordered_map<uint32, FelmystEncounterState> felmystEncounterStates;
+inline constexpr uint32 DEMONIC_VAPOR_CACHE_INTERVAL_MS = 200;
+inline constexpr float DEMONIC_VAPOR_SEARCH_RADIUS = 100.0f;
+// A head is treated as its summoner's only within this distance of them, edge to edge.
+inline constexpr float DEMONIC_VAPOR_SUMMONER_RADIUS = 50.0f;
 
-// How far ranged bots position from the center of each ranged group.
-inline constexpr float FELMYST_RANGED_GROUP_RADIUS = 0.5f;
-// Bots wait 300ms to react to Encapsulate (to make the action look less artificial).
+// How close to the center of a ground stack a bot stops, center to center.
+inline constexpr float FELMYST_RANGED_GROUP_RADIUS = 2.0f;
+// Bots wait this long to react to Encapsulate (to make the action look less artificial).
 inline constexpr uint32 ENCAPSULATE_DELAY_MS = 300;
 // How close ranged have to be to a player charmed by Fog to attack.
 inline constexpr float FELMYST_CHARMED_TARGET_RANGE = 30.0f;
 // How long after landing following a flight phase does the raid keeps holding DPS.
-inline constexpr uint32 FELMYST_GROUNDED_DPS_WAIT_MS = 3000;
+inline constexpr uint32 FELMYST_GROUNDED_DPS_WAIT_MS = 3 * IN_MILLISECONDS;
 // How close Felmyst must be to a specified position to be considered there.
 inline constexpr float FELMYST_LOCATION_MATCH_DISTANCE = 2.0f;
 // How far a fog destination must be from any vapor. Vapor has a 3y radius and no real buffer is
@@ -221,7 +216,8 @@ bool TryGetFelmystGroundStackPosition(
 FelmystGroundStack GetClosestFelmystGroundStack(Player* bot, Unit* felmyst, Unit* unit);
 float GetFelmystFrontAngle(Player* bot, Unit* felmyst);
 bool TryGetFelmystRangedPosition(Player* bot, Unit* felmyst, Position& position);
-Creature* GetFelmystDemonicVaporSummonedByBot(Player* bot);
+FelmystDemonicVaporGuids FindFelmystDemonicVaporGuids(Player* bot);
+Creature* GetFelmystDemonicVaporSummonedBy(Player* bot, Player* summoner);
 bool IsFelmystDemonicVaporHeadNearBot(Player* bot);
 std::vector<Creature*> GetDemonicVaporHazards(Player* bot);
 void ClearFelmystDemonicVaporKiteState(Player* bot);
@@ -238,10 +234,32 @@ bool TryGetFelmystFogOfCorruptionStageState(Unit* felmyst, FogOfCorruptionState&
 bool TryGetActiveFogOfCorruptionState(Player* bot, Unit* felmyst, FogOfCorruptionState& state);
 void RecordFelmystIncomingEncapsulateTarget(Player* target, uint32 durationMs = 3000);
 Player* GetFelmystEncapsulateTarget(Player* bot);
+bool ShouldMoveAwayFromFelmystEncapsulateTarget(
+    Player* bot, Unit* felmyst, Player* encapsulateTarget);
 bool DidEncapsulateOccurThisGroundPhase(Player* bot);
 Player* GetFelmystGasNovaDispelTarget(Player* bot);
 Player* GetFelmystCharmedTarget(Player* bot, Unit* felmyst);
 Player* GetFelmystFlightLeader(Player* player);
+
+// Shared encounter state
+
+struct FelmystEncounterState
+{
+    IncomingEncapsulateState incomingEncapsulate;
+    bool encapsulateOccurredThisGroundPhase = false;
+    std::unordered_map<ObjectGuid, uint8> demonicVaporRegionIndices;
+    uint8 demonicVaporUsedRegionMask = 0;
+    uint8 demonicVaporFirstRegionIndex = 0;
+    FogOfCorruptionState fogOfCorruption;
+    FogPassState fogPass;
+    uint32 landingDpsWaitStartMs = 0;
+    uint32 landingTouchdownMs = 0;
+    ObjectGuid flightLeaderGuid = ObjectGuid::Empty;
+};
+
+FelmystEncounterState& FelmystState(uint32 instanceId);
+FelmystEncounterState* FindFelmystState(uint32 instanceId);
+bool FelmystResetInstance(uint32 instanceId);
 
 }
 

@@ -9,9 +9,12 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "Position.h"
 #include <type_traits>
 
 class Player;
+class PlayerbotAI;
+class Unit;
 
 namespace SwpHelpers
 {
@@ -38,18 +41,14 @@ enum class SwpSpells : uint32
 
     // Brutallus
     SPELL_METEOR_SLASH                 = 45150, // 120° cone
-    SPELL_BURN                         = 46394, // Spread radius is 2y, no CombatReaches added
+    SPELL_BURN                         = 46394, // Spread radius is 2y, no combat reaches added
 
     // Felmyst
     SPELL_SUMMON_DEMONIC_VAPOR         = 45391,
     SPELL_ENCAPSULATE                  = 45661,
     SPELL_GAS_NOVA                     = 45855,
     SPELL_FELMYST_SPEED_BURST          = 45495,
-    SPELL_FOG_OF_CORRUPTION            = 45582,
     SPELL_FOG_OF_CORRUPTION_CHARM      = 45717,
-    SPELL_FELMYST_STRAFE_TOP           = 45585,
-    SPELL_FELMYST_STRAFE_MIDDLE        = 45633,
-    SPELL_FELMYST_STRAFE_BOTTOM        = 45635,
 
     // Eredar Twins
     SPELL_BLAZE                        = 45235,
@@ -76,7 +75,8 @@ enum class SwpSpells : uint32
     SPELL_SHADOW_SPIKE                 = 46680,
 
     // Hunter
-    SPELL_MISDIRECTION                 = 35079,
+    SPELL_MISDIRECTION                 = 34477,
+    SPELL_MISDIRECTION_AURA            = 35079, // the aura on the hunter
 
     // Mage
     SPELL_SPELLSTEAL                   = 30449,
@@ -103,12 +103,16 @@ enum class SwpNpcs : uint32
     NPC_KALECGOS_DRAGON          = 24850,
     NPC_KALECGOS_HUMANOID        = 24891,
 
+    // Brutallus
+    NPC_BRUTALLUS                = 24882,
+
     // Felmyst
     NPC_FELMYST                  = 25038,
     NPC_DEMONIC_VAPOR            = 25265, // The vapor "head" that chases a player
     NPC_DEMONIC_VAPOR_TRAIL      = 25267,
 
     // Eredar Twins
+    NPC_LADY_SACROLASH           = 25165,
     NPC_GRAND_WARLOCK_ALYTHESS   = 25166,
 
     // M'uru
@@ -123,6 +127,7 @@ enum class SwpNpcs : uint32
     NPC_SINGULARITY              = 25855,
 
     // Kil'jaeden <The Deceiver>
+    NPC_KILJAEDEN                = 25315,
     NPC_SHIELD_ORB               = 25502,
     NPC_HAND_OF_THE_DECEIVER     = 25588,
     NPC_POWER_OF_THE_BLUE_FLIGHT = 25653,
@@ -147,6 +152,10 @@ enum class SwpObjects : uint32
 
 inline constexpr uint32 SWP_MAP_ID = 580;
 
+// Steps short enough to navigate poor terrain, matching the standard in EncounterHelpers.
+inline constexpr float PATH_STEP_DISTANCE = 3.5f;
+inline constexpr float PATH_BACKWARD_STEP_DISTANCE = 2.25f;
+
 // Ability reaches from SpellRange.dbc (MaxRangeHostile). _REACH is the distance from the caster to
 // a target; _RADIUS is the area around the caster. Both are the raw dbc figures. A single-target
 // cast counts both combat reaches, so using unmodified _REACH is conservative.
@@ -165,7 +174,6 @@ inline constexpr float SELF_AOE_RACIAL_RADIUS = 8.0f;
 // Radius for Challenging Shout and Challenging Roar.
 inline constexpr float TAUNT_SHOUT_RADIUS = 10.0f;
 
-// For the "swp volatile fiend" value.
 inline constexpr uint32 VOLATILE_FIEND_CACHE_INTERVAL_MS = 200;
 // Felfire Fission (45779), the fiend's death explosion, hits within 10y and just murders melee
 // bots (and me). This distance is farther since the fiends are running toward the raid.
@@ -184,6 +192,20 @@ float GetCenteredArcSlotAngleOffset(uint8 slotIndex, uint8 slotCount, float arcW
 uint32 GetManualCastCooldown(uint32 spellId);
 // Same as above, except for enforcing a GCD for abilities with no cooldowns.
 uint32 GetManualCastGlobalCooldown(uint32 spellId);
+// Misdirection on the tank, then Steady Shot on the target while it is up, to spend it.
+bool MisdirectTargetToTank(PlayerbotAI* botAI, Unit* target, Player* tank);
+// One step along the bot's path to a point, stopping short of it by stopDistance. The step
+// follows the path corner-by-corner, rather than aiming at the far end of it, so a bot can move
+// around an obstacle between it and the point.
+bool GetPathStepTowardPoint(
+    Player* bot, Position const& destination, float stopDistance, float stepDistance,
+    float& stepX, float& stepY);
+// GetStepToPosition() from EncounterHelpers, but each step follows the path. Pass the unit being
+// tanked as facing to walk the step backwards when it leads away from that unit. Returns false
+// once the bot is within arrivalDist or when there is no path. Pass the bot's Z to MoveTo().
+bool GetPathStepToPosition(
+    Player* bot, Position const& position, float arrivalDist, Unit* facing, float& stepX,
+    float& stepY, bool& backwards);
 
 }
 

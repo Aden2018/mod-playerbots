@@ -297,11 +297,11 @@ public:
 
     std::vector<WorldPosition> getPathTo(WorldPosition endPos, Unit* bot) { return endPos.getPathFrom(*this, bot); }
 
-    bool isPathTo(std::vector<WorldPosition> path, float maxDistance = sPlayerbotAIConfig.targetPosRecalcDistance)
+    bool isPathTo(std::vector<WorldPosition> path, float maxDistance = sPlayerbotAIConfig.TargetPosRecalcDistance)
     {
         return !path.empty() && distance(path.back()) < maxDistance;
     };
-    bool cropPathTo(std::vector<WorldPosition>& path, float maxDistance = sPlayerbotAIConfig.targetPosRecalcDistance);
+    bool cropPathTo(std::vector<WorldPosition>& path, float maxDistance = sPlayerbotAIConfig.TargetPosRecalcDistance);
     bool canPathTo(WorldPosition endPos, Unit* bot) { return endPos.isPathTo(getPathTo(endPos, bot)); }
 
     float getPathLength(std::vector<WorldPosition> points)
@@ -566,18 +566,18 @@ protected:
     uint32 visitors = 0;
     uint32 maxVisitors = 0;
     uint32 maxVisitorsPerPoint = 0;
-    uint32 expireDelay = 5 * 1000;
-    uint32 cooldownDelay = 60 * 1000;
+    uint32 expireDelay = 5 * IN_MILLISECONDS;
+    uint32 cooldownDelay = MINUTE * IN_MILLISECONDS;
 };
 
 // A travel target that is always inactive and jumps to cooldown.
 class NullTravelDestination : public TravelDestination
 {
 public:
-    NullTravelDestination(uint32 cooldownDelay1 = 5 * 60 * 1000) : TravelDestination()
+    NullTravelDestination(uint32 cooldownDelay1 = 5 * MINUTE * IN_MILLISECONDS) : TravelDestination()
     {
         cooldownDelay = cooldownDelay1;
-    };
+    }
 
     Quest const* GetQuestTemplate() override { return nullptr; }
 

@@ -11,9 +11,9 @@
 #include "ObjectGuid.h"
 #include "Position.h"
 #include <array>
+#include <optional>
 #include <tuple>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 class Player;
@@ -61,9 +61,6 @@ enum class KaraSpells : uint32
     SPELL_CHARRED_EARTH           = 30129,
     SPELL_RAIN_OF_BONES           = 37091,
 
-    // Priest
-    SPELL_FEAR_WARD               = 6346,
-
     // Shaman
     SPELL_TREMOR_TOTEM            = 8143,
     SPELL_GROUNDING_TOTEM         = 8177,
@@ -72,31 +69,61 @@ enum class KaraSpells : uint32
 enum class KaraNpcs : uint32
 {
     // Trash
-    NPC_MANA_WARP                 = 16530,
+    NPC_MANA_WARP                   = 16530,
 
     // Attumen the Huntsman
-    NPC_ATTUMEN_THE_HUNTSMAN      = 16152, // ID for mounted version
+    NPC_ATTUMEN_THE_HUNTSMAN        = 16152, // Mounted version
+
+    // Moroes
+    NPC_LADY_KEIRA_BERRYBUCK        = 17007,
+    NPC_LADY_CATRIONA_VON_INDI      = 19872,
+    NPC_LORD_CRISPIN_FERENCE        = 19873,
+    NPC_BARON_RAFE_DREUGER          = 19874,
+    NPC_BARONESS_DOROTHEA_MILLSTIPE = 19875,
+    NPC_LORD_ROBIN_DARIS            = 19876,
+
+    // Romulo and Julianne
+    NPC_ROMULO                      = 17533,
+    NPC_JULIANNE                    = 17534,
+
+    // The Wizard of Oz
+    NPC_DOROTHEE                    = 17535,
+    NPC_STRAWMAN                    = 17543,
+    NPC_ROAR                        = 17546,
+    NPC_TINHEAD                     = 17547,
+    NPC_TITO                        = 17548,
+
+    // The Curator
+    NPC_THE_CURATOR                 = 15691,
+
+    // Terestian Illhoof
+    NPC_TERESTIAN_ILLHOOF           = 15688,
+    NPC_KILREK                      = 17229,
 
     // Shade of Aran
-    NPC_CONJURED_ELEMENTAL        = 17167,
+    NPC_CONJURED_ELEMENTAL          = 17167,
 
     // Netherspite
-    NPC_VOID_ZONE                 = 16697,
-    NPC_GREEN_PORTAL              = 17367, // "Nether Portal - Serenity <Healing Portal>"
-    NPC_BLUE_PORTAL               = 17368, // "Nether Portal - Dominance <Damage Portal>"
-    NPC_RED_PORTAL                = 17369, // "Nether Portal - Perseverance <Tanking Portal>"
+    NPC_NETHERSPITE                 = 15689,
+    NPC_VOID_ZONE                   = 16697,
+    NPC_GREEN_PORTAL                = 17367, // "Nether Portal - Serenity <Healing Portal>"
+    NPC_BLUE_PORTAL                 = 17368, // "Nether Portal - Dominance <Damage Portal>"
+    NPC_RED_PORTAL                  = 17369, // "Nether Portal - Perseverance <Tanking Portal>"
 
     // Prince Malchezaar
-    NPC_NETHERSPITE_INFERNAL      = 17646,
+    NPC_PRINCE_MALCHEZAAR           = 15690,
+    NPC_NETHERSPITE_INFERNAL        = 17646,
+
+    // Nightbane
+    NPC_NIGHTBANE                   = 17225,
 };
 
-// General
+// Shared
 inline constexpr uint32 KARA_MAP_ID = 532;
 bool IsSafePosition (float x, float y, std::vector<Unit*> const& hazards, float hazardRadius);
 
 // Attumen the Huntsman
 inline Position const ATTUMEN_TANK_POSITION = { -11123.762f, -1926.619f, 49.215f };
-extern std::unordered_map<uint32, uint32> attumenDpsWaitTimer;
 Unit* GetAttumenMounted(Player* bot);
 
 // Maiden of Virtue
@@ -138,10 +165,6 @@ bool IsAranCastingArcaneExplosion(Unit* aran);
 bool IsFlameWreathActive(Player* bot);
 
 // Netherspite
-extern std::unordered_map<uint32, uint32> netherspiteDpsWaitTimer;
-extern std::unordered_map<uint32, ObjectGuid> currentRedBlocker;
-extern std::unordered_map<uint32, ObjectGuid> currentGreenBlocker;
-extern std::unordered_map<uint32, ObjectGuid> currentBlueBlocker;
 bool IsBanishPhase(Unit* netherspite);
 std::vector<Player*> GetRedBlockers(Player* bot);
 std::vector<Player*> GetBlueBlockers(Player* bot);
@@ -177,8 +200,24 @@ inline std::array const NIGHTBANE_RAIN_OF_BONES_POSITIONS = {
     Position{ -11158.752f, -1909.394f, 91.473f },  // backup in case of charred earth
 };
 inline Position const NIGHTBANE_TELEPORT_POSITION = { -11159.555f, -1893.526f, 91.473f };
-extern std::unordered_map<uint32, uint32> nightbaneDpsWaitTimer;
-extern std::unordered_map<uint32, uint32> nightbaneFlightPhaseStartTimer;
+
+// Shared encounter state
+
+struct KaraInstanceState
+{
+    std::optional<uint32> attumenDpsWaitTimer;
+    std::optional<uint32> netherspiteDpsWaitTimer;
+    std::optional<ObjectGuid> currentRedBlocker;
+    std::optional<ObjectGuid> currentGreenBlocker;
+    std::optional<ObjectGuid> currentBlueBlocker;
+    std::optional<uint32> nightbaneDpsWaitTimer;
+    std::optional<uint32> nightbaneFlightPhaseStartTimer;
+};
+
+KaraInstanceState& KaraState(uint32 instanceId);
+// Every bot runs this one in the reset; only the mechanic tracker runs KaraResetInstance().
+bool KaraResetBeamBlockers(uint32 instanceId);
+bool KaraResetInstance(uint32 instanceId);
 
 }
 
