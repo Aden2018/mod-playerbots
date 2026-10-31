@@ -11,7 +11,6 @@
 #include "SharedDefines.h"
 #include "Spell.h"
 #include <algorithm>
-#include <limits>
 #include <vector>
 
 using namespace BtHelpers;
@@ -124,7 +123,7 @@ bool HighWarlordNajentusHasTidalShieldTrigger::IsActiveInEncounter()
     if (!najentus || !najentus->HasAura(Id(BtSpells::SPELL_TIDAL_SHIELD)))
         return false;
 
-    return botAI->HasItemInInventory(Id(BtItems::ITEM_NAJENTUS_SPINE));
+    return bot->HasItemCount(Id(BtItems::ITEM_NAJENTUS_SPINE));
 }
 
 // Supremus
@@ -185,16 +184,18 @@ bool SupremusReachBlockedByFireTrigger::IsActiveInEncounter()
     if (!AI_VALUE2(Unit*, "find target", "supremus"))
         return false;
 
-    Unit* target;
-    float range;
-    return GetSupremusReachBlockedByFire(botAI, target, range);
+    return GetSupremusFireBlockedReachTarget(botAI);
 }
 
 // Shade of Akama
 
-bool ShadeOfAkamaShouldPrioritizeChannelersTrigger::IsActiveInEncounter()
+bool ShadeOfAkamaShouldAttackChannelersAndSorcerersTrigger::IsActiveInEncounter()
 {
-    if (!PlayerbotAI::IsDps(bot) || !PlayerbotAI::IsMelee(bot))
+    if (!PlayerbotAI::IsDps(bot))
+        return false;
+
+    // Shadow Priests (by proxy via dps check) and melee dps focus on Channelers (and Sorcerers).
+    if (bot->getClass() != CLASS_PRIEST && !PlayerbotAI::IsMelee(bot))
         return false;
 
     return GetShadeOfAkamaKillTarget(botAI);
@@ -301,11 +302,8 @@ bool GurtoggBloodboilRangedShouldAvoidFrontalConeTrigger::IsActiveInEncounter()
     // Arcing Smash only hits in front of him, but he turns faster than bots can react, so at the
     // start of Fel Rage everyone near the target moves regardless of side.
     Aura* felRage = gurtogg->GetAura(Id(BtSpells::SPELL_BOSS_FEL_RAGE));
-    if (felRage &&
-        felRage->GetMaxDuration() - felRage->GetDuration() < GURTOGG_FEL_RAGE_EARLY_AVOID_MS)
-    {
+    if (felRage && GetAuraElapsedMs(felRage) < GURTOGG_FEL_RAGE_EARLY_AVOID_MS)
         return true;
-    }
 
     return gurtogg->HasInArc(static_cast<float>(M_PI), bot);
 }
@@ -366,15 +364,12 @@ bool ReliquaryOfSoulsEssenceOfDesireCastsDeadenTrigger::IsActiveInEncounter()
         return false;
 
     Unit* desire = AI_VALUE2(Unit*, "find target", "essence of desire");
-    if (!desire || !desire->HasUnitState(UNIT_STATE_CASTING))
+    if (!desire)
         return false;
 
-    Spell* spell = desire->GetCurrentSpell(CURRENT_GENERIC_SPELL);
-    if (!spell || spell->m_spellInfo->Id != Id(BtSpells::SPELL_DEADEN))
-        return false;
-
-    Unit* target = spell->m_targets.GetUnitTarget();
-    return target && target->GetGUID() == bot->GetGUID();
+    Spell* deaden = desire->FindCurrentSpellBySpellId(Id(BtSpells::SPELL_DEADEN));
+    return deaden && deaden->getState() == SPELL_STATE_PREPARING &&
+        deaden->m_targets.GetUnitTarget() == bot;
 }
 
 // Mother Shahraz
@@ -390,7 +385,7 @@ bool MotherShahrazShouldBeTankedTrigger::IsActiveInEncounter()
     return !bot->HasAura(Id(BtSpells::SPELL_FATAL_ATTRACTION));
 }
 
-bool MotherShahrazTanksArePositioningBossTrigger::IsActiveInEncounter()
+bool MotherShahrazBeingPositionedTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsMelee(bot) || !PlayerbotAI::IsDps(bot))
         return false;
@@ -398,7 +393,7 @@ bool MotherShahrazTanksArePositioningBossTrigger::IsActiveInEncounter()
     return IsShahrazBeingPositioned(AI_VALUE2(Unit*, "find target", "mother shahraz"));
 }
 
-bool MotherShahrazRangedShouldPositionUnderPillarTrigger::IsActiveInEncounter()
+bool MotherShahrazRangedShouldPositionUnderStatueTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsRanged(bot))
         return false;
@@ -433,18 +428,12 @@ bool IllidariCouncilGathiosCastsJudgementOfCommandTrigger::IsActiveInEncounter()
         return false;
 
     Unit* gathios = AI_VALUE2(Unit*, "find target", "gathios the shatterer");
-    if (!gathios || !gathios->HasUnitState(UNIT_STATE_CASTING) ||
-        !gathios->HasAura(Id(BtSpells::SPELL_SEAL_OF_COMMAND)))
-    {
-        return false;
-    }
-
-    Spell* spell = gathios->GetCurrentSpell(CURRENT_GENERIC_SPELL);
-    if (!spell || spell->m_spellInfo->Id != Id(BtSpells::SPELL_JUDGEMENT))
+    if (!gathios || !gathios->HasAura(Id(BtSpells::SPELL_SEAL_OF_COMMAND)))
         return false;
 
-    Unit* target = spell->m_targets.GetUnitTarget();
-    return target && target->GetGUID() == bot->GetGUID() && PlayerbotAI::IsMainTank(bot);
+    Spell* judgement = gathios->FindCurrentSpellBySpellId(Id(BtSpells::SPELL_JUDGEMENT));
+    return judgement && judgement->getState() == SPELL_STATE_PREPARING &&
+        judgement->m_targets.GetUnitTarget() == bot && PlayerbotAI::IsMainTank(bot);
 }
 
 // Ranged DPS interrupt only while her melee can't: under Blessing of Protection, or while she
@@ -575,6 +564,7 @@ bool IllidariCouncilShouldManageDpsTimerTrigger::IsActiveInEncounter()
 
 bool IllidanStormrageShouldPositionForPullTrigger::IsActive()
 {
+    // You are not prepared!
     return AI_VALUE(bool, "illidan stormrage speech in progress");
 }
 
@@ -637,15 +627,11 @@ bool IllidanStormrageParasiticShadowfiendOnGroupMemberTrigger::IsActiveInEncount
     if (phase == IllidanPhase::Flying)
         return IsIllidanInfectionPositionKeptInFlight(botAI);
 
-    if (phase == IllidanPhase::Demon && IsIllidanWarlockTank(botAI))
-        return false;
-
-    return !PlayerbotAI::IsTank(bot) || !PlayerbotAI::IsMainTank(bot);
+    return !IsExemptFromIllidanInfectionRun(botAI, illidan, bot);
 }
 
-// The mechanic tracker records each new infection while there is a shadowfiend birthing position,
-// keeps looking for a trap hunter while none is ready, and drops an entry once its debuff is gone
-// or the shadowfiend phase changes.
+// The mechanic tracker records each new infection while there is an infection position, keeps
+// looking for a trap hunter while none is ready, and drops an entry once its debuff is gone.
 bool IllidanStormrageShouldTrackInfectionsTrigger::IsActiveInEncounter()
 {
     if (!IsMechanicTrackerBot(bot, BT_MAP_ID))
@@ -658,12 +644,8 @@ bool IllidanStormrageShouldTrackInfectionsTrigger::IsActiveInEncounter()
     auto const& infected = context->GetValue<GuidVector>(
         "illidan stormrage players with parasitic shadowfiend")->RefGet();
     IllidanPhase const phase = GetIllidanPhase(illidan);
-    IllidanPhase const infectionPhase = GetIllidanInfectionPositionPhase(*illidan, phase);
     bool const hasInfectionPosition = phase != IllidanPhase::None && phase != IllidanPhase::Flying;
-    BtInstanceState const* state = FindBtState(bot->GetInstanceId());
-    auto const* infections =
-        state && state->illidanInfections ? &*state->illidanInfections : nullptr;
-
+    auto const* infections = FindIllidanInfections(bot->GetInstanceId());
     if (infections)
     {
         for (auto const& [player, infection] : *infections)
@@ -671,11 +653,8 @@ bool IllidanStormrageShouldTrackInfectionsTrigger::IsActiveInEncounter()
             if (std::find(infected.begin(), infected.end(), player) == infected.end())
                 return true;
 
-            if (hasInfectionPosition &&
-                (infection.phase != infectionPhase || !infection.isTrapAssigned))
-            {
+            if (hasInfectionPosition && !infection.isTrapAssigned)
                 return true;
-            }
         }
     }
 
@@ -703,7 +682,7 @@ bool IllidanStormrageFlamesOfAzzinothShouldBeTankedTrigger::IsActiveInEncounter(
     return IsFlameOfAzzinothTank(bot) && !IsIllidanInfectionPositionKeptInFlight(botAI);
 }
 
-bool IllidanStormragePetsDieToFireTrigger::IsActiveInEncounter()
+bool IllidanStormragePetsDieToHazardsTrigger::IsActiveInEncounter()
 {
     Pet* pet = bot->GetPet();
     if (!pet || !pet->IsAlive())
@@ -713,14 +692,12 @@ bool IllidanStormragePetsDieToFireTrigger::IsActiveInEncounter()
     if (!illidan)
         return false;
 
-    IllidanPhase const phase = GetIllidanPhase(illidan);
-    bool const shouldBePassive = phase == IllidanPhase::Flying || phase == IllidanPhase::Demon;
-    return shouldBePassive != pet->HasReactState(REACT_PASSIVE);
+    return ShouldIllidanPetsBePassive(botAI, illidan) != pet->HasReactState(REACT_PASSIVE);
 }
 
 // Hunter and warlock pets take the Shadowfiends, which never attack pets.
-// Hunter and warlock pets in Phases 1, 3 and 5. In Demon Form every pet, passive then, once no
-// Shadow Demon is left for it.
+// Hunter and warlock pets in Phases 1, 2, 3 and 5 and the death scene. In Demon Form every pet,
+// passive then, once no Shadow Demon is left for it.
 bool IllidanStormragePetShouldAttackShadowfiendTrigger::IsActiveInEncounter()
 {
     Pet* pet = bot->GetPet();
@@ -749,11 +726,14 @@ bool IllidanStormragePetShouldAttackShadowfiendTrigger::IsActiveInEncounter()
         if (GetShadowDemonForPetToAttack(botAI, *pet))
             return false;
     }
-    else if (phase == IllidanPhase::Initial || phase == IllidanPhase::Grounded ||
-        phase == IllidanPhase::Maiev)
+    else if (phase == IllidanPhase::Initial || phase == IllidanPhase::Flying ||
+        phase == IllidanPhase::Grounded || phase == IllidanPhase::Maiev ||
+        phase == IllidanPhase::Dying)
     {
+        // While he flies the pet stays passive, so it takes no Flame, and only the command sends
+        // it onto Shadowfiends left from Phase 1.
         if ((bot->getClass() != CLASS_HUNTER && bot->getClass() != CLASS_WARLOCK) ||
-            pet->HasReactState(REACT_PASSIVE))
+            (phase != IllidanPhase::Flying && pet->HasReactState(REACT_PASSIVE)))
         {
             return false;
         }
@@ -784,7 +764,7 @@ bool IllidanStormragePetShouldAttackShadowDemonTrigger::IsActiveInEncounter()
     return GetShadowDemonForPetToAttack(botAI, *pet);
 }
 
-bool IllidanStormrageGrateIsSafeFromFlamesTrigger::IsActiveInEncounter()
+bool IllidanStormrageShouldPositionAboveGrateTrigger::IsActiveInEncounter()
 {
     Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
     if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Flying)
@@ -799,21 +779,25 @@ bool IllidanStormrageGrateIsSafeFromFlamesTrigger::IsActiveInEncounter()
     return !IsFlameOfAzzinothTank(bot);
 }
 
-// Ice Block, Divine Shield and Cloak of Shadows each clear both debuffs on use.
+// Ice Block, Divine Shield and Cloak of Shadows each clear both debuffs on use, Dark Barrage
+// after a moment. Not for the Main Tank or a Flame tank: an immunity loses it whatever it holds.
 bool IllidanStormrageImmunityCanClearDebuffTrigger::IsActiveInEncounter()
 {
     bool const isPaladin = bot->getClass() == CLASS_PALADIN;
     if (!isPaladin && bot->getClass() != CLASS_MAGE && bot->getClass() != CLASS_ROGUE)
         return false;
 
-    if (!bot->HasAura(Id(BtSpells::SPELL_DARK_BARRAGE)) &&
-        !bot->HasAura(Id(BtSpells::SPELL_AGONIZING_FLAMES)))
-    {
+    Aura const* darkBarrage = bot->GetAura(Id(BtSpells::SPELL_DARK_BARRAGE));
+    bool const isDarkBarrageDue =
+        darkBarrage && GetAuraElapsedMs(darkBarrage) >= ILLIDAN_DARK_BARRAGE_REACTION_MS;
+    if (!isDarkBarrageDue && !bot->HasAura(Id(BtSpells::SPELL_AGONIZING_FLAMES)))
         return false;
-    }
 
     if (isPaladin)
-        return !PlayerbotAI::IsMainTank(bot);
+    {
+        return !(PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot)) &&
+            !IsFlameOfAzzinothTank(bot);
+    }
 
     return true;
 }
@@ -838,14 +822,32 @@ bool IllidanStormrageImmunityNoLongerNeededTrigger::IsActiveInEncounter()
     return AI_VALUE2(Unit*, "find target", "illidan stormrage");
 }
 
-// An infected bot runs to the infection position instead.
-bool IllidanStormrageShouldPositionForLandingTrigger::IsActiveInEncounter()
+// Totems set for the last phase would take a Flame in its first 2 s, or be back on his threat
+// list before the tank, so they come up at each phase change.
+bool IllidanStormrageShamanHasTotemsBeforeTanksHaveAggroTrigger::IsActiveInEncounter()
 {
-    if ((PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot)))
+    if (bot->getClass() != CLASS_SHAMAN)
+        return false;
+
+    bool hasTotem = false;
+    for (uint8 slot = SUMMON_SLOT_TOTEM_FIRE; slot < MAX_TOTEM_SLOT; ++slot)
+        hasTotem = hasTotem || !bot->m_SummonSlot[slot].IsEmpty();
+
+    if (!hasTotem)
         return false;
 
     Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
-    if (GetIllidanPhase(illidan) != IllidanPhase::Landing)
+    return illidan && IsIllidanTankAggroPending(*illidan, GetIllidanPhase(illidan));
+}
+
+// An infected bot runs to the infection position instead.
+bool IllidanStormrageShouldPositionForLandingTrigger::IsActiveInEncounter()
+{
+    Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
+    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Landing)
+        return false;
+
+    if (PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot))
         return false;
 
     return !HasParasiticShadowfiend(bot);
@@ -896,50 +898,54 @@ bool IllidanStormrageRangedShouldSpreadTrigger::IsActiveInEncounter()
 
     IllidanPhase const phase = GetIllidanPhase(illidan);
 
-    if (phase == IllidanPhase::Demon && IsIllidanWarlockTank(botAI))
-        return false;
-
-    // While a Demon walks to the warlock tank, ranged DPS may leave their slots to reach it.
-    if (phase == IllidanPhase::Demon && !PlayerbotAI::IsHeal(bot) &&
-        GetShadowDemonWalkingToWarlockTank(botAI))
+    if (phase == IllidanPhase::Demon)
     {
-        return false;
+        if (IsIllidanWarlockTank(botAI))
+            return false;
+
+        // While a Demon walks to the warlock tank, ranged DPS may leave their slots to reach it.
+        if (!PlayerbotAI::IsHeal(bot) && GetShadowDemonMovingToWarlockTank(botAI))
+            return false;
+
+        return true;
     }
 
     return phase == IllidanPhase::Initial || phase == IllidanPhase::Grounded ||
-        phase == IllidanPhase::Demon || phase == IllidanPhase::Maiev;
+        phase == IllidanPhase::Maiev;
 }
 
 // Ranged DPS walk into spell reach of a Shadow Demon walking to the warlock tank, whose death
 // wipes the raid. Healers stay to heal.
 bool IllidanStormrageRangedShouldReachShadowDemonTrigger::IsActiveInEncounter()
 {
-    if (!PlayerbotAI::IsRanged(bot) || PlayerbotAI::IsHeal(bot) || HasParasiticShadowfiend(bot))
-        return false;
-
-    Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
-    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon || IsIllidanWarlockTank(botAI))
-        return false;
-
-    Unit* demon = GetShadowDemonWalkingToWarlockTank(botAI);
-    return demon && !bot->IsWithinCombatRange(demon, botAI->GetRange("spell"));
-}
-
-// Melee and tanks take their Demon Form slots; the Main Tank has its own positions.
-bool IllidanStormrageMeleeShouldStayAwayFromDemonFormTrigger::IsActiveInEncounter()
-{
-    if (!PlayerbotAI::IsMelee(bot) || (PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot)))
+    if (!PlayerbotAI::IsRangedDps(bot))
         return false;
 
     Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
     if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon)
         return false;
 
-    if (HasParasiticShadowfiend(bot))
+    if (HasParasiticShadowfiend(bot) || IsIllidanWarlockTank(botAI))
         return false;
 
-    Unit* target = AI_VALUE(Unit*, "current target");
-    return !target || target->GetEntry() != Id(BtNpcs::NPC_SHADOW_DEMON);
+    Unit* demon = GetShadowDemonMovingToWarlockTank(botAI);
+    return demon && !bot->IsWithinCombatRange(demon, botAI->GetRange("spell"));
+}
+
+// Melee and tanks take their Demon Form slots; the Main Tank has its own positions.
+bool IllidanStormrageMeleeShouldStayAwayFromDemonFormTrigger::IsActiveInEncounter()
+{
+    if (!PlayerbotAI::IsMelee(bot))
+        return false;
+
+    Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
+    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon || HasParasiticShadowfiend(bot))
+        return false;
+
+    if (PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot))
+        return false;
+
+    return !IsTargetingShadowDemon(botAI);
 }
 
 bool IllidanStormrageWarlockShouldTankDemonFormTrigger::IsActiveInEncounter()
@@ -956,20 +962,26 @@ bool IllidanStormrageWarlockShouldTankDemonFormTrigger::IsActiveInEncounter()
 
 // Every warlock, the warlock tank included, casts Seed of Corruption on the Shadow Demons while
 // two or more are alive. They all walk toward the raid, so a Seed going off on one usually
-// catches others.
+// catches others. Not while infected, so the run comes first, nor next to fresh Shadowfiends,
+// which the explosion would turn onto the warlock.
 bool IllidanStormrageWarlockShouldSeedShadowDemonsTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_WARLOCK)
         return false;
 
     Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
-    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon)
+    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon || HasParasiticShadowfiend(bot))
         return false;
 
     if (IsIllidanPhaseStartWithin(*illidan, IllidanPhase::Demon, ILLIDAN_SHADOW_DEMON_SPAWN_MS))
         return false;
 
-    return context->GetValue<std::vector<ShadowDemon>>("shadow demons")->RefGet().size() >= 2;
+    auto const& shadowDemons =
+        context->GetValue<std::vector<ShadowDemon>>("illidan stormrage shadow demons")->RefGet();
+    if (shadowDemons.size() < 2)
+        return false;
+
+    return !IsNearNewParasiticShadowfiend(botAI);
 }
 
 // Tanks other than the Main Tank join the melee in Phases 1, 3, 4 and 5; while he flies the
@@ -999,44 +1011,6 @@ bool IllidanStormrageShouldAssignTargetPriorityTrigger::IsActiveInEncounter()
 
     return phase == IllidanPhase::Demon &&
         !IsIllidanDemonFormEnding(*illidan, ILLIDAN_MAIN_TANK_WALK_IN_MS);
-}
-
-bool IllidanStormrageMaievPlacedCageTrapTrigger::IsActiveInEncounter()
-{
-    Unit* illidan = AI_VALUE2(Unit*, "find target", "illidan stormrage");
-    if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Maiev)
-        return false;
-
-    GameObject* trap = FindNearestCageTrap(botAI);
-    if (!trap)
-        return false;
-
-    Group* group = bot->GetGroup();
-    if (!group)
-        return false;
-
-    Player* closestBot = nullptr;
-    float closestDist = std::numeric_limits<float>::max();
-
-    for (GroupReference* ref = group->GetFirstMember(); ref; ref = ref->next())
-    {
-        Player* member = ref->GetSource();
-        if (!member || !member->IsAlive() || illidan->GetVictim() == member ||
-            !GET_PLAYERBOT_AI(member) ||
-            (PlayerbotAI::IsTank(member) && PlayerbotAI::IsMainTank(member)))
-        {
-            continue;
-        }
-
-        float const dist = member->GetDistance(trap);
-        if (dist < closestDist)
-        {
-            closestDist = dist;
-            closestBot = member;
-        }
-    }
-
-    return closestBot == bot;
 }
 
 bool IllidanStormrageShouldManageDpsTimersTrigger::IsActiveInEncounter()

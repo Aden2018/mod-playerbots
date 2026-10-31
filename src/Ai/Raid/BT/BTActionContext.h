@@ -20,8 +20,8 @@ public:
             &RaidBlackTempleActionContext::black_temple_reset_encounter_states;
 
         // Trash
-        creators["focus sister of pleasure"] =
-            &RaidBlackTempleActionContext::focus_sister_of_pleasure;
+        creators["sister of pleasure focus dps"] =
+            &RaidBlackTempleActionContext::sister_of_pleasure_focus_dps;
 
         creators["shadowmoon reaver stop wand"] =
             &RaidBlackTempleActionContext::shadowmoon_reaver_stop_wand;
@@ -66,8 +66,8 @@ public:
             &RaidBlackTempleActionContext::supremus_reach_around_fire;
 
         // Shade of Akama
-        creators["shade of akama melee dps prioritize channelers"] =
-            &RaidBlackTempleActionContext::shade_of_akama_melee_dps_prioritize_channelers;
+        creators["shade of akama attack channelers and sorcerers"] =
+            &RaidBlackTempleActionContext::shade_of_akama_attack_channelers_and_sorcerers;
 
         // Teron Gorefiend
         creators["teron gorefiend misdirect to main tank"] =
@@ -85,8 +85,8 @@ public:
         creators["teron gorefiend move to corner to die"] =
             &RaidBlackTempleActionContext::teron_gorefiend_move_to_corner_to_die;
 
-        creators["teron gorefiend control and destroy shadowy constructs"] =
-            &RaidBlackTempleActionContext::teron_gorefiend_control_and_destroy_shadowy_constructs;
+        creators["teron gorefiend destroy shadowy constructs"] =
+            &RaidBlackTempleActionContext::teron_gorefiend_destroy_shadowy_constructs;
 
         // Gurtogg Bloodboil
         creators["gurtogg bloodboil misdirect to main tank"] =
@@ -133,8 +133,8 @@ public:
         creators["mother shahraz melee dps wait at safe position"] =
             &RaidBlackTempleActionContext::mother_shahraz_melee_dps_wait_at_safe_position;
 
-        creators["mother shahraz position ranged under pillar"] =
-            &RaidBlackTempleActionContext::mother_shahraz_position_ranged_under_pillar;
+        creators["mother shahraz position ranged under statue"] =
+            &RaidBlackTempleActionContext::mother_shahraz_position_ranged_under_statue;
 
         creators["mother shahraz break fatal attraction"] =
             &RaidBlackTempleActionContext::mother_shahraz_break_fatal_attraction;
@@ -177,8 +177,8 @@ public:
             &RaidBlackTempleActionContext::illidari_council_manage_dps_timer;
 
         // Illidan Stormrage <The Betrayer>
-        creators["illidan stormrage position for pull"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_position_for_pull;
+        creators["illidan stormrage position on grate during speech"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_position_on_grate_during_speech;
 
         creators["illidan stormrage misdirect to tanks"] =
             &RaidBlackTempleActionContext::illidan_stormrage_misdirect_to_tanks;
@@ -186,14 +186,14 @@ public:
         creators["illidan stormrage main tank reposition boss"] =
             &RaidBlackTempleActionContext::illidan_stormrage_main_tank_reposition_boss;
 
-        creators["illidan stormrage isolate bot with parasite"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_isolate_bot_with_parasite;
+        creators["illidan stormrage isolate bot with infection"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_isolate_bot_with_infection;
 
         creators["illidan stormrage track infections"] =
             &RaidBlackTempleActionContext::illidan_stormrage_track_infections;
 
-        creators["illidan stormrage assist tanks handle flames of azzinoth"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_assist_tanks_handle_flames_of_azzinoth;
+        creators["illidan stormrage assist tanks handle flames"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_assist_tanks_handle_flames;
 
         creators["illidan stormrage control pet aggression"] =
             &RaidBlackTempleActionContext::illidan_stormrage_control_pet_aggression;
@@ -209,6 +209,9 @@ public:
 
         creators["illidan stormrage cancel immunity"] =
             &RaidBlackTempleActionContext::illidan_stormrage_cancel_immunity;
+
+        creators["illidan stormrage recall totems"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_recall_totems;
 
         creators["illidan stormrage position for landing"] =
             &RaidBlackTempleActionContext::illidan_stormrage_position_for_landing;
@@ -237,9 +240,6 @@ public:
         creators["illidan stormrage assign target priority"] =
             &RaidBlackTempleActionContext::illidan_stormrage_assign_target_priority;
 
-        creators["illidan stormrage use cage trap"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_use_cage_trap;
-
         creators["illidan stormrage manage dps timers"] =
             &RaidBlackTempleActionContext::illidan_stormrage_manage_dps_timers;
 
@@ -255,9 +255,9 @@ private:
     }
 
     // Trash
-    static Action* focus_sister_of_pleasure(PlayerbotAI* botAI)
+    static Action* sister_of_pleasure_focus_dps(PlayerbotAI* botAI)
     {
-        return new FocusSisterOfPleasureAction(botAI);
+        return new SisterOfPleasureFocusDpsAction(botAI);
     }
     static Action* shadowmoon_reaver_stop_wand(PlayerbotAI* botAI)
     {
@@ -328,9 +328,9 @@ private:
     }
 
     // Shade of Akama
-    static Action* shade_of_akama_melee_dps_prioritize_channelers(PlayerbotAI* botAI)
+    static Action* shade_of_akama_attack_channelers_and_sorcerers(PlayerbotAI* botAI)
     {
-        return new ShadeOfAkamaMeleeDpsPrioritizeChannelersAction(botAI);
+        return new ShadeOfAkamaAttackChannelersAndSorcerersAction(botAI);
     }
 
     // Teron Gorefiend
@@ -357,9 +357,9 @@ private:
     {
         return new TeronGorefiendMoveToCornerToDieAction(botAI);
     }
-    static Action* teron_gorefiend_control_and_destroy_shadowy_constructs(PlayerbotAI* botAI)
+    static Action* teron_gorefiend_destroy_shadowy_constructs(PlayerbotAI* botAI)
     {
-        return new TeronGorefiendControlAndDestroyShadowyConstructsAction(botAI);
+        return new TeronGorefiendDestroyShadowyConstructsAction(botAI);
     }
 
     // Gurtogg Bloodboil
@@ -431,9 +431,9 @@ private:
     {
         return new MotherShahrazMeleeDpsWaitAtSafePositionAction(botAI);
     }
-    static Action* mother_shahraz_position_ranged_under_pillar(PlayerbotAI* botAI)
+    static Action* mother_shahraz_position_ranged_under_statue(PlayerbotAI* botAI)
     {
-        return new MotherShahrazPositionRangedUnderPillarAction(botAI);
+        return new MotherShahrazPositionRangedUnderStatueAction(botAI);
     }
     static Action* mother_shahraz_break_fatal_attraction(PlayerbotAI* botAI)
     {
@@ -493,9 +493,9 @@ private:
     }
 
     // Illidan Stormrage <The Betrayer>
-    static Action* illidan_stormrage_position_for_pull(PlayerbotAI* botAI)
+    static Action* illidan_stormrage_position_on_grate_during_speech(PlayerbotAI* botAI)
     {
-        return new IllidanStormragePositionForPullAction(botAI);
+        return new IllidanStormragePositionOnGrateDuringSpeechAction(botAI);
     }
     static Action* illidan_stormrage_misdirect_to_tanks(PlayerbotAI* botAI)
     {
@@ -505,17 +505,17 @@ private:
     {
         return new IllidanStormrageMainTankRepositionBossAction(botAI);
     }
-    static Action* illidan_stormrage_isolate_bot_with_parasite(PlayerbotAI* botAI)
+    static Action* illidan_stormrage_isolate_bot_with_infection(PlayerbotAI* botAI)
     {
-        return new IllidanStormrageIsolateBotWithParasiteAction(botAI);
+        return new IllidanStormrageIsolateBotWithInfectionAction(botAI);
     }
     static Action* illidan_stormrage_track_infections(PlayerbotAI* botAI)
     {
         return new IllidanStormrageTrackInfectionsAction(botAI);
     }
-    static Action* illidan_stormrage_assist_tanks_handle_flames_of_azzinoth(PlayerbotAI* botAI)
+    static Action* illidan_stormrage_assist_tanks_handle_flames(PlayerbotAI* botAI)
     {
-        return new IllidanStormrageAssistTanksHandleFlamesOfAzzinothAction(botAI);
+        return new IllidanStormrageAssistTanksHandleFlamesAction(botAI);
     }
     static Action* illidan_stormrage_control_pet_aggression(PlayerbotAI* botAI)
     {
@@ -536,6 +536,10 @@ private:
     static Action* illidan_stormrage_cancel_immunity(PlayerbotAI* botAI)
     {
         return new IllidanStormrageCancelImmunityAction(botAI);
+    }
+    static Action* illidan_stormrage_recall_totems(PlayerbotAI* botAI)
+    {
+        return new IllidanStormrageRecallTotemsAction(botAI);
     }
     static Action* illidan_stormrage_position_for_landing(PlayerbotAI* botAI)
     {
@@ -572,10 +576,6 @@ private:
     static Action* illidan_stormrage_assign_target_priority(PlayerbotAI* botAI)
     {
         return new IllidanStormrageAssignTargetPriorityAction(botAI);
-    }
-    static Action* illidan_stormrage_use_cage_trap(PlayerbotAI* botAI)
-    {
-        return new IllidanStormrageUseCageTrapAction(botAI);
     }
     static Action* illidan_stormrage_manage_dps_timers(PlayerbotAI* botAI)
     {

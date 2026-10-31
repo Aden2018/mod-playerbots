@@ -132,11 +132,22 @@ protected:
 // Shade of Akama
 
 // Walking up to the platform can lose sight of the target, which would otherwise drop it.
-class ShadeOfAkamaDontDropOutOfSightTargetMultiplier : public BlackTempleEncounterMultiplier
+class ShadeOfAkamaDoNotDropOutOfSightTargetMultiplier : public BlackTempleEncounterMultiplier
 {
 public:
-    ShadeOfAkamaDontDropOutOfSightTargetMultiplier(PlayerbotAI* botAI)
-        : BlackTempleEncounterMultiplier(botAI, "shade of akama don't drop out of sight target") {}
+    ShadeOfAkamaDoNotDropOutOfSightTargetMultiplier(PlayerbotAI* botAI)
+        : BlackTempleEncounterMultiplier(
+            botAI, "shade of akama do not drop out of sight target") {}
+
+protected:
+    float GetValueInEncounter(Action* action) override;
+};
+
+class ShadeOfAkamaCannotTankBossMultiplier : public BlackTempleEncounterMultiplier
+{
+public:
+    ShadeOfAkamaCannotTankBossMultiplier(PlayerbotAI* botAI)
+        : BlackTempleEncounterMultiplier(botAI, "shade of akama cannot tank boss") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -194,7 +205,7 @@ class GurtoggBloodboilNoThreatRedirectsDuringFelRageMultiplier
 public:
     GurtoggBloodboilNoThreatRedirectsDuringFelRageMultiplier(PlayerbotAI* botAI)
         : BlackTempleEncounterMultiplier(
-              botAI, "gurtogg bloodboil no threat redirects during fel rage") {}
+            botAI, "gurtogg bloodboil no threat redirects during fel rage") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -225,11 +236,11 @@ protected:
 
 // Reliquary of Souls
 
-class ReliquaryOfSoulsDontWasteHealingMultiplier : public BlackTempleEncounterMultiplier
+class ReliquaryOfSoulsDoNotWasteHealingMultiplier : public BlackTempleEncounterMultiplier
 {
 public:
-    ReliquaryOfSoulsDontWasteHealingMultiplier(PlayerbotAI* botAI)
-        : BlackTempleEncounterMultiplier(botAI, "reliquary of souls don't waste healing") {}
+    ReliquaryOfSoulsDoNotWasteHealingMultiplier(PlayerbotAI* botAI)
+        : BlackTempleEncounterMultiplier(botAI, "reliquary of souls do not waste healing") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -326,7 +337,7 @@ class IllidariCouncilHoldMisdirectionAndDispelsMultiplier : public BlackTempleEn
 public:
     IllidariCouncilHoldMisdirectionAndDispelsMultiplier(PlayerbotAI* botAI)
         : BlackTempleEncounterMultiplier(
-              botAI, "illidari council hold misdirection and dispels") {}
+            botAI, "illidari council hold misdirection and dispels") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -339,7 +350,7 @@ class IllidariCouncilSaveInterruptsForCircleOfHealingMultiplier
 public:
     IllidariCouncilSaveInterruptsForCircleOfHealingMultiplier(PlayerbotAI* botAI)
         : BlackTempleEncounterMultiplier(
-              botAI, "illidari council save interrupts for circle of healing") {}
+            botAI, "illidari council save interrupts for circle of healing") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -384,11 +395,11 @@ private:
     float GetNonTankMovementValue(BtHelpers::IllidanPhase phase, Action* action);
 };
 
-class IllidanStormrageNearNewShadowfiendMultiplier : public BlackTempleEncounterMultiplier
+class IllidanStormrageHoldNearNewShadowfiendMultiplier : public BlackTempleEncounterMultiplier
 {
 public:
-    IllidanStormrageNearNewShadowfiendMultiplier(PlayerbotAI* botAI)
-        : BlackTempleEncounterMultiplier(botAI, "illidan stormrage near new shadowfiend") {}
+    IllidanStormrageHoldNearNewShadowfiendMultiplier(PlayerbotAI* botAI)
+        : BlackTempleEncounterMultiplier(botAI, "illidan stormrage hold near new shadowfiend") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;
@@ -399,6 +410,16 @@ class IllidanStormrageHoldGuardianSummonsMultiplier : public BlackTempleEncounte
 public:
     IllidanStormrageHoldGuardianSummonsMultiplier(PlayerbotAI* botAI)
         : BlackTempleEncounterMultiplier(botAI, "illidan stormrage hold guardian summons") {}
+
+protected:
+    float GetValueInEncounter(Action* action) override;
+};
+
+class IllidanStormrageHoldTotemsMultiplier : public BlackTempleEncounterMultiplier
+{
+public:
+    IllidanStormrageHoldTotemsMultiplier(PlayerbotAI* botAI)
+        : BlackTempleEncounterMultiplier(botAI, "illidan stormrage hold totems") {}
 
 protected:
     float GetValueInEncounter(Action* action) override;

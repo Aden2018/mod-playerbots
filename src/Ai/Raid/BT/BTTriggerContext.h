@@ -67,8 +67,8 @@ public:
             &RaidBlackTempleTriggerContext::supremus_reach_blocked_by_fire;
 
         // Shade of Akama
-        creators["shade of akama should prioritize channelers"] =
-            &RaidBlackTempleTriggerContext::shade_of_akama_should_prioritize_channelers;
+        creators["shade of akama should attack channelers and sorcerers"] =
+            &RaidBlackTempleTriggerContext::shade_of_akama_should_attack_channelers_and_sorcerers;
 
         // Teron Gorefiend
         creators["teron gorefiend hunter should misdirect"] =
@@ -131,11 +131,11 @@ public:
         creators["mother shahraz should be tanked"] =
             &RaidBlackTempleTriggerContext::mother_shahraz_should_be_tanked;
 
-        creators["mother shahraz tanks are positioning boss"] =
-            &RaidBlackTempleTriggerContext::mother_shahraz_tanks_are_positioning_boss;
+        creators["mother shahraz being positioned"] =
+            &RaidBlackTempleTriggerContext::mother_shahraz_being_positioned;
 
-        creators["mother shahraz ranged should position under pillar"] =
-            &RaidBlackTempleTriggerContext::mother_shahraz_ranged_should_position_under_pillar;
+        creators["mother shahraz ranged should position under statue"] =
+            &RaidBlackTempleTriggerContext::mother_shahraz_ranged_should_position_under_statue;
 
         creators["mother shahraz fatal attraction"] =
             &RaidBlackTempleTriggerContext::mother_shahraz_fatal_attraction;
@@ -196,8 +196,8 @@ public:
         creators["illidan stormrage flames of azzinoth should be tanked"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_flames_of_azzinoth_should_be_tanked;
 
-        creators["illidan stormrage pets die to fire"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_pets_die_to_fire;
+        creators["illidan stormrage pets die to hazards"] =
+            &RaidBlackTempleTriggerContext::illidan_stormrage_pets_die_to_hazards;
 
         creators["illidan stormrage pet should attack shadowfiend"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_pet_should_attack_shadowfiend;
@@ -205,14 +205,18 @@ public:
         creators["illidan stormrage pet should attack shadow demon"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_pet_should_attack_shadow_demon;
 
-        creators["illidan stormrage grate is safe from flames"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_grate_is_safe_from_flames;
+        creators["illidan stormrage should position above grate"] =
+            &RaidBlackTempleTriggerContext::illidan_stormrage_should_position_above_grate;
 
         creators["illidan stormrage immunity can clear debuff"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_immunity_can_clear_debuff;
 
         creators["illidan stormrage immunity no longer needed"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_immunity_no_longer_needed;
+
+        creators["illidan stormrage shaman has totems before tanks have aggro"] =
+            &RaidBlackTempleTriggerContext::
+                illidan_stormrage_shaman_has_totems_before_tanks_have_aggro;
 
         creators["illidan stormrage should position for landing"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_should_position_for_landing;
@@ -230,7 +234,8 @@ public:
             &RaidBlackTempleTriggerContext::illidan_stormrage_ranged_should_reach_shadow_demon;
 
         creators["illidan stormrage melee should stay away from demon form"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_should_stay_away_from_demon_form;
+            &RaidBlackTempleTriggerContext::
+                illidan_stormrage_melee_should_stay_away_from_demon_form;
 
         creators["illidan stormrage warlock should tank demon form"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_warlock_should_tank_demon_form;
@@ -240,9 +245,6 @@ public:
 
         creators["illidan stormrage should assign target priority"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_should_assign_target_priority;
-
-        creators["illidan stormrage maiev placed cage trap"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_maiev_placed_cage_trap;
 
         creators["illidan stormrage should manage dps timers"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_should_manage_dps_timers;
@@ -327,9 +329,9 @@ private:
     }
 
     // Shade of Akama
-    static Trigger* shade_of_akama_should_prioritize_channelers(PlayerbotAI* botAI)
+    static Trigger* shade_of_akama_should_attack_channelers_and_sorcerers(PlayerbotAI* botAI)
     {
-        return new ShadeOfAkamaShouldPrioritizeChannelersTrigger(botAI);
+        return new ShadeOfAkamaShouldAttackChannelersAndSorcerersTrigger(botAI);
     }
 
     // Teron Gorefiend
@@ -418,13 +420,13 @@ private:
     {
         return new MotherShahrazShouldBeTankedTrigger(botAI);
     }
-    static Trigger* mother_shahraz_tanks_are_positioning_boss(PlayerbotAI* botAI)
+    static Trigger* mother_shahraz_being_positioned(PlayerbotAI* botAI)
     {
-        return new MotherShahrazTanksArePositioningBossTrigger(botAI);
+        return new MotherShahrazBeingPositionedTrigger(botAI);
     }
-    static Trigger* mother_shahraz_ranged_should_position_under_pillar(PlayerbotAI* botAI)
+    static Trigger* mother_shahraz_ranged_should_position_under_statue(PlayerbotAI* botAI)
     {
-        return new MotherShahrazRangedShouldPositionUnderPillarTrigger(botAI);
+        return new MotherShahrazRangedShouldPositionUnderStatueTrigger(botAI);
     }
     static Trigger* mother_shahraz_fatal_attraction(PlayerbotAI* botAI)
     {
@@ -507,9 +509,9 @@ private:
     {
         return new IllidanStormrageFlamesOfAzzinothShouldBeTankedTrigger(botAI);
     }
-    static Trigger* illidan_stormrage_pets_die_to_fire(PlayerbotAI* botAI)
+    static Trigger* illidan_stormrage_pets_die_to_hazards(PlayerbotAI* botAI)
     {
-        return new IllidanStormragePetsDieToFireTrigger(botAI);
+        return new IllidanStormragePetsDieToHazardsTrigger(botAI);
     }
     static Trigger* illidan_stormrage_pet_should_attack_shadowfiend(PlayerbotAI* botAI)
     {
@@ -519,9 +521,9 @@ private:
     {
         return new IllidanStormragePetShouldAttackShadowDemonTrigger(botAI);
     }
-    static Trigger* illidan_stormrage_grate_is_safe_from_flames(PlayerbotAI* botAI)
+    static Trigger* illidan_stormrage_should_position_above_grate(PlayerbotAI* botAI)
     {
-        return new IllidanStormrageGrateIsSafeFromFlamesTrigger(botAI);
+        return new IllidanStormrageShouldPositionAboveGrateTrigger(botAI);
     }
     static Trigger* illidan_stormrage_immunity_can_clear_debuff(PlayerbotAI* botAI)
     {
@@ -530,6 +532,10 @@ private:
     static Trigger* illidan_stormrage_immunity_no_longer_needed(PlayerbotAI* botAI)
     {
         return new IllidanStormrageImmunityNoLongerNeededTrigger(botAI);
+    }
+    static Trigger* illidan_stormrage_shaman_has_totems_before_tanks_have_aggro(PlayerbotAI* botAI)
+    {
+        return new IllidanStormrageShamanHasTotemsBeforeTanksHaveAggroTrigger(botAI);
     }
     static Trigger* illidan_stormrage_should_position_for_landing(PlayerbotAI* botAI)
     {
@@ -551,7 +557,7 @@ private:
     {
         return new IllidanStormrageRangedShouldReachShadowDemonTrigger(botAI);
     }
-    static Trigger* illidan_stormrage_should_stay_away_from_demon_form(PlayerbotAI* botAI)
+    static Trigger* illidan_stormrage_melee_should_stay_away_from_demon_form(PlayerbotAI* botAI)
     {
         return new IllidanStormrageMeleeShouldStayAwayFromDemonFormTrigger(botAI);
     }
@@ -566,10 +572,6 @@ private:
     static Trigger* illidan_stormrage_should_assign_target_priority(PlayerbotAI* botAI)
     {
         return new IllidanStormrageShouldAssignTargetPriorityTrigger(botAI);
-    }
-    static Trigger* illidan_stormrage_maiev_placed_cage_trap(PlayerbotAI* botAI)
-    {
-        return new IllidanStormrageMaievPlacedCageTrapTrigger(botAI);
     }
     static Trigger* illidan_stormrage_should_manage_dps_timers(PlayerbotAI* botAI)
     {

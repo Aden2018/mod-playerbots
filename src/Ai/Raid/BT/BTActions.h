@@ -83,10 +83,11 @@ public:
 
 // Trash
 
-class FocusSisterOfPleasureAction : public Action
+class SisterOfPleasureFocusDpsAction : public Action
 {
 public:
-    FocusSisterOfPleasureAction(PlayerbotAI* botAI) : Action(botAI, "focus sister of pleasure") {}
+    SisterOfPleasureFocusDpsAction(PlayerbotAI* botAI)
+        : Action(botAI, "sister of pleasure focus dps") {}
     bool Execute(Event event) override;
 };
 
@@ -107,7 +108,6 @@ public:
 
 private:
     bool RestoreReactState(Guardian* pet);
-    bool CommandPetAttack(Guardian* pet, Unit* target);
 
     ReactStates _previousReactState = REACT_DEFENSIVE;
     // Each summon is a new pet with a new GUID, so a stance saved for an earlier pet is dropped.
@@ -257,11 +257,11 @@ private:
 
 // Shade of Akama
 
-class ShadeOfAkamaMeleeDpsPrioritizeChannelersAction : public AttackAction
+class ShadeOfAkamaAttackChannelersAndSorcerersAction : public AttackAction
 {
 public:
-    ShadeOfAkamaMeleeDpsPrioritizeChannelersAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "shade of akama melee dps prioritize channelers") {}
+    ShadeOfAkamaAttackChannelersAndSorcerersAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "shade of akama attack channelers and sorcerers") {}
     bool Execute(Event event) override;
 };
 
@@ -291,11 +291,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class TeronGorefiendControlAndDestroyShadowyConstructsAction : public MovementAction
+class TeronGorefiendDestroyShadowyConstructsAction : public MovementAction
 {
 public:
-    TeronGorefiendControlAndDestroyShadowyConstructsAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "teron gorefiend control and destroy shadowy constructs") {}
+    TeronGorefiendDestroyShadowyConstructsAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "teron gorefiend destroy shadowy constructs") {}
     bool Execute(Event event) override;
 
 private:
@@ -386,11 +386,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class MotherShahrazPositionRangedUnderPillarAction : public MovementAction
+class MotherShahrazPositionRangedUnderStatueAction : public MovementAction
 {
 public:
-    MotherShahrazPositionRangedUnderPillarAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "mother shahraz position ranged under pillar") {}
+    MotherShahrazPositionRangedUnderStatueAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "mother shahraz position ranged under statue") {}
     bool Execute(Event event) override;
 };
 
@@ -440,6 +440,9 @@ public:
     IllidariCouncilInterruptCircleOfHealingAction(PlayerbotAI* botAI)
         : Action(botAI, "illidari council interrupt circle of healing") {}
     bool Execute(Event event) override;
+
+private:
+    bool CastWarriorInterrupt(Unit* malande);
 };
 
 class IllidariCouncilFirstAssistTankFocusMalandeAction : public AttackAction
@@ -485,6 +488,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class IllidariCouncilCommandPetTargetAction : public AttackAction
+{
+public:
+    IllidariCouncilCommandPetTargetAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "illidari council command pet target") {}
+    bool Execute(Event event) override;
+};
+
 class IllidariCouncilAssignDpsTargetsAction : public AttackAction
 {
 public:
@@ -494,14 +505,6 @@ public:
 
 private:
     bool ShouldAttackMalande(Unit* malande, Unit* gathios, Unit* zerevor) const;
-};
-
-class IllidariCouncilCommandPetTargetAction : public AttackAction
-{
-public:
-    IllidariCouncilCommandPetTargetAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "illidari council command pet target") {}
-    bool Execute(Event event) override;
 };
 
 class IllidariCouncilManageDpsTimerAction : public Action
@@ -514,11 +517,11 @@ public:
 
 // Illidan Stormrage <The Betrayer>
 
-class IllidanStormragePositionForPullAction : public MovementAction
+class IllidanStormragePositionOnGrateDuringSpeechAction : public MovementAction
 {
 public:
-    IllidanStormragePositionForPullAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "illidan stormrage position for pull") {}
+    IllidanStormragePositionOnGrateDuringSpeechAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "illidan stormrage position on grate during speech") {}
     bool Execute(Event event) override;
 };
 
@@ -543,7 +546,7 @@ public:
     bool ResetEncounterState()
     {
         if (!_phaseStartTime && _lastFlameCrash.IsEmpty() && _leadPosition == Position() &&
-            _lead == BtHelpers::IllidanTankLead::None)
+            _lead == BtHelpers::IllidanTankLead::None && !_isOpeningLeadDone)
         {
             return false;
         }
@@ -552,6 +555,7 @@ public:
         _lastFlameCrash.Clear();
         _leadPosition = Position();
         _lead = BtHelpers::IllidanTankLead::None;
+        _isOpeningLeadDone = false;
         return true;
     }
 
@@ -559,19 +563,24 @@ private:
     bool FindDemonFormPosition(Unit const& illidan, Position& position);
     bool FindRingPosition(Unit const& illidan, BtHelpers::IllidanPhase phase, Position& position);
     void StartRingLead(Unit const& illidan, BtHelpers::IllidanPhase phase);
+    void RouteRoundIllidan(Unit const& illidan, Position& position);
 
     uint32 _phaseStartTime = 0;
     ObjectGuid _lastFlameCrash;
     Position _leadPosition;
     BtHelpers::IllidanTankLead _lead = BtHelpers::IllidanTankLead::None;
+    bool _isOpeningLeadDone = false;
 };
 
-class IllidanStormrageIsolateBotWithParasiteAction : public MovementAction
+class IllidanStormrageIsolateBotWithInfectionAction : public MovementAction
 {
 public:
-    IllidanStormrageIsolateBotWithParasiteAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "illidan stormrage isolate bot with parasite") {}
+    IllidanStormrageIsolateBotWithInfectionAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "illidan stormrage isolate bot with infection") {}
     bool Execute(Event event) override;
+
+private:
+    bool HunterSetFrostTrap();
 };
 
 class IllidanStormrageTrackInfectionsAction : public Action
@@ -583,21 +592,16 @@ public:
 
 private:
     bool FindTrapHunter(
-        Player const& infected, Position const& infectionPosition,
+        Player& infected, Position const& infectionPosition,
         std::unordered_map<ObjectGuid, BtHelpers::IllidanInfection> const& infections,
         ObjectGuid& hunter);
 };
 
-namespace BtHelpers
-{
-    struct EyeBlastDangerArea;
-}
-
-class IllidanStormrageAssistTanksHandleFlamesOfAzzinothAction : public AttackAction
+class IllidanStormrageAssistTanksHandleFlamesAction : public AttackAction
 {
 public:
-    IllidanStormrageAssistTanksHandleFlamesOfAzzinothAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "illidan stormrage assist tanks handle flames of azzinoth") {}
+    IllidanStormrageAssistTanksHandleFlamesAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "illidan stormrage assist tanks handle flames") {}
     bool Execute(Event event) override;
     bool ResetTankStep()
     {
@@ -610,7 +614,8 @@ public:
 
 private:
     bool RepositionToAvoidEyeBlast(BtHelpers::EyeBlastDangerArea const& dangerArea);
-    bool RepositionToAvoidBlaze(Unit* flame);
+    // While the beam's head is near, dangerArea is its path ahead, which the steps keep out of.
+    bool RepositionToAvoidBlaze(Unit* flame, BtHelpers::EyeBlastDangerArea const* dangerArea);
 
     uint8 _tankStep = 0;
 };
@@ -656,6 +661,14 @@ class IllidanStormrageCancelImmunityAction : public Action
 public:
     IllidanStormrageCancelImmunityAction(PlayerbotAI* botAI)
         : Action(botAI, "illidan stormrage cancel immunity") {}
+    bool Execute(Event event) override;
+};
+
+class IllidanStormrageRecallTotemsAction : public Action
+{
+public:
+    IllidanStormrageRecallTotemsAction(PlayerbotAI* botAI)
+        : Action(botAI, "illidan stormrage recall totems") {}
     bool Execute(Event event) override;
 };
 
@@ -710,8 +723,6 @@ public:
     bool Execute(Event event) override;
 };
 
-// A movement action, not an attack, so the hold multiplier leaves it alone: it holds its own
-// casts.
 class IllidanStormrageWarlockTankHandleDemonFormAction : public MovementAction
 {
 public:
@@ -741,15 +752,7 @@ public:
 private:
     std::vector<Unit*> GetTargetsInPriorityOrder(Unit* illidan, BtHelpers::IllidanPhase phase);
     Unit* FindShadowfiendForMelee();
-    Unit* FindShadowfiendForRanged();
-};
-
-class IllidanStormrageUseCageTrapAction : public MovementAction
-{
-public:
-    IllidanStormrageUseCageTrapAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "illidan stormrage use cage trap") {}
-    bool Execute(Event event) override;
+    Unit* FindShadowfiendForRanged(BtHelpers::IllidanPhase phase);
 };
 
 class IllidanStormrageManageDpsTimersAction : public Action
