@@ -486,11 +486,8 @@ bool FelmystMoveToSafeFogLaneAction::TryTeleportStuckBotOntoCrate(
 
 bool FelmystMeleeClearTargetAction::Execute(Event /*event*/)
 {
-    bot->AttackStop();
-    bot->InterruptSpell(CURRENT_MELEE_SPELL);
-    bot->CastStop();
-    context->GetValue<Unit*>("current target")->Set(nullptr);
-    bot->SetSelection(ObjectGuid());
+    StandDown(botAI);
+    CallBackPets(bot);
     return true;
 }
 
@@ -553,4 +550,22 @@ bool FelmystManageLandingDpsTimerAction::Execute(Event /*event*/)
         return false;
 
     return clearTimers();
+}
+
+bool FelmystStopAttackingForLandingAction::Execute(Event /*event*/)
+{
+    return StopAttackingAndChanneling(bot);
+}
+
+bool FelmystSelectTargetForHoldAction::isUseful()
+{
+    return botAI->GetState() == BOT_STATE_NON_COMBAT;
+}
+
+bool FelmystSelectTargetForHoldAction::Execute(Event /*event*/)
+{
+    if (!PlayerbotAI::IsTank(bot))
+        return SelectTarget(botAI, AI_VALUE(Unit*, "dps target"));
+
+    return SelectTarget(botAI, AI_VALUE(Unit*, "tank target"));
 }

@@ -6,6 +6,7 @@
 
 #include "SWPActions.h"
 #include "EncounterHelpers.h"
+#include "Pet.h"
 #include "Playerbots.h"
 #include "PlayerbotTextMgr.h"
 #include "SWPEncounter_Twins.h"
@@ -342,6 +343,8 @@ bool EredarTwinsDpsPrioritizeSacrolashAction::Execute(Event /*event*/)
 {
     // Start the 8s clock for tanks to get aggro first.
     EmplaceIfUnset(EredarTwinsState(bot->GetInstanceId()).dpsHoldStartMs, getMSTime());
+    // Select a target without attacking while the DPS hold is active.
+    bool const isDpsHeld = IsEredarTwinsStartHoldActive(botAI);
 
     Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
     Unit* twinTarget =
@@ -353,17 +356,41 @@ bool EredarTwinsDpsPrioritizeSacrolashAction::Execute(Event /*event*/)
     bool const shouldHoldThreat = sacrolash ?
         ShouldHoldSacrolashThreat(bot, twinTarget) : ShouldHoldAlythessThreat(bot, twinTarget);
 
-    if (shouldHoldThreat && bot->GetVictim())
+    if (shouldHoldThreat)
     {
-        bot->AttackStop();
-        bot->InterruptSpell(CURRENT_MELEE_SPELL);
-        bot->CastStop();
-        context->GetValue<Unit*>("current target")->Set(nullptr);
-        bot->SetSelection(ObjectGuid());
-        return true;
+        return IsAttackingTarget(bot, *twinTarget) ? StopAttackingTarget(bot, *twinTarget) :
+            SelectTarget(botAI, twinTarget);
     }
 
-    return AI_VALUE(Unit*, "current target") != twinTarget && Attack(twinTarget);
+    if (AI_VALUE(Unit*, "current target") == twinTarget)
+        return false;
+
+    return isDpsHeld ? SelectTarget(botAI, twinTarget) : Attack(twinTarget);
+}
+
+bool EredarTwinsControlPetAggressionAction::Execute(Event /*event*/)
+{
+    Pet* pet = bot->GetPet();
+    if (!pet)
+        return false;
+
+    if (IsEredarTwinsStartHoldActive(botAI))
+    {
+        if (!pet->HasReactState(REACT_PASSIVE))
+        {
+            _previousReactState = pet->GetReactState();
+            _setPassive = true;
+            CallBackPets(bot);
+            pet->SetReactState(REACT_PASSIVE);
+        }
+    }
+    else if (_setPassive)
+    {
+        pet->SetReactState(_previousReactState);
+        _setPassive = false;
+    }
+
+    return false;
 }
 
 bool EredarTwinsConflagrationTargetMoveFromGroupAction::Execute(Event /*event*/)

@@ -15,9 +15,12 @@ class RaidBlackTempleTriggerContext : public NamedObjectContext<Trigger>
 public:
     RaidBlackTempleTriggerContext()
     {
-        // General
+        // Shared
         creators["black temple no encounter in progress"] =
             &RaidBlackTempleTriggerContext::black_temple_no_encounter_in_progress;
+
+        creators["black temple class roles should be assigned"] =
+            &RaidBlackTempleTriggerContext::black_temple_class_roles_should_be_assigned;
 
         // Trash
         creators["sister of pleasure should be focused"] =
@@ -54,6 +57,9 @@ public:
         // Supremus
         creators["supremus hunter should misdirect"] =
             &RaidBlackTempleTriggerContext::supremus_hunter_should_misdirect;
+
+        creators["supremus should be pulled back by tank"] =
+            &RaidBlackTempleTriggerContext::supremus_should_be_pulled_back_by_tank;
 
         creators["supremus ranged should spread"] =
             &RaidBlackTempleTriggerContext::supremus_ranged_should_spread;
@@ -108,6 +114,9 @@ public:
         creators["gurtogg bloodboil fel rage on bot"] =
             &RaidBlackTempleTriggerContext::gurtogg_bloodboil_fel_rage_on_bot;
 
+        creators["gurtogg bloodboil should stop attacking"] =
+            &RaidBlackTempleTriggerContext::gurtogg_bloodboil_should_stop_attacking;
+
         // Reliquary of Souls
         creators["reliquary of souls hunter should misdirect"] =
             &RaidBlackTempleTriggerContext::reliquary_of_souls_hunter_should_misdirect;
@@ -121,8 +130,8 @@ public:
         creators["reliquary of souls essence of desire has rune shield"] =
             &RaidBlackTempleTriggerContext::reliquary_of_souls_essence_of_desire_has_rune_shield;
 
-        creators["reliquary of souls essence of desire casts deaden"] =
-            &RaidBlackTempleTriggerContext::reliquary_of_souls_essence_of_desire_casts_deaden;
+        creators["reliquary of souls essence of desire casting deaden"] =
+            &RaidBlackTempleTriggerContext::reliquary_of_souls_essence_of_desire_casting_deaden;
 
         // Mother Shahraz
         creators["mother shahraz hunter should misdirect"] =
@@ -147,11 +156,11 @@ public:
         creators["illidari council gathios should be tanked"] =
             &RaidBlackTempleTriggerContext::illidari_council_gathios_should_be_tanked;
 
-        creators["illidari council gathios casts judgement of command"] =
-            &RaidBlackTempleTriggerContext::illidari_council_gathios_casts_judgement_of_command;
+        creators["illidari council gathios casting judgement of command"] =
+            &RaidBlackTempleTriggerContext::illidari_council_gathios_casting_judgement_of_command;
 
-        creators["illidari council malande casts circle of healing"] =
-            &RaidBlackTempleTriggerContext::illidari_council_malande_casts_circle_of_healing;
+        creators["illidari council malande casting circle of healing"] =
+            &RaidBlackTempleTriggerContext::illidari_council_malande_casting_circle_of_healing;
 
         creators["illidari council malande should be tanked"] =
             &RaidBlackTempleTriggerContext::illidari_council_malande_should_be_tanked;
@@ -164,6 +173,9 @@ public:
 
         creators["illidari council mage tank healer should reposition"] =
             &RaidBlackTempleTriggerContext::illidari_council_mage_tank_healer_should_reposition;
+
+        creators["illidari council non-tanks should avoid zerevor"] =
+            &RaidBlackTempleTriggerContext::illidari_council_non_tanks_should_avoid_zerevor;
 
         creators["illidari council ranged should spread"] =
             &RaidBlackTempleTriggerContext::illidari_council_ranged_should_spread;
@@ -221,11 +233,8 @@ public:
         creators["illidan stormrage should position for landing"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_should_position_for_landing;
 
-        creators["illidan stormrage melee should stop attacking"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_melee_should_stop_attacking;
-
-        creators["illidan stormrage should stop shooting"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_should_stop_shooting;
+        creators["illidan stormrage should stop attacking"] =
+            &RaidBlackTempleTriggerContext::illidan_stormrage_should_stop_attacking;
 
         creators["illidan stormrage ranged should spread"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_ranged_should_spread;
@@ -254,10 +263,15 @@ public:
     }
 
 private:
-    // General
+    // Shared
     static Trigger* black_temple_no_encounter_in_progress(PlayerbotAI* botAI)
     {
         return new BlackTempleNoEncounterInProgressTrigger(botAI);
+    }
+
+    static Trigger* black_temple_class_roles_should_be_assigned(PlayerbotAI* botAI)
+    {
+        return new BlackTempleClassRolesShouldBeAssignedTrigger(botAI);
     }
 
     // Trash
@@ -278,7 +292,8 @@ private:
     static Trigger* high_warlord_najentus_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "high warlord naj'entus hunter should misdirect", "high warlord naj'entus");
+            botAI, "high warlord naj'entus hunter should misdirect",
+            BtHelpers::BtBosses::DATA_HIGH_WARLORD_NAJENTUS);
     }
     static Trigger* high_warlord_najentus_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -309,7 +324,11 @@ private:
     static Trigger* supremus_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "supremus hunter should misdirect", "supremus");
+            botAI, "supremus hunter should misdirect", BtHelpers::BtBosses::DATA_SUPREMUS);
+    }
+    static Trigger* supremus_should_be_pulled_back_by_tank(PlayerbotAI* botAI)
+    {
+        return new SupremusShouldBePulledBackByTankTrigger(botAI);
     }
     static Trigger* supremus_ranged_should_spread(PlayerbotAI* botAI)
     {
@@ -338,7 +357,8 @@ private:
     static Trigger* teron_gorefiend_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "teron gorefiend hunter should misdirect", "teron gorefiend");
+            botAI, "teron gorefiend hunter should misdirect",
+            BtHelpers::BtBosses::DATA_TERON_GOREFIEND);
     }
     static Trigger* teron_gorefiend_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -365,7 +385,8 @@ private:
     static Trigger* gurtogg_bloodboil_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "gurtogg bloodboil hunter should misdirect", "gurtogg bloodboil");
+            botAI, "gurtogg bloodboil hunter should misdirect",
+            BtHelpers::BtBosses::DATA_GURTOGG_BLOODBOIL);
     }
     static Trigger* gurtogg_bloodboil_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -387,6 +408,10 @@ private:
     {
         return new GurtoggBloodboilFelRageOnBotTrigger(botAI);
     }
+    static Trigger* gurtogg_bloodboil_should_stop_attacking(PlayerbotAI* botAI)
+    {
+        return new GurtoggBloodboilShouldStopAttackingTrigger(botAI);
+    }
 
     // Reliquary of Souls
     static Trigger* reliquary_of_souls_hunter_should_misdirect(PlayerbotAI* botAI)
@@ -405,16 +430,17 @@ private:
     {
         return new ReliquaryOfSoulsEssenceOfDesireHasRuneShieldTrigger(botAI);
     }
-    static Trigger* reliquary_of_souls_essence_of_desire_casts_deaden(PlayerbotAI* botAI)
+    static Trigger* reliquary_of_souls_essence_of_desire_casting_deaden(PlayerbotAI* botAI)
     {
-        return new ReliquaryOfSoulsEssenceOfDesireCastsDeadenTrigger(botAI);
+        return new ReliquaryOfSoulsEssenceOfDesireCastingDeadenTrigger(botAI);
     }
 
     // Mother Shahraz
     static Trigger* mother_shahraz_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "mother shahraz hunter should misdirect", "mother shahraz");
+            botAI, "mother shahraz hunter should misdirect",
+            BtHelpers::BtBosses::DATA_MOTHER_SHAHRAZ);
     }
     static Trigger* mother_shahraz_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -437,19 +463,20 @@ private:
     static Trigger* illidari_council_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
-            botAI, "illidari council hunter should misdirect", "gathios the shatterer");
+            botAI, "illidari council hunter should misdirect",
+            BtHelpers::BtBosses::DATA_ILLIDARI_COUNCIL, "gathios the shatterer");
     }
     static Trigger* illidari_council_gathios_should_be_tanked(PlayerbotAI* botAI)
     {
         return new IllidariCouncilGathiosShouldBeTankedTrigger(botAI);
     }
-    static Trigger* illidari_council_gathios_casts_judgement_of_command(PlayerbotAI* botAI)
+    static Trigger* illidari_council_gathios_casting_judgement_of_command(PlayerbotAI* botAI)
     {
-        return new IllidariCouncilGathiosCastsJudgementOfCommandTrigger(botAI);
+        return new IllidariCouncilGathiosCastingJudgementOfCommandTrigger(botAI);
     }
-    static Trigger* illidari_council_malande_casts_circle_of_healing(PlayerbotAI* botAI)
+    static Trigger* illidari_council_malande_casting_circle_of_healing(PlayerbotAI* botAI)
     {
-        return new IllidariCouncilMalandeCastsCircleOfHealingTrigger(botAI);
+        return new IllidariCouncilMalandeCastingCircleOfHealingTrigger(botAI);
     }
     static Trigger* illidari_council_malande_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -466,6 +493,10 @@ private:
     static Trigger* illidari_council_mage_tank_healer_should_reposition(PlayerbotAI* botAI)
     {
         return new IllidariCouncilMageTankHealerShouldRepositionTrigger(botAI);
+    }
+    static Trigger* illidari_council_non_tanks_should_avoid_zerevor(PlayerbotAI* botAI)
+    {
+        return new IllidariCouncilNonTanksShouldAvoidZerevorTrigger(botAI);
     }
     static Trigger* illidari_council_ranged_should_spread(PlayerbotAI* botAI)
     {
@@ -541,13 +572,9 @@ private:
     {
         return new IllidanStormrageShouldPositionForLandingTrigger(botAI);
     }
-    static Trigger* illidan_stormrage_melee_should_stop_attacking(PlayerbotAI* botAI)
+    static Trigger* illidan_stormrage_should_stop_attacking(PlayerbotAI* botAI)
     {
-        return new IllidanStormrageMeleeShouldStopAttackingTrigger(botAI);
-    }
-    static Trigger* illidan_stormrage_should_stop_shooting(PlayerbotAI* botAI)
-    {
-        return new IllidanStormrageShouldStopShootingTrigger(botAI);
+        return new IllidanStormrageShouldStopAttackingTrigger(botAI);
     }
     static Trigger* illidan_stormrage_ranged_should_spread(PlayerbotAI* botAI)
     {

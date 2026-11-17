@@ -110,6 +110,12 @@ public:
         creators["felmyst manage landing dps timer"] =
             &RaidSwpActionContext::felmyst_manage_landing_dps_timer;
 
+        creators["felmyst stop attacking for landing"] =
+            &RaidSwpActionContext::felmyst_stop_attacking_for_landing;
+
+        creators["felmyst select target for hold"] =
+            &RaidSwpActionContext::felmyst_select_target_for_hold;
+
         // Eredar Twins
         creators["eredar twins melee jump from balcony"] =
             &RaidSwpActionContext::eredar_twins_melee_jump_from_balcony;
@@ -137,6 +143,9 @@ public:
 
         creators["eredar twins dps prioritize sacrolash"] =
             &RaidSwpActionContext::eredar_twins_dps_prioritize_sacrolash;
+
+        creators["eredar twins control pet aggression"] =
+            &RaidSwpActionContext::eredar_twins_control_pet_aggression;
 
         creators["eredar twins conflagration target move from group"] =
             &RaidSwpActionContext::eredar_twins_conflagration_target_move_from_group;
@@ -362,6 +371,14 @@ private:
     {
         return new FelmystManageLandingDpsTimerAction(botAI);
     }
+    static Action* felmyst_stop_attacking_for_landing(PlayerbotAI* botAI)
+    {
+        return new FelmystStopAttackingForLandingAction(botAI);
+    }
+    static Action* felmyst_select_target_for_hold(PlayerbotAI* botAI)
+    {
+        return new FelmystSelectTargetForHoldAction(botAI);
+    }
 
     // Eredar Twins
     static Action* eredar_twins_melee_jump_from_balcony(PlayerbotAI* botAI)
@@ -400,6 +417,10 @@ private:
     static Action* eredar_twins_dps_prioritize_sacrolash(PlayerbotAI* botAI)
     {
         return new EredarTwinsDpsPrioritizeSacrolashAction(botAI);
+    }
+    static Action* eredar_twins_control_pet_aggression(PlayerbotAI* botAI)
+    {
+        return new EredarTwinsControlPetAggressionAction(botAI);
     }
     static Action* eredar_twins_conflagration_target_move_from_group(PlayerbotAI* botAI)
     {

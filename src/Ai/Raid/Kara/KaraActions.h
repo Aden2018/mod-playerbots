@@ -9,6 +9,7 @@
 
 #include "Action.h"
 #include "AttackAction.h"
+#include "KaraHelpers.h"
 #include "MovementActions.h"
 #include <vector>
 
@@ -32,44 +33,80 @@ public:
 
 // Trash
 
-class ManaWarpStunCreatureBeforeWarpBreachAction : public AttackAction
+class ManaWarpStunWarpBreachAction : public Action
 {
 public:
-    ManaWarpStunCreatureBeforeWarpBreachAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "mana warp stun creature before warp breach") {}
+    ManaWarpStunWarpBreachAction(PlayerbotAI* botAI);
+    bool Execute(Event event) override;
+
+private:
+    uint32 const _reactionMs; // drawn once per bot
+};
+
+class ManaWarpStunnerHoldForWarpBreachAction : public MovementAction
+{
+public:
+    ManaWarpStunnerHoldForWarpBreachAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "mana warp stunner hold for warp breach") {}
     bool Execute(Event event) override;
 };
 
 // Attumen the Huntsman
 
-class AttumenTheHuntsmanHandlePhaseOneAction : public AttackAction
+class AttumenTheHuntsmanAssistTankPositionUnmountedAction : public AttackAction
 {
 public:
-    AttumenTheHuntsmanHandlePhaseOneAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "attumen the huntsman handle phase one") {}
+    AttumenTheHuntsmanAssistTankPositionUnmountedAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "attumen the huntsman assist tank position unmounted") {}
     bool Execute(Event event) override;
-
-private:
-    bool AssistTankMoveAttumenFromGroup(Unit* midnight, Unit* attumen);
 };
 
-class AttumenTheHuntsmanHandlePhaseTwoAction : public AttackAction
+class AttumenTheHuntsmanAttackMidnightAction : public AttackAction
 {
 public:
-    AttumenTheHuntsmanHandlePhaseTwoAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "attumen the huntsman handle phase two") {}
+    AttumenTheHuntsmanAttackMidnightAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "attumen the huntsman attack midnight") {}
     bool Execute(Event event) override;
-
-private:
-    bool CurrentTankPositionAttumen(Unit* attumen);
-    bool StackBehindAttumen(Unit* attumen);
 };
 
-class AttumenTheHuntsmanSetDpsTimerAction : public Action
+class AttumenTheHuntsmanTankPositionMountedAction : public AttackAction
 {
 public:
-    AttumenTheHuntsmanSetDpsTimerAction(PlayerbotAI* botAI)
-        : Action(botAI, "attumen the huntsman set dps timer") {}
+    AttumenTheHuntsmanTankPositionMountedAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "attumen the huntsman tank position mounted") {}
+    bool Execute(Event event) override;
+};
+
+class AttumenTheHuntsmanStackBehindAction : public MovementAction
+{
+public:
+    AttumenTheHuntsmanStackBehindAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "attumen the huntsman stack behind") {}
+    bool Execute(Event event) override;
+};
+
+class AttumenTheHuntsmanStopAttackingAction : public Action
+{
+public:
+    AttumenTheHuntsmanStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "attumen the huntsman stop attacking") {}
+    bool Execute(Event event) override;
+};
+
+class AttumenTheHuntsmanSelectTargetForHoldAction : public Action
+{
+public:
+    AttumenTheHuntsmanSelectTargetForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "attumen the huntsman select target for hold") {}
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
+class AttumenTheHuntsmanManageDpsTimerAction : public Action
+{
+public:
+    AttumenTheHuntsmanManageDpsTimerAction(PlayerbotAI* botAI)
+        : Action(botAI, "attumen the huntsman manage dps timer") {}
     bool Execute(Event event) override;
 };
 
@@ -91,9 +128,14 @@ public:
     MaidenOfVirtueTankPositionBossAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "maiden of virtue tank position boss") {}
     bool Execute(Event event) override;
+};
 
-private:
-    bool MoveBossToStunnedHealer(Player* healer);
+class MaidenOfVirtueMoveBossToStunnedHealerAction : public MovementAction
+{
+public:
+    MaidenOfVirtueMoveBossToStunnedHealerAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "maiden of virtue move boss to stunned healer") {}
+    bool Execute(Event event) override;
 };
 
 class MaidenOfVirtuePositionRangedBetweenPillarsAction : public MovementAction
@@ -122,22 +164,32 @@ public:
     bool Execute(Event event) override;
 };
 
-class BigBadWolfLittleRedRidingHoodRunAwayAction : public MovementAction
+class BigBadWolfRedHoodRunAwayAction : public MovementAction
 {
 public:
-    BigBadWolfLittleRedRidingHoodRunAwayAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "big bad wolf little red riding hood run away") {}
+    BigBadWolfRedHoodRunAwayAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "big bad wolf red hood run away") {}
     bool Execute(Event event) override;
-    bool ResetRunIndex()
+    bool ResetRun()
     {
-        if (!_runIndex)
+        if (!_lastRunStepTime)
             return false;
-        _runIndex = 0;
+        _run = {};
+        _lastRunStepTime = 0;
         return true;
     }
 
 private:
-    uint8 _runIndex = 0;
+    KaraHelpers::BigBadWolfRunPlan _run;
+    uint32 _lastRunStepTime = 0;
+};
+
+class BigBadWolfCastHandOfProtectionOnRedHoodAction : public Action
+{
+public:
+    BigBadWolfCastHandOfProtectionOnRedHoodAction(PlayerbotAI* botAI)
+        : Action(botAI, "big bad wolf cast hand of protection on red hood") {}
+    bool Execute(Event event) override;
 };
 
 // Romulo and Julianne
@@ -160,11 +212,11 @@ public:
     bool Execute(Event event) override;
 };
 
-class WizardOfOzScorchStrawmanAction : public Action
+class WizardOfOzCastScorchOnStrawmanAction : public MovementAction
 {
 public:
-    WizardOfOzScorchStrawmanAction(PlayerbotAI* botAI)
-        : Action(botAI, "wizard of oz scorch strawman") {}
+    WizardOfOzCastScorchOnStrawmanAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "wizard of oz cast scorch on strawman") {}
     bool Execute(Event event) override;
 };
 
@@ -214,6 +266,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class ShadeOfAranRunOutOfBlizzardAction : public MovementAction
+{
+public:
+    ShadeOfAranRunOutOfBlizzardAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "shade of aran run out of blizzard") {}
+    bool Execute(Event event) override;
+};
+
 class ShadeOfAranStopMovingDuringFlameWreathAction : public MovementAction
 {
 public:
@@ -248,83 +308,88 @@ public:
     bool Execute(Event event) override;
     bool ResetRedBeamState()
     {
-        if (!_redBeamTimerWasSet)
-            return false;
+        bool const wasSet = _redBeamTimerWasSet || _lastBeamMoveSideways;
         _redBeamMoveTimer = 0;
         _lastBeamMoveSideways = false;
-        _wasBlockingRedBeam = false;
         _redBeamTimerWasSet = false;
-        return true;
+        return wasSet;
     }
 
 private:
     uint32 _redBeamMoveTimer = 0;
     bool _lastBeamMoveSideways = false;
-    bool _wasBlockingRedBeam = false;
     bool _redBeamTimerWasSet = false;
 };
 
-class NetherspiteBlockBlueBeamAction : public MovementAction
+class NetherspiteBlockBeamAction : public MovementAction
 {
 public:
-    NetherspiteBlockBlueBeamAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "netherspite block blue beam") {}
+    NetherspiteBlockBeamAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "netherspite block beam") {}
     bool Execute(Event event) override;
-    bool ResetBlueBeamState()
+};
+
+class NetherspiteWaitToBlockBeamAction : public MovementAction
+{
+public:
+    NetherspiteWaitToBlockBeamAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "netherspite wait to block beam") {}
+    bool Execute(Event event) override;
+};
+
+class NetherspiteMoveToBeamAreaAction : public MovementAction
+{
+public:
+    NetherspiteMoveToBeamAreaAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "netherspite move to beam area") {}
+    bool Execute(Event event) override;
+    bool ResetDestination()
     {
-        if (!_wasBlockingBlueBeam)
-            return false;
-        _wasBlockingBlueBeam = false;
-        return true;
+        bool const wasSet = _destination.has_value();
+        _destination.reset();
+        return wasSet;
     }
 
 private:
-    bool _wasBlockingBlueBeam = false;
+    std::optional<Position> _destination;
 };
 
-class NetherspiteBlockGreenBeamAction : public MovementAction
+class NetherspiteMoveToBanishSlotAction : public MovementAction
 {
 public:
-    NetherspiteBlockGreenBeamAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "netherspite block green beam") {}
+    NetherspiteMoveToBanishSlotAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "netherspite move to banish slot") {}
     bool Execute(Event event) override;
-    bool ResetGreenBeamState()
-    {
-        if (!_wasBlockingGreenBeam)
-            return false;
-        _wasBlockingGreenBeam = false;
-        return true;
-    }
+};
+
+class NetherspiteStopAttackingAction : public Action
+{
+public:
+    NetherspiteStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "netherspite stop attacking") {}
+    bool Execute(Event event) override;
+};
+
+class NetherspiteSelectTargetForHoldAction : public Action
+{
+public:
+    NetherspiteSelectTargetForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "netherspite select target for hold") {}
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
+class NetherspiteControlPetAggressionAction : public Action
+{
+public:
+    NetherspiteControlPetAggressionAction(PlayerbotAI* botAI)
+        : Action(botAI, "netherspite control pet aggression") {}
+    bool Execute(Event event) override;
+    bool ResetPetStance();
 
 private:
-    bool _wasBlockingGreenBeam = false;
-};
-
-class NetherspiteAvoidBeamAndVoidZoneAction : public MovementAction
-{
-public:
-    NetherspiteAvoidBeamAndVoidZoneAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "netherspite avoid beam and void zone") {}
-    bool Execute(Event event) override;
-
-private:
-    struct BeamAvoid
-    {
-        float minDist;
-        float maxDist;
-        float dirX;
-        float dirY;
-    };
-    bool IsAwayFromBeams(
-        float x, float y, float botX, float botY, std::vector<BeamAvoid> const& beams);
-};
-
-class NetherspiteBanishPhaseAvoidVoidZoneAction : public MovementAction
-{
-public:
-    NetherspiteBanishPhaseAvoidVoidZoneAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "netherspite banish phase avoid void zone") {}
-    bool Execute(Event event) override;
+    ReactStates _previousReactState = REACT_DEFENSIVE;
+    bool _setPassive = false;
 };
 
 class NetherspiteManageTimersAndTrackersAction : public Action
@@ -343,14 +408,34 @@ public:
     PrinceMalchezaarEnfeebledBotAvoidHazardAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "prince malchezaar enfeebled bot avoid hazard") {}
     bool Execute(Event event) override;
+    bool HasDestination() const { return _destination.has_value(); }
+    bool ResetDestination()
+    {
+        bool const wasSet = _destination.has_value();
+        _destination.reset();
+        return wasSet;
+    }
+
+private:
+    std::optional<Position> _destination;
 };
 
-class PrinceMalchezaarNonTankAvoidInfernalAction : public MovementAction
+class PrinceMalchezaarMoveClearOfHazardsAction : public MovementAction
 {
 public:
-    PrinceMalchezaarNonTankAvoidInfernalAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "prince malchezaar non tank avoid infernal") {}
+    PrinceMalchezaarMoveClearOfHazardsAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "prince malchezaar move clear of hazards") {}
     bool Execute(Event event) override;
+    bool HasDestination() const { return _destination.has_value(); }
+    bool ResetDestination()
+    {
+        bool const wasSet = _destination.has_value();
+        _destination.reset();
+        return wasSet;
+    }
+
+private:
+    std::optional<Position> _destination;
 };
 
 class PrinceMalchezaarTanksPositionBossAction : public AttackAction
@@ -359,23 +444,36 @@ public:
     PrinceMalchezaarTanksPositionBossAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "prince malchezaar tanks position boss") {}
     bool Execute(Event event) override;
+    bool ResetWalk()
+    {
+        bool const wasSet = _destination.has_value() || _searchedInfernalCount.has_value();
+        _destination.reset();
+        _searchedInfernalCount.reset();
+        return wasSet;
+    }
+
+private:
+    std::optional<Position> _destination;
+    float _destinationClearance = 0.0f;
+    // No new search until the number of landed infernals changes.
+    std::optional<size_t> _searchedInfernalCount;
 };
 
 // Nightbane
 
-class NightbaneGroundPhaseTanksPositionBossAction : public AttackAction
+class NightbaneTankPositionBossAction : public AttackAction
 {
 public:
-    NightbaneGroundPhaseTanksPositionBossAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "nightbane ground phase tanks position boss") {}
+    NightbaneTankPositionBossAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "nightbane tank position boss") {}
     bool Execute(Event event) override;
 };
 
-class NightbaneGroundPhaseCoordinateRangedMovementAction : public MovementAction
+class NightbaneRangedStackAction : public MovementAction
 {
 public:
-    NightbaneGroundPhaseCoordinateRangedMovementAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "nightbane ground phase coordinate ranged movement") {}
+    NightbaneRangedStackAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "nightbane ranged stack") {}
     bool Execute(Event event) override;
 
 private:
@@ -389,31 +487,43 @@ public:
     NightbaneControlPetAggressionAction(PlayerbotAI* botAI)
         : Action(botAI, "nightbane control pet aggression") {}
     bool Execute(Event event) override;
-};
-
-class NightbaneFlightPhaseStackAndMoveAction : public MovementAction
-{
-public:
-    NightbaneFlightPhaseStackAndMoveAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "nightbane flight phase stack and move") {}
-    bool Execute(Event event) override;
-    bool ResetRainOfBonesHit()
-    {
-        if (!_rainOfBonesHit)
-            return false;
-        _rainOfBonesHit = false;
-        return true;
-    }
+    bool ResetPetStance();
 
 private:
-    bool _rainOfBonesHit = false;
+    ReactStates _previousReactState = REACT_DEFENSIVE;
+    bool _setPassive = false;
 };
 
-class NightbaneTeleportBackToTerraceAction : public MovementAction
+class NightbaneStopAttackingAction : public Action
 {
 public:
-    NightbaneTeleportBackToTerraceAction(PlayerbotAI* botAI)
-        : MovementAction(botAI, "nightbane teleport back to terrace") {}
+    NightbaneStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "nightbane stop attacking") {}
+    bool Execute(Event event) override;
+};
+
+class NightbaneSelectTargetForHoldAction : public Action
+{
+public:
+    NightbaneSelectTargetForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "nightbane select target for hold") {}
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
+class NightbaneStackInFlightAction : public MovementAction
+{
+public:
+    NightbaneStackInFlightAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "nightbane stack in flight") {}
+    bool Execute(Event event) override;
+};
+
+class NightbaneStandDownAction : public Action
+{
+public:
+    NightbaneStandDownAction(PlayerbotAI* botAI)
+        : Action(botAI, "nightbane stand down") {}
     bool Execute(Event event) override;
 };
 

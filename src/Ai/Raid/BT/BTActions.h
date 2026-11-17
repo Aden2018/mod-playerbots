@@ -26,18 +26,26 @@ public:
     bool Execute(Event event) override;
 };
 
+class BlackTempleAssignClassRolesAction : public Action
+{
+public:
+    BlackTempleAssignClassRolesAction(PlayerbotAI* botAI)
+        : Action(botAI, "black temple assign class roles") {}
+    bool Execute(Event event) override;
+};
+
 // Used for High Warlord Naj'entus, Supremus, Teron Gorefiend, Gurtogg Bloodboil and Mother
 // Shahraz.
 class BlackTempleMisdirectToMainTankAction : public Action
 {
 public:
     BlackTempleMisdirectToMainTankAction(
-        PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
-        : Action(botAI, name), _bossName(bossName) {}
+        PlayerbotAI* botAI, std::string const& name, BtHelpers::BtBosses boss)
+        : Action(botAI, name), _boss(boss) {}
     bool Execute(Event event) override;
 
 private:
-    std::string const _bossName;
+    BtHelpers::BtBosses const _boss;
 };
 
 // Used for High Warlord Naj'entus, Teron Gorefiend and Gurtogg Bloodboil, including his Fel Rage
@@ -47,16 +55,14 @@ class BlackTemplePositionBossAction : public AttackAction
 {
 public:
     BlackTemplePositionBossAction(
-        PlayerbotAI* botAI, std::string const& name, std::string const& bossName,
-        Position const& position, float arrivalDist = 3.0f, bool allTanks = false)
-        : AttackAction(botAI, name), _bossName(bossName), _position(position),
-          _arrivalDist(arrivalDist), _allTanks(allTanks) {}
+        PlayerbotAI* botAI, std::string const& name, BtHelpers::BtBosses boss,
+        Position const& position, bool allTanks = false)
+        : AttackAction(botAI, name), _boss(boss), _position(position), _allTanks(allTanks) {}
     bool Execute(Event event) override;
 
 private:
-    std::string const _bossName;
+    BtHelpers::BtBosses const _boss;
     Position const _position;
-    float const _arrivalDist;
     bool const _allTanks;
 };
 
@@ -83,11 +89,13 @@ public:
 
 // Trash
 
-class SisterOfPleasureFocusDpsAction : public Action
+// Damage on the Sister of Pleasure is split evenly with her Sister of Pain, and they have equal
+// health, so killing Pleasure kills both without anyone hitting Pain through Shell of Pain.
+class SisterOfPleasureFocusDpsAction : public AttackAction
 {
 public:
     SisterOfPleasureFocusDpsAction(PlayerbotAI* botAI)
-        : Action(botAI, "sister of pleasure focus dps") {}
+        : AttackAction(botAI, "sister of pleasure focus dps") {}
     bool Execute(Event event) override;
 };
 
@@ -99,6 +107,9 @@ public:
     bool Execute(Event event) override;
 };
 
+// Imps, water elementals, succubi and felhunters are kept off Reavers while anything else can be
+// attacked. With only Reavers left, the pet waits passive by its owner while one is unsafe, and
+// is sent onto them otherwise.
 class ShadowmoonReaverControlCasterPetAction : public Action
 {
 public:
@@ -178,6 +189,9 @@ private:
 
 // Supremus
 
+// Each step, the fixated bot takes the heading he would take longest to catch it on, stopped by
+// walls, the open area's edge or fire. It runs through fire only when that is the one way to stay
+// out of his reach.
 class SupremusKiteBossAction : public MovementAction
 {
 public:
@@ -211,6 +225,9 @@ private:
     uint32 _lastStepTime = 0;
 };
 
+// Runs straight to the nearest point a yard clear of the fire. A bot not yet burning takes only a
+// route that stays out of the fire, and otherwise waits at its edge; a burning bot takes the route
+// with the least fire on it.
 class SupremusMoveAwayFromFireAction : public MovementAction
 {
 public:
@@ -234,6 +251,8 @@ private:
     uint32 _lastFailedSearchTime = 0;
 };
 
+// Steps toward the target, turning as little as it must to keep each step clear of fire, so the
+// bot slides round a volcano or a trail in its way. With nothing clear it waits.
 class SupremusReachAroundFireAction : public MovementAction
 {
 public:
@@ -257,6 +276,8 @@ private:
 
 // Shade of Akama
 
+// Channelers stand on a platform out of sight from below, and Attack refuses a target out of
+// sight, so a bot walks the path toward its target until it can see it.
 class ShadeOfAkamaAttackChannelersAndSorcerersAction : public AttackAction
 {
 public:
@@ -322,11 +343,21 @@ public:
     bool Execute(Event event) override;
 };
 
+// Steps sideways off his line to the Fel Rage target, the axis of Arcing Smash, so a bot ahead
+// of a walking target isn't pushed along in front of it.
 class GurtoggBloodboilRangedMoveOutOfFrontalConeAction : public MovementAction
 {
 public:
     GurtoggBloodboilRangedMoveOutOfFrontalConeAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "gurtogg bloodboil ranged move out of frontal cone") {}
+    bool Execute(Event event) override;
+};
+
+class GurtoggBloodboilStopAttackingAction : public Action
+{
+public:
+    GurtoggBloodboilStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "gurtogg bloodboil stop attacking") {}
     bool Execute(Event event) override;
 };
 
@@ -394,6 +425,8 @@ public:
     bool Execute(Event event) override;
 };
 
+// Holders run away from the ranged position, in GUID order: with two, one to each side; with
+// three, the first straight away and the other two to each side.
 class MotherShahrazBreakFatalAttractionAction : public MovementAction
 {
 public:
@@ -407,6 +440,9 @@ private:
 
 // Illidari Council
 
+// Hunter bots in group order: the first, and any after the fourth, misdirect Zerevor to the mage
+// tank; the second Malande to the first assist tank; the third Gathios to the main tank; the
+// fourth Veras to the second assist tank.
 class IllidariCouncilMisdirectToTanksAction : public Action
 {
 public:
@@ -445,6 +481,8 @@ private:
     bool CastWarriorInterrupt(Unit* malande);
 };
 
+// Leaves a council patch only for a position from which it can still hit Malande; otherwise it
+// stays.
 class IllidariCouncilFirstAssistTankFocusMalandeAction : public AttackAction
 {
 public:
@@ -488,6 +526,14 @@ public:
     bool Execute(Event event) override;
 };
 
+class IllidariCouncilNonTanksAvoidZerevorAction : public MovementAction
+{
+public:
+    IllidariCouncilNonTanksAvoidZerevorAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "illidari council non-tanks avoid zerevor") {}
+    bool Execute(Event event) override;
+};
+
 class IllidariCouncilCommandPetTargetAction : public AttackAction
 {
 public:
@@ -504,7 +550,7 @@ public:
     bool Execute(Event event) override;
 
 private:
-    bool ShouldAttackMalande(Unit* malande, Unit* gathios, Unit* zerevor) const;
+    bool ShouldAttackMalande(Unit* malande, Unit* gathios, Unit* zerevor);
 };
 
 class IllidariCouncilManageDpsTimerAction : public Action
@@ -512,6 +558,14 @@ class IllidariCouncilManageDpsTimerAction : public Action
 public:
     IllidariCouncilManageDpsTimerAction(PlayerbotAI* botAI)
         : Action(botAI, "illidari council manage dps timer") {}
+    bool Execute(Event event) override;
+};
+
+class IllidariCouncilAnnounceClassRolesAction : public Action
+{
+public:
+    IllidariCouncilAnnounceClassRolesAction(PlayerbotAI* botAI)
+        : Action(botAI, "illidari council announce class roles") {}
     bool Execute(Event event) override;
 };
 
@@ -594,7 +648,7 @@ private:
     bool FindTrapHunter(
         Player& infected, Position const& infectionPosition,
         std::unordered_map<ObjectGuid, BtHelpers::IllidanInfection> const& infections,
-        ObjectGuid& hunter);
+        ObjectGuid& hunterGuid);
 };
 
 class IllidanStormrageAssistTanksHandleFlamesAction : public AttackAction
@@ -672,6 +726,7 @@ public:
     bool Execute(Event event) override;
 };
 
+// Everyone but the main tank waits at the landing stack, out of his way to the ring.
 class IllidanStormragePositionForLandingAction : public MovementAction
 {
 public:
@@ -680,22 +735,18 @@ public:
     bool Execute(Event event) override;
 };
 
-class IllidanStormrageMeleeStopAttackingAction : public Action
+class IllidanStormrageStopAttackingAction : public Action
 {
 public:
-    IllidanStormrageMeleeStopAttackingAction(PlayerbotAI* botAI)
-        : Action(botAI, "illidan stormrage melee stop attacking") {}
+    IllidanStormrageStopAttackingAction(PlayerbotAI* botAI)
+        : Action(botAI, "illidan stormrage stop attacking") {}
     bool Execute(Event event) override;
 };
 
-class IllidanStormrageStopShootingAction : public Action
-{
-public:
-    IllidanStormrageStopShootingAction(PlayerbotAI* botAI)
-        : Action(botAI, "illidan stormrage stop shooting") {}
-    bool Execute(Event event) override;
-};
-
+// Phase 1: stacked on the grate center. Phases 3 and 5: in the grate slots by roster, healers
+// first, the warlock tank in the one nearest its Demon Form position, and ranged DPS no farther
+// than their spell reach of him. Phase 4: healers and ranged DPS each in their own slots, by
+// roster.
 class IllidanStormrageSpreadRangedAction : public MovementAction
 {
 public:
@@ -707,6 +758,8 @@ private:
     bool FindDemonFormSlot(Unit const& illidan, Position& position);
 };
 
+// Short steps toward the Demon, so the bot stops once in reach, never into Aura of Dread or near
+// Shadow Blast round his victim. Spread ranged brings it back once the Demon is dead.
 class IllidanStormrageReachShadowDemonAction : public MovementAction
 {
 public:
@@ -715,6 +768,8 @@ public:
     bool Execute(Event event) override;
 };
 
+// Melee and tanks but the main tank, which has its own positions, wait in their Demon Form slots,
+// facing him, and leave them only for a Shadow Demon.
 class IllidanStormrageMeleeStayAwayFromDemonFormAction : public MovementAction
 {
 public:
@@ -723,6 +778,8 @@ public:
     bool Execute(Event event) override;
 };
 
+// The warlock tank holds him from its position with Shadow Ward and Searing Pain, Life Tapping
+// between Searing Pains.
 class IllidanStormrageWarlockTankHandleDemonFormAction : public MovementAction
 {
 public:
@@ -731,6 +788,7 @@ public:
     bool Execute(Event event) override;
 };
 
+// A channel would hold the first Seed back; Life Tap comes between Seeds.
 class IllidanStormrageSeedShadowDemonsAction : public Action
 {
 public:
@@ -768,6 +826,14 @@ class IllidanStormrageClearHazardsAction : public Action
 public:
     IllidanStormrageClearHazardsAction(PlayerbotAI* botAI)
         : Action(botAI, "illidan stormrage clear hazards") {}
+    bool Execute(Event event) override;
+};
+
+class IllidanStormrageAnnounceClassRolesAction : public Action
+{
+public:
+    IllidanStormrageAnnounceClassRolesAction(PlayerbotAI* botAI)
+        : Action(botAI, "illidan stormrage announce class roles") {}
     bool Execute(Event event) override;
 };
 

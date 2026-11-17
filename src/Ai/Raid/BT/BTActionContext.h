@@ -15,9 +15,12 @@ class RaidBlackTempleActionContext : public NamedObjectContext<Action>
 public:
     RaidBlackTempleActionContext()
     {
-        // General
+        // Shared
         creators["black temple reset encounter states"] =
             &RaidBlackTempleActionContext::black_temple_reset_encounter_states;
+
+        creators["black temple assign class roles"] =
+            &RaidBlackTempleActionContext::black_temple_assign_class_roles;
 
         // Trash
         creators["sister of pleasure focus dps"] =
@@ -54,6 +57,9 @@ public:
         // Supremus
         creators["supremus misdirect to main tank"] =
             &RaidBlackTempleActionContext::supremus_misdirect_to_main_tank;
+
+        creators["supremus tanks position boss"] =
+            &RaidBlackTempleActionContext::supremus_tanks_position_boss;
 
         creators["supremus spread ranged"] = &RaidBlackTempleActionContext::supremus_spread_ranged;
 
@@ -106,6 +112,9 @@ public:
 
         creators["gurtogg bloodboil lead boss to tank position"] =
             &RaidBlackTempleActionContext::gurtogg_bloodboil_lead_boss_to_tank_position;
+
+        creators["gurtogg bloodboil stop attacking"] =
+            &RaidBlackTempleActionContext::gurtogg_bloodboil_stop_attacking;
 
         // Reliquary of Souls
         creators["reliquary of souls misdirect to main tank"] =
@@ -164,6 +173,9 @@ public:
         creators["illidari council position mage tank healer"] =
             &RaidBlackTempleActionContext::illidari_council_position_mage_tank_healer;
 
+        creators["illidari council non-tanks avoid zerevor"] =
+            &RaidBlackTempleActionContext::illidari_council_non_tanks_avoid_zerevor;
+
         creators["illidari council spread ranged"] =
             &RaidBlackTempleActionContext::illidari_council_spread_ranged;
 
@@ -175,6 +187,9 @@ public:
 
         creators["illidari council manage dps timer"] =
             &RaidBlackTempleActionContext::illidari_council_manage_dps_timer;
+
+        creators["illidari council announce class roles"] =
+            &RaidBlackTempleActionContext::illidari_council_announce_class_roles;
 
         // Illidan Stormrage <The Betrayer>
         creators["illidan stormrage position on grate during speech"] =
@@ -216,11 +231,8 @@ public:
         creators["illidan stormrage position for landing"] =
             &RaidBlackTempleActionContext::illidan_stormrage_position_for_landing;
 
-        creators["illidan stormrage melee stop attacking"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_melee_stop_attacking;
-
-        creators["illidan stormrage stop shooting"] =
-            &RaidBlackTempleActionContext::illidan_stormrage_stop_shooting;
+        creators["illidan stormrage stop attacking"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_stop_attacking;
 
         creators["illidan stormrage spread ranged"] =
             &RaidBlackTempleActionContext::illidan_stormrage_spread_ranged;
@@ -245,13 +257,20 @@ public:
 
         creators["illidan stormrage clear hazards"] =
             &RaidBlackTempleActionContext::illidan_stormrage_clear_hazards;
+
+        creators["illidan stormrage announce class roles"] =
+            &RaidBlackTempleActionContext::illidan_stormrage_announce_class_roles;
     }
 
 private:
-    // General
+    // Shared
     static Action* black_temple_reset_encounter_states(PlayerbotAI* botAI)
     {
         return new BlackTempleResetEncounterStatesAction(botAI);
+    }
+    static Action* black_temple_assign_class_roles(PlayerbotAI* botAI)
+    {
+        return new BlackTempleAssignClassRolesAction(botAI);
     }
 
     // Trash
@@ -272,13 +291,14 @@ private:
     static Action* high_warlord_najentus_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new BlackTempleMisdirectToMainTankAction(
-            botAI, "high warlord naj'entus misdirect to main tank", "high warlord naj'entus");
+            botAI, "high warlord naj'entus misdirect to main tank",
+            BtHelpers::BtBosses::DATA_HIGH_WARLORD_NAJENTUS);
     }
     static Action* high_warlord_najentus_tanks_position_boss(PlayerbotAI* botAI)
     {
         return new BlackTemplePositionBossAction(
-            botAI, "high warlord naj'entus tanks position boss", "high warlord naj'entus",
-            BtHelpers::NAJENTUS_TANK_POSITION);
+            botAI, "high warlord naj'entus tanks position boss",
+            BtHelpers::BtBosses::DATA_HIGH_WARLORD_NAJENTUS, BtHelpers::NAJENTUS_TANK_POSITION);
     }
     static Action* high_warlord_najentus_spread_ranged(PlayerbotAI* botAI)
     {
@@ -307,7 +327,13 @@ private:
     static Action* supremus_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new BlackTempleMisdirectToMainTankAction(
-            botAI, "supremus misdirect to main tank", "supremus");
+            botAI, "supremus misdirect to main tank", BtHelpers::BtBosses::DATA_SUPREMUS);
+    }
+    static Action* supremus_tanks_position_boss(PlayerbotAI* botAI)
+    {
+        return new BlackTemplePositionBossAction(
+            botAI, "supremus tanks position boss",
+            BtHelpers::BtBosses::DATA_SUPREMUS, BtHelpers::SUPREMUS_INITIAL_TANK_POSITION);
     }
     static Action* supremus_spread_ranged(PlayerbotAI* botAI)
     {
@@ -337,13 +363,14 @@ private:
     static Action* teron_gorefiend_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new BlackTempleMisdirectToMainTankAction(
-            botAI, "teron gorefiend misdirect to main tank", "teron gorefiend");
+            botAI, "teron gorefiend misdirect to main tank",
+            BtHelpers::BtBosses::DATA_TERON_GOREFIEND);
     }
     static Action* teron_gorefiend_tanks_position_boss(PlayerbotAI* botAI)
     {
         return new BlackTemplePositionBossAction(
-            botAI, "teron gorefiend tanks position boss", "teron gorefiend",
-            BtHelpers::GOREFIEND_TANK_POSITION);
+            botAI, "teron gorefiend tanks position boss",
+            BtHelpers::BtBosses::DATA_TERON_GOREFIEND, BtHelpers::GOREFIEND_TANK_POSITION);
     }
     static Action* teron_gorefiend_position_ranged_on_balcony(PlayerbotAI* botAI)
     {
@@ -366,14 +393,16 @@ private:
     static Action* gurtogg_bloodboil_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new BlackTempleMisdirectToMainTankAction(
-            botAI, "gurtogg bloodboil misdirect to main tank", "gurtogg bloodboil");
+            botAI, "gurtogg bloodboil misdirect to main tank",
+            BtHelpers::BtBosses::DATA_GURTOGG_BLOODBOIL);
     }
     static Action* gurtogg_bloodboil_tanks_position_boss(PlayerbotAI* botAI)
     {
         constexpr bool allTanks = true;
         return new BlackTemplePositionBossAction(
-            botAI, "gurtogg bloodboil tanks position boss", "gurtogg bloodboil",
-            BtHelpers::GURTOGG_TANK_POSITION, BtHelpers::GURTOGG_POSITION_TOLERANCE, allTanks);
+            botAI, "gurtogg bloodboil tanks position boss",
+            BtHelpers::BtBosses::DATA_GURTOGG_BLOODBOIL, BtHelpers::GURTOGG_TANK_POSITION,
+            allTanks);
     }
     static Action* gurtogg_bloodboil_rotate_ranged_groups(PlayerbotAI* botAI)
     {
@@ -390,8 +419,12 @@ private:
     static Action* gurtogg_bloodboil_lead_boss_to_tank_position(PlayerbotAI* botAI)
     {
         return new BlackTemplePositionBossAction(
-            botAI, "gurtogg bloodboil lead boss to tank position", "gurtogg bloodboil",
-            BtHelpers::GURTOGG_TANK_POSITION, BtHelpers::GURTOGG_POSITION_TOLERANCE);
+            botAI, "gurtogg bloodboil lead boss to tank position",
+            BtHelpers::BtBosses::DATA_GURTOGG_BLOODBOIL, BtHelpers::GURTOGG_TANK_POSITION);
+    }
+    static Action* gurtogg_bloodboil_stop_attacking(PlayerbotAI* botAI)
+    {
+        return new GurtoggBloodboilStopAttackingAction(botAI);
     }
 
     // Reliquary of Souls
@@ -421,7 +454,8 @@ private:
     static Action* mother_shahraz_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new BlackTempleMisdirectToMainTankAction(
-            botAI, "mother shahraz misdirect to main tank", "mother shahraz");
+            botAI, "mother shahraz misdirect to main tank",
+            BtHelpers::BtBosses::DATA_MOTHER_SHAHRAZ);
     }
     static Action* mother_shahraz_tanks_position_boss_under_pillar(PlayerbotAI* botAI)
     {
@@ -474,6 +508,10 @@ private:
     {
         return new IllidariCouncilPositionMageTankHealerAction(botAI);
     }
+    static Action* illidari_council_non_tanks_avoid_zerevor(PlayerbotAI* botAI)
+    {
+        return new IllidariCouncilNonTanksAvoidZerevorAction(botAI);
+    }
     static Action* illidari_council_spread_ranged(PlayerbotAI* botAI)
     {
         return new BlackTempleSpreadRangedAction(
@@ -490,6 +528,10 @@ private:
     static Action* illidari_council_manage_dps_timer(PlayerbotAI* botAI)
     {
         return new IllidariCouncilManageDpsTimerAction(botAI);
+    }
+    static Action* illidari_council_announce_class_roles(PlayerbotAI* botAI)
+    {
+        return new IllidariCouncilAnnounceClassRolesAction(botAI);
     }
 
     // Illidan Stormrage <The Betrayer>
@@ -545,13 +587,9 @@ private:
     {
         return new IllidanStormragePositionForLandingAction(botAI);
     }
-    static Action* illidan_stormrage_melee_stop_attacking(PlayerbotAI* botAI)
+    static Action* illidan_stormrage_stop_attacking(PlayerbotAI* botAI)
     {
-        return new IllidanStormrageMeleeStopAttackingAction(botAI);
-    }
-    static Action* illidan_stormrage_stop_shooting(PlayerbotAI* botAI)
-    {
-        return new IllidanStormrageStopShootingAction(botAI);
+        return new IllidanStormrageStopAttackingAction(botAI);
     }
     static Action* illidan_stormrage_spread_ranged(PlayerbotAI* botAI)
     {
@@ -584,6 +622,10 @@ private:
     static Action* illidan_stormrage_clear_hazards(PlayerbotAI* botAI)
     {
         return new IllidanStormrageClearHazardsAction(botAI);
+    }
+    static Action* illidan_stormrage_announce_class_roles(PlayerbotAI* botAI)
+    {
+        return new IllidanStormrageAnnounceClassRolesAction(botAI);
     }
 };
 

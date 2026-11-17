@@ -305,6 +305,24 @@ public:
     bool Execute(Event event) override;
 };
 
+class FelmystStopAttackingForLandingAction : public Action
+{
+public:
+    FelmystStopAttackingForLandingAction(PlayerbotAI* botAI)
+        : Action(botAI, "felmyst stop attacking for landing") {}
+    bool Execute(Event event) override;
+};
+
+// Takes the target dps assist would take, without attacking it, for a bot in its non-combat engine.
+class FelmystSelectTargetForHoldAction : public Action
+{
+public:
+    FelmystSelectTargetForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "felmyst select target for hold") {}
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
 // Eredar Twins
 
 class EredarTwinsMeleeJumpFromBalconyAction : public MovementAction
@@ -384,6 +402,18 @@ public:
     EredarTwinsDpsPrioritizeSacrolashAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "eredar twins dps prioritize sacrolash") {}
     bool Execute(Event event) override;
+};
+
+class EredarTwinsControlPetAggressionAction : public Action
+{
+public:
+    EredarTwinsControlPetAggressionAction(PlayerbotAI* botAI)
+        : Action(botAI, "eredar twins control pet aggression") {}
+    bool Execute(Event event) override;
+
+private:
+    ReactStates _previousReactState = REACT_DEFENSIVE;
+    bool _setPassive = false;
 };
 
 class EredarTwinsConflagrationTargetMoveFromGroupAction : public MovementAction

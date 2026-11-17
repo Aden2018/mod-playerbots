@@ -23,18 +23,30 @@ public:
             &RaidKarazhanTriggerContext::karazhan_enemies_cast_fear;
 
         // Trash
-        creators["mana warp is about to explode"] =
-            &RaidKarazhanTriggerContext::mana_warp_is_about_to_explode;
+        creators["mana warp casts warp breach"] =
+            &RaidKarazhanTriggerContext::mana_warp_casts_warp_breach;
+
+        creators["mana warp stunner should hold"] =
+            &RaidKarazhanTriggerContext::mana_warp_stunner_should_hold;
 
         // Attumen the Huntsman
-        creators["attumen the huntsman phase one active"] =
-            &RaidKarazhanTriggerContext::attumen_the_huntsman_phase_one_active;
+        creators["attumen the huntsman should be tanked"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_should_be_tanked;
 
-        creators["attumen the huntsman phase two active"] =
-            &RaidKarazhanTriggerContext::attumen_the_huntsman_phase_two_active;
+        creators["attumen the huntsman midnight should be focused"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_midnight_should_be_focused;
 
-        creators["attumen the huntsman phase transition"] =
-            &RaidKarazhanTriggerContext::attumen_the_huntsman_phase_transition;
+        creators["attumen the huntsman mounted should be tanked"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_mounted_should_be_tanked;
+
+        creators["attumen the huntsman should stack behind"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_should_stack_behind;
+
+        creators["attumen the huntsman should hold dps"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_should_hold_dps;
+
+        creators["attumen the huntsman should manage dps timer"] =
+            &RaidKarazhanTriggerContext::attumen_the_huntsman_should_manage_dps_timer;
 
         // Moroes
         creators["moroes should prioritize adds"] =
@@ -44,33 +56,39 @@ public:
         creators["maiden of virtue should be tanked"] =
             &RaidKarazhanTriggerContext::maiden_of_virtue_should_be_tanked;
 
+        creators["maiden of virtue should break repentance"] =
+            &RaidKarazhanTriggerContext::maiden_of_virtue_should_break_repentance;
+
         creators["maiden of virtue ranged should spread"] =
             &RaidKarazhanTriggerContext::maiden_of_virtue_ranged_should_spread;
 
-        creators["maiden of virtue grounding totem consumes holy fire"] =
-            &RaidKarazhanTriggerContext::maiden_of_virtue_grounding_totem_consumes_holy_fire;
+        creators["maiden of virtue should ground holy fire"] =
+            &RaidKarazhanTriggerContext::maiden_of_virtue_should_ground_holy_fire;
 
         // The Big Bad Wolf
         creators["big bad wolf should be tanked"] =
             &RaidKarazhanTriggerContext::big_bad_wolf_should_be_tanked;
 
-        creators["big bad wolf chasing little red riding hood"] =
-            &RaidKarazhanTriggerContext::big_bad_wolf_chasing_little_red_riding_hood;
+        creators["big bad wolf chasing red hood"] =
+            &RaidKarazhanTriggerContext::big_bad_wolf_chasing_red_hood;
+
+        creators["big bad wolf paladin should protect red hood"] =
+            &RaidKarazhanTriggerContext::big_bad_wolf_paladin_should_protect_red_hood;
 
         // Romulo and Julianne
-        creators["romulo and julianne both bosses revived"] =
-            &RaidKarazhanTriggerContext::romulo_and_julianne_both_bosses_revived;
+        creators["romulo and julianne should be killed together"] =
+            &RaidKarazhanTriggerContext::romulo_and_julianne_should_be_killed_together;
 
         // The Wizard of Oz
-        creators["wizard of oz need target priority"] =
-            &RaidKarazhanTriggerContext::wizard_of_oz_need_target_priority;
+        creators["wizard of oz should prioritize targets"] =
+            &RaidKarazhanTriggerContext::wizard_of_oz_should_prioritize_targets;
 
-        creators["wizard of oz strawman is vulnerable to fire"] =
-            &RaidKarazhanTriggerContext::wizard_of_oz_strawman_is_vulnerable_to_fire;
+        creators["wizard of oz mage should burn strawman"] =
+            &RaidKarazhanTriggerContext::wizard_of_oz_mage_should_burn_strawman;
 
         // The Curator
-        creators["the curator astral flare spawned"] =
-            &RaidKarazhanTriggerContext::the_curator_astral_flare_spawned;
+        creators["the curator should prioritize astral flares"] =
+            &RaidKarazhanTriggerContext::the_curator_should_prioritize_astral_flares;
 
         creators["the curator should be tanked"] =
             &RaidKarazhanTriggerContext::the_curator_should_be_tanked;
@@ -80,11 +98,14 @@ public:
 
         // Terestian Illhoof
         creators["terestian illhoof should prioritize chains"] =
-            &RaidKarazhanTriggerContext::terestian_illhoof_need_target_priority;
+            &RaidKarazhanTriggerContext::terestian_illhoof_should_prioritize_chains;
 
         // Shade of Aran
         creators["shade of aran arcane explosion is casting"] =
             &RaidKarazhanTriggerContext::shade_of_aran_arcane_explosion_is_casting;
+
+        creators["shade of aran ranged is in blizzard"] =
+            &RaidKarazhanTriggerContext::shade_of_aran_ranged_is_in_blizzard;
 
         creators["shade of aran flame wreath is active"] =
             &RaidKarazhanTriggerContext::shade_of_aran_flame_wreath_is_active;
@@ -96,20 +117,26 @@ public:
             &RaidKarazhanTriggerContext::shade_of_aran_ranged_should_maintain_distance;
 
         // Netherspite
-        creators["netherspite red beam is active"] =
-            &RaidKarazhanTriggerContext::netherspite_red_beam_is_active;
+        creators["netherspite should block red beam"] =
+            &RaidKarazhanTriggerContext::netherspite_should_block_red_beam;
 
-        creators["netherspite blue beam is active"] =
-            &RaidKarazhanTriggerContext::netherspite_blue_beam_is_active;
+        creators["netherspite should block beam"] =
+            &RaidKarazhanTriggerContext::netherspite_should_block_beam;
 
-        creators["netherspite green beam is active"] =
-            &RaidKarazhanTriggerContext::netherspite_green_beam_is_active;
+        creators["netherspite next beam blocker should prepare"] =
+            &RaidKarazhanTriggerContext::netherspite_next_beam_blocker_should_prepare;
 
-        creators["netherspite bot is not beam blocker"] =
-            &RaidKarazhanTriggerContext::netherspite_bot_is_not_beam_blocker;
+        creators["netherspite should position around beams"] =
+            &RaidKarazhanTriggerContext::netherspite_should_position_around_beams;
 
-        creators["netherspite in banish phase"] =
-            &RaidKarazhanTriggerContext::netherspite_in_banish_phase;
+        creators["netherspite should spread for netherbreath"] =
+            &RaidKarazhanTriggerContext::netherspite_should_spread_for_netherbreath;
+
+        creators["netherspite should hold dps"] =
+            &RaidKarazhanTriggerContext::netherspite_should_hold_dps;
+
+        creators["netherspite pets should be held"] =
+            &RaidKarazhanTriggerContext::netherspite_pets_should_be_held;
 
         creators["netherspite should manage timers and trackers"] =
             &RaidKarazhanTriggerContext::netherspite_need_to_manage_timers_and_trackers;
@@ -118,8 +145,8 @@ public:
         creators["prince malchezaar bot is enfeebled"] =
             &RaidKarazhanTriggerContext::prince_malchezaar_bot_is_enfeebled;
 
-        creators["prince malchezaar engaged by non-tanks"] =
-            &RaidKarazhanTriggerContext::prince_malchezaar_engaged_by_non_tanks;
+        creators["prince malchezaar bot in hazard"] =
+            &RaidKarazhanTriggerContext::prince_malchezaar_bot_in_hazard;
 
         creators["prince malchezaar should be tanked"] =
             &RaidKarazhanTriggerContext::prince_malchezaar_should_be_tanked;
@@ -128,20 +155,23 @@ public:
         creators["nightbane should be tanked"] =
             &RaidKarazhanTriggerContext::nightbane_should_be_tanked;
 
-        creators["nightbane ground phase engaged by ranged"] =
-            &RaidKarazhanTriggerContext::nightbane_ground_phase_engaged_by_ranged;
+        creators["nightbane ranged should stack"] =
+            &RaidKarazhanTriggerContext::nightbane_ranged_should_stack;
 
-        creators["nightbane pets chase flying boss out of bounds"] =
-            &RaidKarazhanTriggerContext::nightbane_pets_chase_flying_boss_out_of_bounds;
+        creators["nightbane pets should be held"] =
+            &RaidKarazhanTriggerContext::nightbane_pets_should_be_held;
 
-        creators["nightbane in flight phase"] =
-            &RaidKarazhanTriggerContext::nightbane_in_flight_phase;
+        creators["nightbane should hold dps"] =
+            &RaidKarazhanTriggerContext::nightbane_should_hold_dps;
 
-        creators["nightbane bot went out of bounds"] =
-            &RaidKarazhanTriggerContext::nightbane_bot_went_out_of_bounds;
+        creators["nightbane should stack in flight"] =
+            &RaidKarazhanTriggerContext::nightbane_should_stack_in_flight;
+
+        creators["nightbane should stand down"] =
+            &RaidKarazhanTriggerContext::nightbane_should_stand_down;
 
         creators["nightbane should manage timers and trackers"] =
-            &RaidKarazhanTriggerContext::nightbane_need_to_manage_timers_and_trackers;
+            &RaidKarazhanTriggerContext::nightbane_should_manage_timers_and_trackers;
     }
 
 private:
@@ -156,23 +186,39 @@ private:
     }
 
     // Trash
-    static Trigger* mana_warp_is_about_to_explode(PlayerbotAI* botAI)
+    static Trigger* mana_warp_casts_warp_breach(PlayerbotAI* botAI)
     {
-        return new ManaWarpIsAboutToExplodeTrigger(botAI);
+        return new ManaWarpCastsWarpBreachTrigger(botAI);
+    }
+    static Trigger* mana_warp_stunner_should_hold(PlayerbotAI* botAI)
+    {
+        return new ManaWarpStunnerShouldHoldTrigger(botAI);
     }
 
     // Attumen the Huntsman
-    static Trigger* attumen_the_huntsman_phase_one_active(PlayerbotAI* botAI)
+    static Trigger* attumen_the_huntsman_should_be_tanked(PlayerbotAI* botAI)
     {
-        return new AttumenTheHuntsmanPhaseOneActiveTrigger(botAI);
+        return new AttumenTheHuntsmanShouldBeTankedTrigger(botAI);
     }
-    static Trigger* attumen_the_huntsman_phase_two_active(PlayerbotAI* botAI)
+    static Trigger* attumen_the_huntsman_midnight_should_be_focused(PlayerbotAI* botAI)
     {
-        return new AttumenTheHuntsmanPhaseTwoActiveTrigger(botAI);
+        return new AttumenTheHuntsmanMidnightShouldBeFocusedTrigger(botAI);
     }
-    static Trigger* attumen_the_huntsman_phase_transition(PlayerbotAI* botAI)
+    static Trigger* attumen_the_huntsman_mounted_should_be_tanked(PlayerbotAI* botAI)
     {
-        return new AttumenTheHuntsmanPhaseTransitionTrigger(botAI);
+        return new AttumenTheHuntsmanMountedShouldBeTankedTrigger(botAI);
+    }
+    static Trigger* attumen_the_huntsman_should_stack_behind(PlayerbotAI* botAI)
+    {
+        return new AttumenTheHuntsmanShouldStackBehindTrigger(botAI);
+    }
+    static Trigger* attumen_the_huntsman_should_hold_dps(PlayerbotAI* botAI)
+    {
+        return new AttumenTheHuntsmanShouldHoldDpsTrigger(botAI);
+    }
+    static Trigger* attumen_the_huntsman_should_manage_dps_timer(PlayerbotAI* botAI)
+    {
+        return new AttumenTheHuntsmanShouldManageDpsTimerTrigger(botAI);
     }
 
     // Moroes
@@ -186,13 +232,17 @@ private:
     {
         return new MaidenOfVirtueShouldBeTankedTrigger(botAI);
     }
+    static Trigger* maiden_of_virtue_should_break_repentance(PlayerbotAI* botAI)
+    {
+        return new MaidenOfVirtueShouldBreakRepentanceTrigger(botAI);
+    }
     static Trigger* maiden_of_virtue_ranged_should_spread(PlayerbotAI* botAI)
     {
         return new MaidenOfVirtueRangedShouldSpreadTrigger(botAI);
     }
-    static Trigger* maiden_of_virtue_grounding_totem_consumes_holy_fire(PlayerbotAI* botAI)
+    static Trigger* maiden_of_virtue_should_ground_holy_fire(PlayerbotAI* botAI)
     {
-        return new MaidenOfVirtueGroundingTotemConsumesHolyFireTrigger(botAI);
+        return new MaidenOfVirtueShouldGroundHolyFireTrigger(botAI);
     }
 
     // The Big Bad Wolf
@@ -200,31 +250,35 @@ private:
     {
         return new BigBadWolfShouldBeTankedTrigger(botAI);
     }
-    static Trigger* big_bad_wolf_chasing_little_red_riding_hood(PlayerbotAI* botAI)
+    static Trigger* big_bad_wolf_chasing_red_hood(PlayerbotAI* botAI)
     {
-        return new BigBadWolfChasingLittleRedRidingHoodTrigger(botAI);
+        return new BigBadWolfChasingRedHoodTrigger(botAI);
+    }
+    static Trigger* big_bad_wolf_paladin_should_protect_red_hood(PlayerbotAI* botAI)
+    {
+        return new BigBadWolfPaladinShouldProtectRedHoodTrigger(botAI);
     }
 
     // Romulo and Julianne
-    static Trigger* romulo_and_julianne_both_bosses_revived(PlayerbotAI* botAI)
+    static Trigger* romulo_and_julianne_should_be_killed_together(PlayerbotAI* botAI)
     {
-        return new RomuloAndJulianneBothBossesRevivedTrigger(botAI);
+        return new RomuloAndJulianneShouldBeKilledTogetherTrigger(botAI);
     }
 
     // The Wizard of Oz
-    static Trigger* wizard_of_oz_need_target_priority(PlayerbotAI* botAI)
+    static Trigger* wizard_of_oz_should_prioritize_targets(PlayerbotAI* botAI)
     {
-        return new WizardOfOzNeedTargetPriorityTrigger(botAI);
+        return new WizardOfOzShouldPrioritizeTargetsTrigger(botAI);
     }
-    static Trigger* wizard_of_oz_strawman_is_vulnerable_to_fire(PlayerbotAI* botAI)
+    static Trigger* wizard_of_oz_mage_should_burn_strawman(PlayerbotAI* botAI)
     {
-        return new WizardOfOzStrawmanIsVulnerableToFireTrigger(botAI);
+        return new WizardOfOzMageShouldBurnStrawmanTrigger(botAI);
     }
 
     // The Curator
-    static Trigger* the_curator_astral_flare_spawned(PlayerbotAI* botAI)
+    static Trigger* the_curator_should_prioritize_astral_flares(PlayerbotAI* botAI)
     {
-        return new TheCuratorAstralFlareSpawnedTrigger(botAI);
+        return new TheCuratorShouldPrioritizeAstralFlaresTrigger(botAI);
     }
     static Trigger* the_curator_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -236,7 +290,7 @@ private:
     }
 
     // Terestian Illhoof
-    static Trigger* terestian_illhoof_need_target_priority(PlayerbotAI* botAI)
+    static Trigger* terestian_illhoof_should_prioritize_chains(PlayerbotAI* botAI)
     {
         return new TerestianIllhoofShouldPrioritizeChainsTrigger(botAI);
     }
@@ -245,6 +299,10 @@ private:
     static Trigger* shade_of_aran_arcane_explosion_is_casting(PlayerbotAI* botAI)
     {
         return new ShadeOfAranArcaneExplosionIsCastingTrigger(botAI);
+    }
+    static Trigger* shade_of_aran_ranged_is_in_blizzard(PlayerbotAI* botAI)
+    {
+        return new ShadeOfAranRangedIsInBlizzardTrigger(botAI);
     }
     static Trigger* shade_of_aran_flame_wreath_is_active(PlayerbotAI* botAI)
     {
@@ -260,25 +318,33 @@ private:
     }
 
     // Netherspite
-    static Trigger* netherspite_red_beam_is_active(PlayerbotAI* botAI)
+    static Trigger* netherspite_should_block_red_beam(PlayerbotAI* botAI)
     {
-        return new NetherspiteRedBeamIsActiveTrigger(botAI);
+        return new NetherspiteShouldBlockRedBeamTrigger(botAI);
     }
-    static Trigger* netherspite_blue_beam_is_active(PlayerbotAI* botAI)
+    static Trigger* netherspite_should_block_beam(PlayerbotAI* botAI)
     {
-        return new NetherspiteBlueBeamIsActiveTrigger(botAI);
+        return new NetherspiteShouldBlockBeamTrigger(botAI);
     }
-    static Trigger* netherspite_green_beam_is_active(PlayerbotAI* botAI)
+    static Trigger* netherspite_next_beam_blocker_should_prepare(PlayerbotAI* botAI)
     {
-        return new NetherspiteGreenBeamIsActiveTrigger(botAI);
+        return new NetherspiteNextBeamBlockerShouldPrepareTrigger(botAI);
     }
-    static Trigger* netherspite_bot_is_not_beam_blocker(PlayerbotAI* botAI)
+    static Trigger* netherspite_should_position_around_beams(PlayerbotAI* botAI)
     {
-        return new NetherspiteBotIsNotBeamBlockerTrigger(botAI);
+        return new NetherspiteShouldPositionAroundBeamsTrigger(botAI);
     }
-    static Trigger* netherspite_in_banish_phase(PlayerbotAI* botAI)
+    static Trigger* netherspite_should_spread_for_netherbreath(PlayerbotAI* botAI)
     {
-        return new NetherspiteInBanishPhaseTrigger(botAI);
+        return new NetherspiteShouldSpreadForNetherbreathTrigger(botAI);
+    }
+    static Trigger* netherspite_should_hold_dps(PlayerbotAI* botAI)
+    {
+        return new NetherspiteShouldHoldDpsTrigger(botAI);
+    }
+    static Trigger* netherspite_pets_should_be_held(PlayerbotAI* botAI)
+    {
+        return new NetherspitePetsShouldBeHeldTrigger(botAI);
     }
     static Trigger* netherspite_need_to_manage_timers_and_trackers(PlayerbotAI* botAI)
     {
@@ -290,9 +356,9 @@ private:
     {
         return new PrinceMalchezaarBotIsEnfeebledTrigger(botAI);
     }
-    static Trigger* prince_malchezaar_engaged_by_non_tanks(PlayerbotAI* botAI)
+    static Trigger* prince_malchezaar_bot_in_hazard(PlayerbotAI* botAI)
     {
-        return new PrinceMalchezaarEngagedByNonTanksTrigger(botAI);
+        return new PrinceMalchezaarBotInHazardTrigger(botAI);
     }
     static Trigger* prince_malchezaar_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -304,23 +370,27 @@ private:
     {
         return new NightbaneShouldBeTankedTrigger(botAI);
     }
-    static Trigger* nightbane_ground_phase_engaged_by_ranged(PlayerbotAI* botAI)
+    static Trigger* nightbane_ranged_should_stack(PlayerbotAI* botAI)
     {
-        return new NightbaneGroundPhaseEngagedByRangedTrigger(botAI);
+        return new NightbaneRangedShouldStackTrigger(botAI);
     }
-    static Trigger* nightbane_pets_chase_flying_boss_out_of_bounds(PlayerbotAI* botAI)
+    static Trigger* nightbane_pets_should_be_held(PlayerbotAI* botAI)
     {
-        return new NightbanePetsChaseFlyingBossOutOfBoundsTrigger(botAI);
+        return new NightbanePetsShouldBeHeldTrigger(botAI);
     }
-    static Trigger* nightbane_in_flight_phase(PlayerbotAI* botAI)
+    static Trigger* nightbane_should_hold_dps(PlayerbotAI* botAI)
     {
-        return new NightbaneInFlightPhaseTrigger(botAI);
+        return new NightbaneShouldHoldDpsTrigger(botAI);
     }
-    static Trigger* nightbane_bot_went_out_of_bounds(PlayerbotAI* botAI)
+    static Trigger* nightbane_should_stack_in_flight(PlayerbotAI* botAI)
     {
-        return new NightbaneBotWentOutOfBoundsTrigger(botAI);
+        return new NightbaneShouldStackInFlightTrigger(botAI);
     }
-    static Trigger* nightbane_need_to_manage_timers_and_trackers(PlayerbotAI* botAI)
+    static Trigger* nightbane_should_stand_down(PlayerbotAI* botAI)
+    {
+        return new NightbaneShouldStandDownTrigger(botAI);
+    }
+    static Trigger* nightbane_should_manage_timers_and_trackers(PlayerbotAI* botAI)
     {
         return new NightbaneShouldManageTimersAndTrackersTrigger(botAI);
     }

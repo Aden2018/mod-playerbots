@@ -160,7 +160,7 @@ void ResolveEredarTwinsTankAssignment(Player* bot)
 Player* GetAlythessTank(Player* bot)
 {
     ObjectGuid const guid = GetTankAssignment(bot).alythessTankGuid;
-    return guid.IsEmpty() ? nullptr : ObjectAccessor::FindPlayer(guid);
+    return guid.IsEmpty() ? nullptr : ObjectAccessor::GetPlayer(*bot, guid);
 }
 
 bool IsAlythessTank(Player* bot)
@@ -277,6 +277,25 @@ bool ShouldHoldSacrolashThreat(Player* bot, Unit* sacrolash)
     float const tankThreat = tankCount > 1 ? secondTankThreat : highestTankThreat;
 
     return HasClosedOnTankThreat(sacrolash, bot, tankThreat, SACROLASH_THREAT_HOLD_RATIO);
+}
+
+bool IsEredarTwinsStartHoldActive(PlayerbotAI* botAI)
+{
+    Player* bot = botAI->GetBot();
+    if (PlayerbotAI::IsTank(bot))
+        return false;
+
+    if (PlayerbotAI::IsMelee(bot) && bot->GetPositionZ() > EREDAR_TWINS_BALCONY_Z)
+        return false;
+
+    if (!botAI->GetAiObjectContext()->GetValue<Unit*>("find target", "lady sacrolash")->Get())
+        return false;
+
+    EredarTwinsEncounterState const* state = FindEredarTwinsState(bot->GetInstanceId());
+    if (!state || !state->dpsHoldStartMs)
+        return true;
+
+    return getMSTimeDiff(*state->dpsHoldStartMs, getMSTime()) < EREDAR_TWINS_DPS_HOLD_MS;
 }
 
 std::vector<Position> FindEredarTwinsBlazePositions(Player* bot)

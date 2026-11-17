@@ -19,8 +19,10 @@ using namespace EncounterHelpers;
 void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // Shared
+    // A pet still passive after a wipe gets its stance back.
     triggers.push_back(new TriggerNode("sunwell no encounter in progress",
-        { NextAction("sunwell reset encounter states", ACTION_EMERGENCY + 10) }));
+        { NextAction("sunwell reset encounter states", ACTION_EMERGENCY + 10),
+          NextAction("eredar twins control pet aggression", ACTION_RAID + 4) }));
 
     triggers.push_back(new TriggerNode("sunwell aura to remove",
         { NextAction("sunwell remove aura", ACTION_EMERGENCY) }));
@@ -113,6 +115,12 @@ void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("felmyst should hold dps while landing",
         { NextAction("felmyst manage landing dps timer", ACTION_EMERGENCY + 8) }));
 
+    triggers.push_back(new TriggerNode("felmyst landing dps hold is active",
+        {
+            NextAction("felmyst stop attacking for landing", ACTION_EMERGENCY + 2),
+            NextAction("felmyst select target for hold", ACTION_RAID),
+        }));
+
     // Eredar Twins
     triggers.push_back(new TriggerNode("eredar twins melee is at balcony",
         { NextAction("eredar twins melee jump from balcony", ACTION_EMERGENCY + 1) }));
@@ -134,6 +142,9 @@ void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     triggers.push_back(new TriggerNode("eredar twins should focus dps",
         { NextAction("eredar twins dps prioritize sacrolash", ACTION_RAID) }));
+
+    triggers.push_back(new TriggerNode("eredar twins pets should be held",
+        { NextAction("eredar twins control pet aggression", ACTION_RAID + 4) }));
 
     triggers.push_back(new TriggerNode("eredar twins too many flame touched stacks",
         { NextAction("eredar twins remove flame sear", ACTION_RAID + 3) }));
@@ -316,8 +327,9 @@ void AppendMuruDarkFiendExclusions(
 }
 
 void AppendMuruTankExclusions(
-    PlayerbotAI* botAI, Player* bot, AiObjectContext* context, GuidSet& exclusions)
+    PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
 {
+    Player* bot = botAI->GetBot();
     if (!PlayerbotAI::IsTank(bot))
         return;
 
@@ -353,9 +365,9 @@ void AppendMuruTankExclusions(
 }
 
 void AppendKiljaedenShieldOrbExclusions(
-    PlayerbotAI* botAI, Player* bot, AiObjectContext* context, GuidSet& exclusions)
+    PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
 {
-    if (!PlayerbotAI::IsMelee(bot))
+    if (!PlayerbotAI::IsMelee(botAI->GetBot()))
         return;
 
     for (auto const& guid : context->GetValue<GuidVector>("attackers")->RefGet())
@@ -383,6 +395,6 @@ void RaidSwpStrategy::AppendTargetExclusions(
 
     AppendFelmystVaporPhaseMeleeExclusions(bot, context, exclusions);
     AppendMuruDarkFiendExclusions(botAI, context, exclusions);
-    AppendMuruTankExclusions(botAI, bot, context, exclusions);
-    AppendKiljaedenShieldOrbExclusions(botAI, bot, context, exclusions);
+    AppendMuruTankExclusions(botAI, context, exclusions);
+    AppendKiljaedenShieldOrbExclusions(botAI, context, exclusions);
 }
