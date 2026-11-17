@@ -26,7 +26,6 @@
 #include "ShamanActions.h"
 #include "Spell.h"
 #include "SpellMgr.h"
-#include "ThreatHelpers.h"
 #include "ThreatManager.h"
 #include "Timer.h"
 #include "UseItemAction.h"
@@ -59,12 +58,10 @@ bool IsKillingSpree(Player* bot, Action* action)
 } // end anonymous namespace (Shared)
 
 // Held for each boss's first 5% (excluding Shade of Akama and Illidan), and also through Supremus's
-// kite phase and between Reliquary essences. See below for Illidan's rules.
+// kite phase and between Reliquary essences. See below for Illidan's rules. In all cases, a boss
+// not on a threat list means hold (it probably means the bot was just battle rezzed).
 float BlackTempleDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (!IsDpsCooldownAction(bot, action))
         return 1.0f;
 
@@ -78,7 +75,7 @@ float BlackTempleDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action
         {
             Unit* illidan = GetBtBoss(bot, BtBosses::DATA_ILLIDAN_STORMRAGE);
             if (!illidan)
-                return 1.0f;
+                return 0.0f;
 
             // At 62%, Bloodlust and all cooldowns are permanently freed.
             if (illidan->GetHealthPct() <= ILLIDAN_DPS_COOLDOWN_RELEASE_HEALTH_PCT)
@@ -92,13 +89,13 @@ float BlackTempleDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action
             }
 
             // Above 95%, cooldowns other than Bloodlust can be used, then disable them until 62%
-            // (i.e., get one use in and then save until phase 3, when cooldown should be back up).
+            // (i.e., get one use in and then save until phase 3, when cooldowns should be back up).
             return illidan->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 1.0f : 0.0f;
         }
         case BtBosses::DATA_RELIQUARY_OF_SOULS:
         {
             if (!GetBtBoss(bot, BtBosses::DATA_RELIQUARY_OF_SOULS))
-                return 1.0f;
+                return 0.0f;
 
             Unit* essence = nullptr;
             for (std::string_view name : {
@@ -123,25 +120,17 @@ float BlackTempleDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action
         case BtBosses::DATA_SUPREMUS:
         {
             Unit* supremus = GetBtBoss(bot, BtBosses::DATA_SUPREMUS);
-            if (!supremus)
-                return 1.0f;
-
-            return IsSupremusKitePhase(supremus) ||
+            return !supremus || IsSupremusKitePhase(supremus) ||
                 supremus->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
         }
         case BtBosses::DATA_HIGH_WARLORD_NAJENTUS:
         case BtBosses::DATA_TERON_GOREFIEND:
         case BtBosses::DATA_GURTOGG_BLOODBOIL:
         case BtBosses::DATA_MOTHER_SHAHRAZ:
-        {
-            Unit* boss = GetBtBoss(bot, static_cast<BtBosses>(*bossId));
-            return boss && boss->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
-        }
         case BtBosses::DATA_ILLIDARI_COUNCIL:
         {
-            // Empyreal Balance shares health, so Gathios's HP percentage is the Council's.
-            Unit* gathios = FindThreatTarget(bot, "gathios the shatterer");
-            return gathios && gathios->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
+            Unit* boss = GetBtBoss(bot, static_cast<BtBosses>(*bossId));
+            return !boss || boss->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT ? 0.0f : 1.0f;
         }
         default:
             return 1.0f;
@@ -150,12 +139,10 @@ float BlackTempleDelayDpsCooldownsMultiplier::GetValueInEncounter(Action* action
 
 // Supremus's bounding radius is 80 yd, far beyond his combat reach, and Killing Spree places the
 // rogue by bounding radius, so it takes the rogue well out of the fight.
+//
 // Essence of Suffering targets the closest player, and Killing Spree makes the rogue the closest.
 float BlackTempleDisableKillingSpreeMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (!IsKillingSpree(bot, action))
         return 1.0f;
 
@@ -225,15 +212,19 @@ float ShadowmoonReaverHoldChargeBuildingSpellsMultiplier::GetValue(Action* actio
     return IsAnyShadowmoonReaverUnsafeForMagic(botAI) ? 0.0f : 1.0f;
 }
 
-// Non-tanks should never attack a Sister of Pain, only her linked Sister of Pleasure.
+// Non-tanks attack a Sister of Pain only once her linked Sister of Pleasure is dead, and never while
+// Shell of Pain is up.
 float SisterOfPainHoldDpsMultiplier::GetValue(Action* action)
 {
     if (PlayerbotAI::IsTank(bot) || !IsDpsHoldCandidate(bot, action))
         return 1.0f;
 
-    Unit* target = GetActionTargetOrCurrentTarget(botAI, action);
-    if (!target || target->GetEntry() != Id(BtNpcs::NPC_SISTER_OF_PAIN))
+    Unit* target = action->GetTarget();
+    if (!target || target->GetEntry() != Id(BtNpcs::NPC_SISTER_OF_PAIN) ||
+        !IsSisterOfPainHeld(botAI, target))
+    {
         return 1.0f;
+    }
 
     if (dynamic_cast<SisterOfPleasureFocusDpsAction*>(action))
         return 1.0f;
@@ -245,16 +236,10 @@ float SisterOfPainHoldDpsMultiplier::GetValue(Action* action)
 
 float HighWarlordNajentusDisableCombatFormationMoveMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (!dynamic_cast<CombatFormationMoveAction*>(action))
         return 1.0f;
 
-    if (dynamic_cast<SetBehindTargetAction*>(action))
-        return 1.0f;
-
-    return GetEncounterBoss() ? 0.0f : 1.0f;
+    return dynamic_cast<SetBehindTargetAction*>(action) ? 1.0f : 0.0f;
 }
 
 // Tidal Shield makes Naj'entus invalid, causing bots to drop combat. Stop them from breaking their
@@ -264,11 +249,8 @@ float HighWarlordNajentusTidalShieldHoldPositionMultiplier::GetValueInEncounter(
     if (botAI->GetState() == BOT_STATE_COMBAT)
         return 1.0f;
 
-    if (!dynamic_cast<DpsAssistAction*>(action) && !dynamic_cast<TankAssistAction*>(action) &&
-        !dynamic_cast<FollowAction*>(action))
-    {
+    if (!dynamic_cast<AttackAction*>(action) && !dynamic_cast<FollowAction*>(action))
         return 1.0f;
-    }
 
     Unit* najentus = GetEncounterBoss();
     return najentus && najentus->HasAura(Id(BtSpells::SPELL_TIDAL_SHIELD)) ? 0.0f : 1.0f;
@@ -305,9 +287,6 @@ float SupremusDoNotReachThroughFireMultiplier::GetValueInEncounter(Action* actio
     bool const isSpellReach = dynamic_cast<ReachSpellAction*>(action);
     bool const isMeleeReach = dynamic_cast<ReachMeleeAction*>(action);
     if (!isHealReach && !isSpellReach && !isMeleeReach)
-        return 1.0f;
-
-    if (!GetEncounterBoss())
         return 1.0f;
 
     float range;
@@ -373,15 +352,12 @@ float TeronGorefiendControlMovementMultiplier::GetValueInEncounter(Action* actio
         return 1.0f;
     }
 
-    if (dynamic_cast<SetBehindTargetAction*>(action))
-        return 1.0f;
-
-    return GetEncounterBoss() ? 0.0f : 1.0f;
+    return dynamic_cast<SetBehindTargetAction*>(action) ? 1.0f : 0.0f;
 }
 
 float TeronGorefiendMarkedBotOnlyMoveToDieMultiplier::GetValueInEncounter(Action* action)
 {
-    Aura* shadow = bot->GetAura(Id(BtSpells::SPELL_SHADOW_OF_DEATH));
+    Aura const* shadow = bot->GetAura(Id(BtSpells::SPELL_SHADOW_OF_DEATH));
     if (!shadow || shadow->GetDuration() > GOREFIEND_SHADOW_OF_DEATH_MOVE_MS)
         return 1.0f;
 
@@ -412,23 +388,17 @@ float GurtoggBloodboilControlMovementMultiplier::GetValueInEncounter(Action* act
         if (!dynamic_cast<MovementAction*>(action))
             return 1.0f;
 
-        if (dynamic_cast<AttackAction*>(action))
-            return 1.0f;
+        return dynamic_cast<AttackAction*>(action) ? 1.0f : 0.0f;
     }
-    else
+
+    if (!dynamic_cast<CombatFormationMoveAction*>(action) &&
+        !dynamic_cast<FollowAction*>(action) &&
+        !dynamic_cast<FleeAction*>(action) && !IsRepositionAction(bot, action))
     {
-        if (!dynamic_cast<CombatFormationMoveAction*>(action) &&
-            !dynamic_cast<FollowAction*>(action) &&
-            !dynamic_cast<FleeAction*>(action) && !IsRepositionAction(bot, action))
-        {
-            return 1.0f;
-        }
-
-        if (dynamic_cast<SetBehindTargetAction*>(action))
-            return 1.0f;
+        return 1.0f;
     }
 
-    return GetEncounterBoss() ? 0.0f : 1.0f;
+    return dynamic_cast<SetBehindTargetAction*>(action) ? 1.0f : 0.0f;
 }
 
 // Gurtogg is fixated on the Fel Rage target, so it should not use threat drop abilities.
@@ -490,9 +460,6 @@ float ReliquaryOfSoulsDoNotWasteHealingMultiplier::GetValueInEncounter(Action* a
 // tailored actions to keep tanks closest to the boss to ensure they are the fixated targets.
 float ReliquaryOfSoulsControlMeleeMovementMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (PlayerbotAI::IsRanged(bot))
         return 1.0f;
 
@@ -504,9 +471,6 @@ float ReliquaryOfSoulsControlMeleeMovementMultiplier::GetValueInEncounter(Action
 
 float ReliquaryOfSoulsLetMagesStealRuneShieldMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (bot->getClass() != CLASS_HUNTER && bot->getClass() != CLASS_SHAMAN)
         return 1.0f;
 
@@ -520,7 +484,7 @@ float ReliquaryOfSoulsLetMagesStealRuneShieldMultiplier::GetValueInEncounter(Act
     if (!target || target->GetEntry() != Id(BtNpcs::NPC_ESSENCE_OF_DESIRE))
         return 1.0f;
 
-    Aura* runeShield = target->GetAura(Id(BtSpells::SPELL_RUNE_SHIELD));
+    Aura const* runeShield = target->GetAura(Id(BtSpells::SPELL_RUNE_SHIELD));
     if (!runeShield)
         return 1.0f;
 
@@ -531,9 +495,6 @@ float ReliquaryOfSoulsLetMagesStealRuneShieldMultiplier::GetValueInEncounter(Act
 // which can't be reflected. Rely on BlackTempleCastSpellReflectionAction for Deaden instead.
 float ReliquaryOfSoulsSaveSpellReflectionForDeadenMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (bot->getClass() != CLASS_WARRIOR)
         return 1.0f;
 
@@ -547,9 +508,6 @@ float ReliquaryOfSoulsSaveSpellReflectionForDeadenMultiplier::GetValueInEncounte
 
 float MotherShahrazControlMovementMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     bool const isReachAction = dynamic_cast<ReachTargetAction*>(action) ||
         dynamic_cast<CastReachTargetSpellAction*>(action);
     if (isReachAction)
@@ -563,10 +521,7 @@ float MotherShahrazControlMovementMultiplier::GetValueInEncounter(Action* action
     if (!dynamic_cast<CombatFormationMoveAction*>(action) && !IsRepositionAction(bot, action))
         return 1.0f;
 
-    if (dynamic_cast<SetBehindTargetAction*>(action))
-        return 1.0f;
-
-    return GetEncounterBoss() ? 0.0f : 1.0f;
+    return dynamic_cast<SetBehindTargetAction*>(action) ? 1.0f : 0.0f;
 }
 
 float MotherShahrazFatalAttractionRunAwayMultiplier::GetValueInEncounter(Action* action)
@@ -688,6 +643,12 @@ float IllidariCouncilControlMovementAndTargetingMultiplier::GetNonTankValue(Acti
     if (isSetBehind)
         return 1.0f;
 
+    if (dynamic_cast<ReachSpellAction*>(action))
+    {
+        return IsCircleRangedInterrupter(bot) && GetIllidariCouncilMembers(bot).malande ?
+            0.0f : 1.0f;
+    }
+
     if (!dynamic_cast<CombatFormationMoveAction*>(action) && !IsRepositionAction(bot, action) &&
         !dynamic_cast<FollowAction*>(action) && !dynamic_cast<FleeAction*>(action))
     {
@@ -764,9 +725,6 @@ float IllidariCouncilDisableMageTankActionsMultiplier::GetValueInEncounter(Actio
 // Dampen Magic is the only buff on the council that can be dispelled, and the mage tank steals it.
 float IllidariCouncilHoldMisdirectionAndDispelsMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     switch (bot->getClass())
     {
         case CLASS_HUNTER:
@@ -795,9 +753,6 @@ float IllidariCouncilHoldMisdirectionAndDispelsMultiplier::GetValueInEncounter(A
 // because otherwise cast failed due to being out of range still turns the bot toward its target.
 float IllidariCouncilManageInterruptsMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     switch (bot->getClass())
     {
         case CLASS_MAGE:
@@ -864,8 +819,7 @@ bool IsHeldAtIllidanLandingStack(Action* action)
         !dynamic_cast<IllidanStormrageIsolateBotWithInfectionAction*>(action);
 }
 
-bool IsHeldIllidanReach(
-    PlayerbotAI* botAI, Unit const& illidan, Action* action, IllidanPhase phase)
+bool IsHeldIllidanReach(PlayerbotAI* botAI, Unit* illidan, Action* action, IllidanPhase phase)
 {
     Player* bot = botAI->GetBot();
 
@@ -892,7 +846,7 @@ bool IsHeldIllidanReach(
 
     float const releaseDistance = isGapCloser ?
         ILLIDAN_SHADOW_DEMON_GAP_CLOSER_DISTANCE : ILLIDAN_SHADOW_DEMON_CHASE_DISTANCE;
-    return illidan.GetExactDist2d(target) < releaseDistance;
+    return illidan->GetExactDist2d(target) < releaseDistance;
 }
 
 bool IsHeldIllidanHeal(Player* bot, Unit* illidan, Action* action)
@@ -910,7 +864,7 @@ bool IsHeldIllidanHeal(Player* bot, Unit* illidan, Action* action)
     if (illidan->HasUnitState(UNIT_STATE_CONTROLLED))
         return false;
 
-    return !DoIllidanTanksHaveAggro(bot, *illidan, phase);
+    return !DoIllidanTanksHaveAggro(bot, illidan, phase);
 }
 
 bool IsIllidanAoeAction(Player* bot, Action* action)
@@ -954,6 +908,13 @@ bool IsIllidanShadowBlastOnBot(Unit* illidan, Player* bot)
     Spell const* spell = illidan->GetCurrentSpell(CURRENT_GENERIC_SPELL);
     return spell && spell->m_spellInfo->Id == Id(BtSpells::SPELL_SHADOW_BLAST) &&
         spell->m_targets.GetUnitTargetGUID() == bot->GetGUID();
+}
+
+bool IsTargetingIllidanAdd(PlayerbotAI* botAI)
+{
+    Unit* target = botAI->GetAiObjectContext()->GetValue<Unit*>("current target")->Get();
+    uint32 const entry = target ? target->GetEntry() : 0;
+    return entry == Id(BtNpcs::NPC_SHADOW_DEMON) || entry == Id(BtNpcs::NPC_PARASITIC_SHADOWFIEND);
 }
 
 } // end anonymous namespace (Illidan Stormrage)
@@ -1015,7 +976,7 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetValueInEncounter
     {
         bool const isHeldMove = dynamic_cast<FollowAction*>(action) ||
             dynamic_cast<CombatFormationMoveAction*>(action) ||
-            IsHeldIllidanReach(botAI, *illidan, action, phase);
+            IsHeldIllidanReach(botAI, illidan, action, phase);
         return isHeldMove && HasParasiticShadowfiend(bot) ? 0.0f : 1.0f;
     }
 
@@ -1042,7 +1003,7 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetValueInEncounter
         // humanoid form, so it is ready for an immediate pickup. Other melee can be in their
         // non-combat engines; mainly that allows assist tank paladins/druids to help with healing.
         return phase == IllidanPhase::Demon &&
-            IsIllidanDemonFormEnding(*illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS) ? 0.0f : 1.0f;
+            IsIllidanDemonFormEnding(illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS) ? 0.0f : 1.0f;
     }
 
     bool const isTankAssist = dynamic_cast<TankAssistAction*>(action);
@@ -1077,15 +1038,8 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetTargetingValue(
     if (action->getThreatType() == Action::ActionThreatType::None)
         return 1.0f;
 
-    Unit* target = AI_VALUE(Unit*, "current target");
-    uint32 const entry = target ? target->GetEntry() : 0;
-    if (entry != Id(BtNpcs::NPC_SHADOW_DEMON) && entry != Id(BtNpcs::NPC_PARASITIC_SHADOWFIEND))
-        return 1.0f;
-
-    // The opt-in threat strategy reads an add no tank has touched as 100% threat.
-    context->GetValue<bool>("neglect threat")->Set(true);
     // A dot on an attacker would go on something other than the add, and the add must be focused.
-    return 0.0f;
+    return IsTargetingIllidanAdd(botAI) ? 0.0f : 1.0f;
 }
 
 float IllidanStormrageControlMovementAndTargetingMultiplier::GetTankMovementValue(
@@ -1107,7 +1061,7 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetTankMovementValu
     {
         if (!PlayerbotAI::IsMainTank(bot))
         {
-            if (IsHeldIllidanReach(botAI, *illidan, action, phase))
+            if (IsHeldIllidanReach(botAI, illidan, action, phase))
                 return 0.0f;
 
             if (phase != IllidanPhase::Landing)
@@ -1125,8 +1079,8 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetTankMovementValu
         }
 
         bool const canChaseDemon = phase == IllidanPhase::Demon &&
-            !IsIllidanDemonFormEnding(*illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS) &&
-            !IsHeldIllidanReach(botAI, *illidan, action, phase);
+            !IsIllidanDemonFormEnding(illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS) &&
+            !IsHeldIllidanReach(botAI, illidan, action, phase);
 
         if (isMove)
         {
@@ -1159,7 +1113,7 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetTankMovementValu
         }
 
         if (dynamic_cast<AvoidAoeAction*>(action) ||
-            IsHeldIllidanReach(botAI, *illidan, action, phase))
+            IsHeldIllidanReach(botAI, illidan, action, phase))
         {
             return 0.0f;
         }
@@ -1209,7 +1163,7 @@ float IllidanStormrageControlMovementAndTargetingMultiplier::GetNonTankMovementV
     if (phase == IllidanPhase::Flying)
         return 0.0f;
 
-    return IsHeldIllidanReach(botAI, *illidan, action, phase) ? 0.0f : 1.0f;
+    return IsHeldIllidanReach(botAI, illidan, action, phase) ? 0.0f : 1.0f;
 }
 
 // Near a new Shadowfiend, don't attack it, cast AoE, or heal. Switching targets is fine.
@@ -1220,15 +1174,14 @@ float IllidanStormrageHoldNearNewShadowfiendMultiplier::GetValueInEncounter(Acti
     if (!castSpellAction && !isAttackAction)
         return 1.0f;
 
-    Unit* target = castSpellAction ? AI_VALUE(Unit*, "current target") : action->GetTarget();
+    // A dot on an attacker picks its own target, which can be a Shadowfiend while Illidan is selected.
+    Unit* target = castSpellAction && !dynamic_cast<CastDebuffSpellOnAttackerAction*>(action) ?
+        AI_VALUE(Unit*, "current target") : action->GetTarget();
     bool const isOnShadowfiend =
         target && target->GetEntry() == Id(BtNpcs::NPC_PARASITIC_SHADOWFIEND);
     bool const isAoeSpell = IsIllidanAoeAction(bot, action);
 
     if (!isOnShadowfiend && !isAoeSpell && !dynamic_cast<CastHealingSpellAction*>(action))
-        return 1.0f;
-
-    if (!GetEncounterBoss())
         return 1.0f;
 
     return IsNearNewParasiticShadowfiend(botAI) ? 0.0f : 1.0f;
@@ -1272,7 +1225,7 @@ float IllidanStormrageHoldTotemsMultiplier::GetValueInEncounter(Action* action)
         return 1.0f;
 
     IllidanPhase const phase = GetIllidanPhase(illidan);
-    if (IsIllidanTankAggroPending(*illidan, phase))
+    if (IsIllidanTankAggroPending(illidan, phase))
         return 0.0f;
 
     if (phase != IllidanPhase::Initial && phase != IllidanPhase::Grounded &&
@@ -1324,7 +1277,7 @@ float IllidanStormrageHoldDpsMultiplier::GetValueInEncounter(Action* action)
         if (isHeal || isItem)
             return 0.0f;
 
-        Unit* target = GetActionTargetOrCurrentTarget(botAI, action);
+        Unit* target = action->GetTarget();
         bool const isAoe = action->getThreatType() == Action::ActionThreatType::Aoe;
         return IsIllidanPickupExemptTarget(target, isAoe) ? 1.0f : 0.0f;
     }
@@ -1345,10 +1298,10 @@ float IllidanStormrageHoldDpsMultiplier::GetValueInEncounter(Action* action)
 
     if (GetIllidanPhase(illidan) == IllidanPhase::Flying)
     {
-        if (!IsFlameOfAzzinothDpsHeld(*illidan) || IsFlameOfAzzinothTank(bot))
+        if (!IsFlameOfAzzinothDpsHeld(illidan) || IsFlameOfAzzinothTank(bot))
             return 1.0f;
 
-        Unit* target = GetActionTargetOrCurrentTarget(botAI, action);
+        Unit* target = action->GetTarget();
         bool const isOnFlame = target && target->GetEntry() == Id(BtNpcs::NPC_FLAME_OF_AZZINOTH);
         return isOnFlame ? GetDpsHoldValue(bot, action) : 1.0f;
     }
@@ -1365,9 +1318,6 @@ float IllidanStormrageHoldDpsMultiplier::GetValueInEncounter(Action* action)
 
 float IllidanStormrageDisableTankSoulshatterMultiplier::GetValueInEncounter(Action* action)
 {
-    if (botAI->GetState() == BOT_STATE_NON_COMBAT)
-        return 1.0f;
-
     if (bot->getClass() != CLASS_WARLOCK)
         return 1.0f;
 
@@ -1398,4 +1348,20 @@ float IllidanStormrageDisableAoeOnShadowDemonsMultiplier::GetValueInEncounter(Ac
     auto const& shadowDemons =
         context->GetValue<std::vector<ShadowDemon>>("illidan stormrage shadow demons")->RefGet();
     return shadowDemons.empty() ? 1.0f : 0.0f;
+}
+
+// Lets the bot cast on a Demon or Shadowfiend even with the +threat strategy, which reads an add
+// no tank has hit as 100% threat.
+float IllidanStormrageNeglectThreatOnAddsMultiplier::GetValueInEncounter(Action* action)
+{
+    if (action->getThreatType() == Action::ActionThreatType::None ||
+        botAI->GetState() != BOT_STATE_COMBAT)
+    {
+        return 1.0f;
+    }
+
+    if (IsTargetingIllidanAdd(botAI))
+        context->GetValue<bool>("neglect threat")->Set(true);
+
+    return 1.0f;
 }

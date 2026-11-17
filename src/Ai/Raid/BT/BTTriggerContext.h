@@ -174,6 +174,9 @@ public:
         creators["illidari council mage tank healer should reposition"] =
             &RaidBlackTempleTriggerContext::illidari_council_mage_tank_healer_should_reposition;
 
+        creators["illidari council ranged interrupter should reposition"] =
+            &RaidBlackTempleTriggerContext::illidari_council_ranged_interrupter_should_reposition;
+
         creators["illidari council non-tanks should avoid zerevor"] =
             &RaidBlackTempleTriggerContext::illidari_council_non_tanks_should_avoid_zerevor;
 
@@ -208,8 +211,8 @@ public:
         creators["illidan stormrage flames of azzinoth should be tanked"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_flames_of_azzinoth_should_be_tanked;
 
-        creators["illidan stormrage pets die to hazards"] =
-            &RaidBlackTempleTriggerContext::illidan_stormrage_pets_die_to_hazards;
+        creators["illidan stormrage should manage pet aggression"] =
+            &RaidBlackTempleTriggerContext::illidan_stormrage_should_manage_pet_aggression;
 
         creators["illidan stormrage pet should attack shadowfiend"] =
             &RaidBlackTempleTriggerContext::illidan_stormrage_pet_should_attack_shadowfiend;
@@ -464,7 +467,7 @@ private:
     {
         return new BlackTempleHunterShouldMisdirectTrigger(
             botAI, "illidari council hunter should misdirect",
-            BtHelpers::BtBosses::DATA_ILLIDARI_COUNCIL, "gathios the shatterer");
+            BtHelpers::BtBosses::DATA_ILLIDARI_COUNCIL);
     }
     static Trigger* illidari_council_gathios_should_be_tanked(PlayerbotAI* botAI)
     {
@@ -493,6 +496,10 @@ private:
     static Trigger* illidari_council_mage_tank_healer_should_reposition(PlayerbotAI* botAI)
     {
         return new IllidariCouncilMageTankHealerShouldRepositionTrigger(botAI);
+    }
+    static Trigger* illidari_council_ranged_interrupter_should_reposition(PlayerbotAI* botAI)
+    {
+        return new IllidariCouncilRangedInterrupterShouldRepositionTrigger(botAI);
     }
     static Trigger* illidari_council_non_tanks_should_avoid_zerevor(PlayerbotAI* botAI)
     {
@@ -540,9 +547,9 @@ private:
     {
         return new IllidanStormrageFlamesOfAzzinothShouldBeTankedTrigger(botAI);
     }
-    static Trigger* illidan_stormrage_pets_die_to_hazards(PlayerbotAI* botAI)
+    static Trigger* illidan_stormrage_should_manage_pet_aggression(PlayerbotAI* botAI)
     {
-        return new IllidanStormragePetsDieToHazardsTrigger(botAI);
+        return new IllidanStormrageShouldManagePetAggressionTrigger(botAI);
     }
     static Trigger* illidan_stormrage_pet_should_attack_shadowfiend(PlayerbotAI* botAI)
     {

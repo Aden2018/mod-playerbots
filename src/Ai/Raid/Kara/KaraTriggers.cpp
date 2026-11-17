@@ -9,6 +9,7 @@
 #include "KaraActions.h"
 #include "KaraHelpers.h"
 #include "Playerbots.h"
+#include "RtiTargetValue.h"
 #include "ThreatHelpers.h"
 #include <algorithm>
 #include <cmath>
@@ -33,38 +34,40 @@ bool KarazhanEnemiesCastFearTrigger::IsActive()
 
 // Trash
 
-bool ManaWarpCastsWarpBreachTrigger::IsActive()
+bool ManaWarpIncomingWarpBreachTrigger::IsActive()
 {
-    return GetManaWarpToStun(botAI, WARP_BREACH_MIN_REACTION_MS);
+    return GetManaWarpToStun(botAI);
 }
 
-bool ManaWarpStunnerShouldHoldTrigger::IsActive()
+bool ManaWarpTargetAtLowHealthTrigger::IsActive()
 {
-    return GetManaWarpToHoldFor(botAI);
+    return GetManaWarpToStunNext(botAI);
 }
 
 // Attumen the Huntsman
 
-// Midnight is still present as a separate (invisible) unit after Attumen mounts.
-// A Midnight threat list check will capture the entire encounter.
-bool AttumenTheHuntsmanShouldBeTankedTrigger::IsActiveInEncounter()
+bool AttumenTheHuntsmanUnmountedShouldBeTankedTrigger::IsActiveInEncounter()
 {
-    // First assist tank
-    if (!PlayerbotAI::IsAssistTankOfIndex(bot, 0, true))
+    Unit* midnight = FindThreatTarget(bot, "midnight");
+    if (!midnight || IsAttumenMounted(midnight))
         return false;
 
-    Unit* midnight = FindThreatTarget(bot, "midnight");
-    return midnight && !IsAttumenMounted(*midnight) && GetEncounterBoss();
+    if (!FindThreatTarget(bot, "attumen the huntsman"))
+        return false;
+
+    return PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
 }
 
 bool AttumenTheHuntsmanMidnightShouldBeFocusedTrigger::IsActiveInEncounter()
 {
     Unit* midnight = FindThreatTarget(bot, "midnight");
-    if (!midnight || IsAttumenMounted(*midnight) || AI_VALUE(Unit*, "current target") == midnight)
+    if (!midnight || IsAttumenMounted(midnight))
         return false;
 
-    // The first assist tank takes Attumen once he is up.
-    return !PlayerbotAI::IsAssistTankOfIndex(bot, 0, true) || !GetEncounterBoss();
+    if (AI_VALUE(Unit*, "current target") == midnight)
+        return false;
+
+    return !PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
 }
 
 bool AttumenTheHuntsmanMountedShouldBeTankedTrigger::IsActiveInEncounter()
@@ -79,7 +82,13 @@ bool AttumenTheHuntsmanMountedShouldBeTankedTrigger::IsActiveInEncounter()
 bool AttumenTheHuntsmanShouldStackBehindTrigger::IsActiveInEncounter()
 {
     Unit* attumen = GetMountedAttumen(bot);
-    return attumen && attumen->GetVictim() != bot;
+    if (!attumen || attumen->GetVictim() == bot)
+        return false;
+
+    if (PlayerbotAI::IsTank(bot) && PlayerbotAI::IsMainTank(bot))
+        return false;
+
+    return GetAttumenStackPosition(bot, attumen).has_value();
 }
 
 bool AttumenTheHuntsmanShouldHoldDpsTrigger::IsActiveInEncounter()
@@ -93,21 +102,21 @@ bool AttumenTheHuntsmanShouldManageDpsTimerTrigger::IsActiveInEncounter()
         return false;
 
     Unit* midnight = FindThreatTarget(bot, "midnight");
-    return midnight && IsAttumenMounted(*midnight);
+    return midnight && IsAttumenMounted(midnight);
 }
 
 // Moroes
 
-bool MoroesShouldPrioritizeAddsTrigger::IsActiveInEncounter()
+bool MoroesShouldPrioritizeGuestsTrigger::IsActiveInEncounter()
 {
-    return IsMechanicTrackerBot(bot, KARA_MAP_ID) && GetEncounterBoss();
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID);
 }
 
 // Maiden of Virtue
 
 bool MaidenOfVirtueShouldBeTankedTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsTank(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsTank(bot);
 }
 
 bool MaidenOfVirtueShouldBreakRepentanceTrigger::IsActiveInEncounter()
@@ -119,20 +128,14 @@ bool MaidenOfVirtueShouldBreakRepentanceTrigger::IsActiveInEncounter()
     return maiden && maiden->GetVictim() == bot;
 }
 
-bool MaidenOfVirtueShouldGroundHolyFireTrigger::IsActiveInEncounter()
-{
-    if (bot->getClass() != CLASS_SHAMAN)
-        return false;
-
-    if (!GetEncounterBoss())
-        return false;
-
-    return !AI_VALUE2(bool, "has totem", "grounding totem");
-}
-
 bool MaidenOfVirtueRangedShouldSpreadTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsRanged(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsRanged(bot);
+}
+
+bool MaidenOfVirtueShamanShouldGroundHolyFireTrigger::IsActiveInEncounter()
+{
+    return bot->getClass() == CLASS_SHAMAN && !AI_VALUE2(bool, "has totem", "grounding totem");
 }
 
 // The Big Bad Wolf
@@ -145,30 +148,33 @@ bool BigBadWolfShouldBeTankedTrigger::IsActiveInEncounter()
     if (!GetOperaActor(bot, "the big bad wolf"))
         return false;
 
-    return !bot->HasAura(Id(KaraSpells::SPELL_LITTLE_RED_RIDING_HOOD));
+    return !IsLittleRedRidingHood(bot);
 }
 
-bool BigBadWolfChasingRedHoodTrigger::IsActiveInEncounter()
+bool BigBadWolfChasesRedHoodTrigger::IsActiveInEncounter()
 {
-    return bot->HasAura(Id(KaraSpells::SPELL_LITTLE_RED_RIDING_HOOD));
+    return IsLittleRedRidingHood(bot);
 }
 
-bool BigBadWolfPaladinShouldProtectRedHoodTrigger::IsActiveInEncounter()
+bool BigBadWolfVictimHasRedHoodTrigger::IsActiveInEncounter()
 {
-    if (bot->getClass() != CLASS_PALADIN)
+    if (bot->getClass() != CLASS_PALADIN && bot->getClass() != CLASS_PRIEST &&
+        bot->getClass() != CLASS_WARRIOR)
+    {
         return false;
+    }
 
     Unit* wolf = GetOperaActor(bot, "the big bad wolf");
     if (!wolf)
         return false;
 
-    Player* target = GetBigBadWolfTargetToProtect(*wolf);
+    Player* target = GetBigBadWolfRedHood(wolf);
     return target && target != bot;
 }
 
 // Romulo and Julianne
 
-bool RomuloAndJulianneShouldBeKilledTogetherTrigger::IsActiveInEncounter()
+bool RomuloAndJulianneShouldDieTogetherTrigger::IsActiveInEncounter()
 {
     if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
         return false;
@@ -194,7 +200,11 @@ bool WizardOfOzShouldPrioritizeTargetsTrigger::IsActiveInEncounter()
 
 bool WizardOfOzMageShouldBurnStrawmanTrigger::IsActiveInEncounter()
 {
-    return bot->getClass() == CLASS_MAGE && GetOperaActor(bot, "strawman");
+    if (bot->getClass() != CLASS_MAGE)
+        return false;
+
+    Unit* strawman = GetOperaActor(bot, "strawman");
+    return strawman && !strawman->HasAura(Id(KaraSpells::SPELL_BURNING_STRAW));
 }
 
 // The Curator
@@ -206,43 +216,70 @@ bool TheCuratorShouldPrioritizeAstralFlaresTrigger::IsActiveInEncounter()
 
 bool TheCuratorShouldBeTankedTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsTank(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsTank(bot);
 }
 
 bool TheCuratorRangedShouldSpreadTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsRanged(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsRanged(bot);
 }
 
 // Terestian Illhoof
 
-bool TerestianIllhoofShouldPrioritizeChainsTrigger::IsActiveInEncounter()
+bool TerestianIllhoofShouldPrioritizeTargetsTrigger::IsActiveInEncounter()
 {
-    return IsMechanicTrackerBot(bot, KARA_MAP_ID) && GetEncounterBoss();
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID);
 }
 
 // Shade of Aran
 
-bool ShadeOfAranArcaneExplosionIsCastingTrigger::IsActiveInEncounter()
+bool ShadeOfAranCastingArcaneExplosionTrigger::IsActiveInEncounter()
+{
+    // Return false for rooted bots (Chains of Ice) so they can at least keep casting.
+    Unit* aran = GetEncounterBoss();
+    return aran && IsAranCastingArcaneExplosion(aran) && botAI->CanMove();
+}
+
+// Ranged only. Blizzard moves around Aran in a band, and melee range is inside the minimum radius.
+bool ShadeOfAranRangedInBlizzardTrigger::IsActiveInEncounter()
+{
+    if (!bot->HasAura(Id(KaraSpells::SPELL_BLIZZARD)))
+        return false;
+
+    // Return false for rooted bots (Chains of Ice) so they can at least keep casting.
+    return PlayerbotAI::IsRanged(bot) && botAI->CanMove();
+}
+
+bool ShadeOfAranFlameWreathActiveTrigger::IsActiveInEncounter()
 {
     Unit* aran = GetEncounterBoss();
-    return aran && IsAranCastingArcaneExplosion(aran);
+    if (!aran)
+        return false;
+
+    if (!IsFlameWreathInProgress(botAI, aran))
+        return false;
+
+    // The Flame Wreath stop cannot be permitted to stop sheeped bots from wandering.
+    return botAI->CanMove() && !CanReachTargetDuringFlameWreath(botAI, aran);
 }
 
-bool ShadeOfAranRangedIsInBlizzardTrigger::IsActiveInEncounter()
+// The elementals never refresh zone combat, so a resurrected tracker cannot find them by threat.
+bool ShadeOfAranShouldPrioritizeElementalsTrigger::IsActiveInEncounter()
 {
-    return bot->HasAura(Id(KaraSpells::SPELL_BLIZZARD)) && PlayerbotAI::IsRanged(bot);
-}
+    if (!IsMechanicTrackerBot(bot, KARA_MAP_ID))
+        return false;
 
-bool ShadeOfAranFlameWreathIsActiveTrigger::IsActiveInEncounter()
-{
-    Unit* aran = GetEncounterBoss();
-    return IsFlameWreathInProgress(bot, aran) && !CanReachTargetDuringFlameWreath(botAI, aran);
-}
+    GuidVector const elementals =
+        context->GetValue<GuidVector>("shade of aran unbanished elementals")->Get();
+    if (elementals.empty())
+        return false;
 
-bool ShadeOfAranConjuredElementalsSummonedTrigger::IsActiveInEncounter()
-{
-    return IsMechanicTrackerBot(bot, KARA_MAP_ID) && FindThreatTarget(bot, "conjured elemental");
+    Group* group = bot->GetGroup();
+    if (!group)
+        return false;
+
+    ObjectGuid const skull = group->GetTargetIcon(RtiTargetValue::skullIndex);
+    return std::find(elementals.begin(), elementals.end(), skull) == elementals.end();
 }
 
 bool ShadeOfAranRangedShouldMaintainDistanceTrigger::IsActiveInEncounter()
@@ -257,7 +294,18 @@ bool ShadeOfAranRangedShouldMaintainDistanceTrigger::IsActiveInEncounter()
     if (bot->HasAura(Id(KaraSpells::SPELL_BLIZZARD)))
         return false;
 
-    return !IsAranCastingArcaneExplosion(aran) && !IsFlameWreathInProgress(bot, aran);
+    float const distance = bot->GetExactDist2d(aran);
+    if (distance >= ARAN_RANGED_MIN_DISTANCE - ARAN_RANGED_BAND_TOLERANCE &&
+        distance <= ARAN_RANGED_MAX_DISTANCE + ARAN_RANGED_BAND_TOLERANCE)
+    {
+        return false;
+    }
+
+    if (IsAranCastingArcaneExplosion(aran) || IsFlameWreathInProgress(botAI, aran))
+        return false;
+
+    // If elementals are up, let ranged have freedom to reach them even if outside the band.
+    return context->GetValue<GuidVector>("shade of aran unbanished elementals")->Get().empty();
 }
 
 // Netherspite
@@ -269,24 +317,25 @@ bool NetherspiteShouldBlockRedBeamTrigger::IsActiveInEncounter()
         state->netherspiteBeams[Id(NetherspiteBeam::Red)].blocker == bot->GetGUID();
 }
 
-bool NetherspiteShouldBlockBeamTrigger::IsActiveInEncounter()
+bool NetherspiteShouldBlockBlueOrGreenBeamTrigger::IsActiveInEncounter()
 {
     KaraInstanceState const* state = FindKaraState(bot->GetInstanceId());
     if (!state || state->netherspiteBeams[Id(NetherspiteBeam::Red)].blocker == bot->GetGUID())
         return false;
 
-    Position const* spot = FindNetherspiteBlockerSpot(*state, bot->GetGUID());
-    return spot && bot->GetExactDist2d(*spot) > NETHERSPITE_BEAM_SPOT_TOLERANCE;
+    Position const* position = FindNetherspiteBlockerPosition(*state, bot->GetGUID());
+    return position && bot->GetExactDist2d(*position) > NETHERSPITE_BEAM_POSITION_TOLERANCE;
 }
 
 bool NetherspiteNextBeamBlockerShouldPrepareTrigger::IsActiveInEncounter()
 {
     KaraInstanceState const* state = FindKaraState(bot->GetInstanceId());
-    Position const* spot = state ? FindNetherspiteNextSpot(*state, bot->GetGUID()) : nullptr;
-    return spot && bot->GetExactDist2d(*spot) > NETHERSPITE_BEAM_SPOT_TOLERANCE;
+    Position const* position =
+        state ? FindNetherspiteNextPosition(*state, bot->GetGUID()) : nullptr;
+    return position && bot->GetExactDist2d(*position) > NETHERSPITE_BEAM_POSITION_TOLERANCE;
 }
 
-bool NetherspiteShouldPositionAroundBeamsTrigger::IsActiveInEncounter()
+bool NetherspiteShouldStandBetweenBeamsTrigger::IsActiveInEncounter()
 {
     KaraInstanceState const* state = FindKaraState(bot->GetInstanceId());
     if (!state || !AreNetherspitePortalsKnown(*state) ||
@@ -296,7 +345,7 @@ bool NetherspiteShouldPositionAroundBeamsTrigger::IsActiveInEncounter()
     }
 
     Unit* netherspite = GetEncounterBoss();
-    return netherspite && !IsBanishPhase(netherspite) && !IsNetherspiteStandingSpotGood(
+    return netherspite && !IsBanishPhase(netherspite) && !IsBetweenNetherspiteBeams(
         bot, *netherspite, *state, bot->GetPositionX(), bot->GetPositionY());
 }
 
@@ -308,16 +357,25 @@ bool NetherspiteShouldSpreadForNetherbreathTrigger::IsActiveInEncounter()
     if (!slot)
         return false;
 
-    if (!IsClearOfVoidZones(*state, bot->GetPositionX(), bot->GetPositionY(), VOID_ZONE_CLEARANCE))
+    if (!IsClearOfVoidZones(
+            *state, bot->GetPositionX(), bot->GetPositionY(), VOID_ZONE_SAFE_DISTANCE))
+    {
         return true;
+    }
 
     Unit* netherspite = GetEncounterBoss();
     if (!netherspite)
         return false;
 
+    if (netherspite->GetExactDist2d(bot) > netherspite->GetExactDist2d(slot->position) +
+            NETHERSPITE_BANISH_SLOT_RADIUS_TOLERANCE)
+    {
+        return true;
+    }
+
     float const gap = Position::NormalizeOrientation(
         netherspite->GetAngle(bot->GetPositionX(), bot->GetPositionY()) -
-        netherspite->GetAngle(slot->spot.GetPositionX(), slot->spot.GetPositionY()));
+        netherspite->GetAngle(slot->position.GetPositionX(), slot->position.GetPositionY()));
     return std::min(gap, 2.0f * static_cast<float>(M_PI) - gap) >
         NETHERSPITE_BANISH_SLOT_TOLERANCE;
 }
@@ -325,61 +383,60 @@ bool NetherspiteShouldSpreadForNetherbreathTrigger::IsActiveInEncounter()
 bool NetherspiteShouldHoldDpsTrigger::IsActiveInEncounter()
 {
     Unit* netherspite = GetEncounterBoss();
-    return netherspite && IsNetherspiteDpsHeld(bot, *netherspite);
+    return netherspite && IsNetherspiteDpsHeld(bot, netherspite);
 }
 
-bool NetherspitePetsShouldBeHeldTrigger::IsActiveInEncounter()
+bool NetherspiteShouldManagePetAggressionTrigger::IsActiveInEncounter()
 {
-    Pet* pet = bot->GetPet();
-    if (!pet || !pet->IsAlive())
+    if (!HasControllableMinion(bot))
         return false;
 
     Unit* netherspite = GetEncounterBoss();
-    return netherspite &&
-        IsNetherspiteDpsHeld(bot, *netherspite) != pet->HasReactState(REACT_PASSIVE);
+    return netherspite && IsMinionStanceWrongForHold(bot, IsNetherspiteDpsHeld(bot, netherspite));
 }
 
 bool NetherspiteShouldManageTimersAndTrackersTrigger::IsActiveInEncounter()
 {
-    return IsMechanicTrackerBot(bot, KARA_MAP_ID) && GetEncounterBoss();
+    return IsMechanicTrackerBot(bot, KARA_MAP_ID);
 }
 
 // Prince Malchezaar
 
 bool PrinceMalchezaarBotIsEnfeebledTrigger::IsActiveInEncounter()
 {
-    if (!bot->HasAura(Id(KaraSpells::SPELL_ENFEEBLE)))
+    Aura const* enfeeble = bot->GetAura(Id(KaraSpells::SPELL_ENFEEBLE));
+    if (!enfeeble)
         return false;
 
     Unit* malchezaar = GetEncounterBoss();
     if (!malchezaar)
         return false;
 
-    if (bot->GetExactDist(malchezaar) < SHADOW_NOVA_MOVE_DISTANCE ||
-        !IsClearOfInfernals(*bot, GetLandedInfernals(botAI), HELLFIRE_CLEARANCE))
+    bool const canNovaHit = CanShadowNovaHitEnfeebled(malchezaar, *enfeeble);
+    if ((canNovaHit && bot->GetExactDist(malchezaar) < SHADOW_NOVA_SAFE_DISTANCE) ||
+        !IsClearOfInfernals(*bot, GetLandedInfernals(botAI), HELLFIRE_SAFE_DISTANCE))
     {
         return true;
     }
 
-    Action* action = context->GetAction("prince malchezaar enfeebled bot avoid hazard");
+    Action* action = context->GetAction("prince malchezaar enfeebled bot run to safety");
     return action &&
-        static_cast<PrinceMalchezaarEnfeebledBotAvoidHazardAction*>(action)->HasDestination();
+        static_cast<PrinceMalchezaarEnfeebledBotRunToSafetyAction*>(action)->HasDestinationFor(
+            enfeeble->GetApplyTime(), canNovaHit);
 }
 
-bool PrinceMalchezaarBotInHazardTrigger::IsActiveInEncounter()
+bool PrinceMalchezaarNearHazardTrigger::IsActiveInEncounter()
 {
+    if (bot->HasAura(Id(KaraSpells::SPELL_ENFEEBLE)))
+        return false;
+
     Unit* malchezaar = GetEncounterBoss();
-    if (!malchezaar)
+    if (malchezaar && malchezaar->GetVictim() == bot && PlayerbotAI::IsTank(bot))
         return false;
 
-    if (bot->HasAura(Id(KaraSpells::SPELL_ENFEEBLE)) ||
-        (PlayerbotAI::IsTank(bot) && malchezaar->GetVictim() == bot))
-    {
-        return false;
-    }
-
-    if ((PlayerbotAI::IsRanged(bot) && bot->GetExactDist(malchezaar) < SHADOW_NOVA_MOVE_DISTANCE) ||
-        !IsClearOfInfernals(*bot, GetLandedInfernals(botAI), HELLFIRE_CLEARANCE))
+    if (!IsClearOfInfernals(*bot, GetLandedInfernals(botAI), HELLFIRE_SAFE_DISTANCE) ||
+        (malchezaar && PlayerbotAI::IsRanged(bot) &&
+         bot->GetExactDist(malchezaar) < SHADOW_NOVA_SAFE_DISTANCE))
     {
         return true;
     }
@@ -391,12 +448,14 @@ bool PrinceMalchezaarBotInHazardTrigger::IsActiveInEncounter()
 
 bool PrinceMalchezaarShouldBeTankedTrigger::IsActiveInEncounter()
 {
+    if (!PlayerbotAI::IsTank(bot))
+        return false;
+
     Unit* malchezaar = GetEncounterBoss();
     if (!malchezaar)
         return false;
 
-    return (PlayerbotAI::IsTank(bot) && malchezaar->GetVictim() == bot) ||
-        PlayerbotAI::IsMainTank(bot);
+    return malchezaar->GetVictim() == bot || PlayerbotAI::IsMainTank(bot);
 }
 
 // Nightbane
@@ -407,50 +466,63 @@ bool NightbaneShouldBeTankedTrigger::IsActiveInEncounter()
         return false;
 
     Unit* nightbane = GetEncounterBoss();
-    return nightbane && !IsNightbaneFlying(*nightbane);
+    if (!nightbane || IsNightbaneFlying(nightbane))
+        return false;
+
+    return nightbane->GetVictim() == bot || PlayerbotAI::IsMainTank(bot);
 }
 
-bool NightbaneRangedShouldStackTrigger::IsActiveInEncounter()
+bool NightbaneRangedShouldAvoidCharredEarthTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsRanged(bot))
         return false;
 
     Unit* nightbane = GetEncounterBoss();
-    return nightbane && !IsNightbaneFlying(*nightbane);
+    return nightbane && !IsNightbaneFlying(nightbane);
 }
 
-bool NightbanePetsShouldBeHeldTrigger::IsActiveInEncounter()
+bool NightbaneMeleeShouldAvoidCharredEarthTrigger::IsActiveInEncounter()
 {
-    Pet* pet = bot->GetPet();
-    if (!pet || !pet->IsAlive())
+    if (!PlayerbotAI::IsMelee(bot))
         return false;
 
     Unit* nightbane = GetEncounterBoss();
-    return nightbane && IsNightbaneDpsHeld(bot, *nightbane) != pet->HasReactState(REACT_PASSIVE);
+    return nightbane && !IsNightbaneFlying(nightbane) &&
+        HoldsNightbaneGroundPosition(botAI, *nightbane);
+}
+
+bool NightbaneShouldManagePetAggressionTrigger::IsActiveInEncounter()
+{
+    if (!HasControllableMinion(bot))
+        return false;
+
+    Unit* nightbane = GetEncounterBoss();
+    return nightbane && IsMinionStanceWrongForHold(bot, IsNightbaneDpsHeld(bot, nightbane));
 }
 
 bool NightbaneShouldHoldDpsTrigger::IsActiveInEncounter()
 {
     Unit* nightbane = GetEncounterBoss();
-    return nightbane && IsNightbaneDpsHeld(bot, *nightbane);
+    return nightbane && IsNightbaneDpsHeld(bot, nightbane);
 }
 
-bool NightbaneShouldStackInFlightTrigger::IsActiveInEncounter()
+bool NightbaneInFlightPhaseTrigger::IsActiveInEncounter()
 {
     Unit* nightbane = GetEncounterBoss();
-    if (!nightbane || !IsNightbaneFlying(*nightbane))
+    if (!nightbane || !IsNightbaneFlying(nightbane))
         return false;
 
     KaraInstanceState const* state = FindKaraState(nightbane->GetInstanceId());
-    return state && state->nightbaneFlightSpot;
+    return state && state->nightbaneFlightStackPosition;
 }
 
-bool NightbaneShouldStandDownTrigger::IsActiveInEncounter()
+bool NightbaneInLandingPhaseTrigger::IsActiveInEncounter()
 {
     Unit* nightbane = GetEncounterBoss();
-    return nightbane && IsNightbaneFlying(*nightbane) &&
-        !IsNightbaneFlightPhaseActive(*nightbane) &&
-        AI_VALUE(Unit*, "current target") == nightbane;
+    if (!nightbane || !IsNightbaneFlying(nightbane) || IsNightbaneFlightPhaseActive(nightbane))
+        return false;
+
+    return AI_VALUE(Unit*, "current target") == nightbane;
 }
 
 bool NightbaneShouldManageTimersAndTrackersTrigger::IsActiveInEncounter()

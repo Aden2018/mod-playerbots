@@ -23,8 +23,11 @@ public:
             &RaidSwpActionContext::sunwell_remove_aura;
 
         // Trash
-        creators["volatile fiend keep enemy away from group"] =
-            &RaidSwpActionContext::volatile_fiend_keep_enemy_away_from_group;
+        creators["volatile fiend intercept"] =
+            &RaidSwpActionContext::volatile_fiend_intercept;
+
+        creators["volatile fiend move away"] =
+            &RaidSwpActionContext::volatile_fiend_move_away;
 
         creators["apocalypse guard attack with holy magic"] =
             &RaidSwpActionContext::apocalypse_guard_attack_with_holy_magic;
@@ -53,6 +56,18 @@ public:
 
         creators["kalecgos return to spectral realm ground"] =
             &RaidSwpActionContext::kalecgos_return_to_spectral_realm_ground;
+
+        creators["kalecgos update raid assignments"] =
+            &RaidSwpActionContext::kalecgos_update_raid_assignments;
+
+        creators["kalecgos stop attacking for hold"] =
+            &RaidSwpActionContext::kalecgos_stop_attacking_for_hold;
+
+        creators["kalecgos select target for hold"] =
+            &RaidSwpActionContext::kalecgos_select_target_for_hold;
+
+        creators["kalecgos set pet stance"] =
+            &RaidSwpActionContext::kalecgos_set_pet_stance;
 
         // Brutallus
         creators["brutallus misdirect to main tank"] =
@@ -91,6 +106,9 @@ public:
 
         creators["felmyst mass dispel gas nova"] =
             &RaidSwpActionContext::felmyst_mass_dispel_gas_nova;
+
+        creators["felmyst move to air group position"] =
+            &RaidSwpActionContext::felmyst_move_to_air_group_position;
 
         creators["felmyst avoid demonic vapor"] =
             &RaidSwpActionContext::felmyst_avoid_demonic_vapor;
@@ -144,8 +162,8 @@ public:
         creators["eredar twins dps prioritize sacrolash"] =
             &RaidSwpActionContext::eredar_twins_dps_prioritize_sacrolash;
 
-        creators["eredar twins control pet aggression"] =
-            &RaidSwpActionContext::eredar_twins_control_pet_aggression;
+        creators["eredar twins set pet stance"] =
+            &RaidSwpActionContext::eredar_twins_set_pet_stance;
 
         creators["eredar twins conflagration target move from group"] =
             &RaidSwpActionContext::eredar_twins_conflagration_target_move_from_group;
@@ -249,9 +267,13 @@ private:
     }
 
     // Trash
-    static Action* volatile_fiend_keep_enemy_away_from_group(PlayerbotAI* botAI)
+    static Action* volatile_fiend_intercept(PlayerbotAI* botAI)
     {
-        return new VolatileFiendKeepEnemyAwayFromGroupAction(botAI);
+        return new VolatileFiendInterceptAction(botAI);
+    }
+    static Action* volatile_fiend_move_away(PlayerbotAI* botAI)
+    {
+        return new VolatileFiendMoveAwayAction(botAI);
     }
     static Action* apocalypse_guard_attack_with_holy_magic(PlayerbotAI* botAI)
     {
@@ -262,7 +284,7 @@ private:
     static Action* kalecgos_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new SunwellMisdirectToMainTankAction(
-            botAI, "kalecgos misdirect to main tank", "kalecgos");
+            botAI, "kalecgos misdirect to main tank", SwpHelpers::SwpBosses::DATA_KALECGOS);
     }
     static Action* kalecgos_announce_boss_health(PlayerbotAI* botAI)
     {
@@ -293,12 +315,28 @@ private:
     {
         return new KalecgosReturnToSpectralRealmGroundAction(botAI);
     }
+    static Action* kalecgos_update_raid_assignments(PlayerbotAI* botAI)
+    {
+        return new KalecgosUpdateRaidAssignmentsAction(botAI);
+    }
+    static Action* kalecgos_stop_attacking_for_hold(PlayerbotAI* botAI)
+    {
+        return new KalecgosStopAttackingForHoldAction(botAI);
+    }
+    static Action* kalecgos_select_target_for_hold(PlayerbotAI* botAI)
+    {
+        return new KalecgosSelectTargetForHoldAction(botAI);
+    }
+    static Action* kalecgos_set_pet_stance(PlayerbotAI* botAI)
+    {
+        return new KalecgosSetPetStanceAction(botAI);
+    }
 
     // Brutallus
     static Action* brutallus_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new SunwellMisdirectToMainTankAction(
-            botAI, "brutallus misdirect to main tank", "brutallus");
+            botAI, "brutallus misdirect to main tank", SwpHelpers::SwpBosses::DATA_BRUTALLUS);
     }
     static Action* brutallus_tanks_position_and_swap(PlayerbotAI* botAI)
     {
@@ -321,7 +359,7 @@ private:
     static Action* felmyst_misdirect_to_main_tank(PlayerbotAI* botAI)
     {
         return new SunwellMisdirectToMainTankAction(
-            botAI, "felmyst misdirect to main tank", "felmyst");
+            botAI, "felmyst misdirect to main tank", SwpHelpers::SwpBosses::DATA_FELMYST);
     }
     static Action* felmyst_main_tank_position_boss_on_ground(PlayerbotAI* botAI)
     {
@@ -346,6 +384,10 @@ private:
     static Action* felmyst_mass_dispel_gas_nova(PlayerbotAI* botAI)
     {
         return new FelmystMassDispelGasNovaAction(botAI);
+    }
+    static Action* felmyst_move_to_air_group_position(PlayerbotAI* botAI)
+    {
+        return new FelmystMoveToAirGroupPositionAction(botAI);
     }
     static Action* felmyst_avoid_demonic_vapor(PlayerbotAI* botAI)
     {
@@ -418,9 +460,9 @@ private:
     {
         return new EredarTwinsDpsPrioritizeSacrolashAction(botAI);
     }
-    static Action* eredar_twins_control_pet_aggression(PlayerbotAI* botAI)
+    static Action* eredar_twins_set_pet_stance(PlayerbotAI* botAI)
     {
-        return new EredarTwinsControlPetAggressionAction(botAI);
+        return new EredarTwinsSetPetStanceAction(botAI);
     }
     static Action* eredar_twins_conflagration_target_move_from_group(PlayerbotAI* botAI)
     {

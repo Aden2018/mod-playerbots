@@ -9,10 +9,13 @@
 
 #include "Action.h"
 #include "AttackAction.h"
+#include "EncounterHelpers.h"
 #include "MovementActions.h"
 #include "ObjectGuid.h"
 #include "Position.h"
+#include "SWPShared.h"
 #include <limits>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -37,12 +40,22 @@ public:
 
 // Trash
 
-class VolatileFiendKeepEnemyAwayFromGroupAction : public AttackAction
+class VolatileFiendInterceptAction : public AttackAction
 {
 public:
-    VolatileFiendKeepEnemyAwayFromGroupAction(PlayerbotAI* botAI)
-        : AttackAction(botAI, "volatile fiend keep enemy away from group") {}
+    VolatileFiendInterceptAction(PlayerbotAI* botAI)
+        : AttackAction(botAI, "volatile fiend intercept") {}
     bool Execute(Event event) override;
+    bool isUseful() override;
+};
+
+class VolatileFiendMoveAwayAction : public MovementAction
+{
+public:
+    VolatileFiendMoveAwayAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "volatile fiend move away") {}
+    bool Execute(Event event) override;
+    bool isUseful() override;
 };
 
 class ApocalypseGuardAttackWithHolyMagicAction : public Action
@@ -67,12 +80,12 @@ class SunwellMisdirectToMainTankAction : public Action
 {
 public:
     SunwellMisdirectToMainTankAction(
-        PlayerbotAI* botAI, std::string const& name, std::string const& bossName)
-        : Action(botAI, name), _bossName(bossName) {}
+        PlayerbotAI* botAI, std::string const& name, SwpHelpers::SwpBosses boss)
+        : Action(botAI, name), _boss(boss) {}
     bool Execute(Event event) override;
 
 private:
-    std::string const _bossName;
+    SwpHelpers::SwpBosses const _boss;
 };
 
 // Kalecgos
@@ -83,6 +96,44 @@ public:
     KalecgosAnnounceBossHealthAction(PlayerbotAI* botAI)
         : Action(botAI, "kalecgos announce boss health") {}
     bool Execute(Event event) override;
+};
+
+class KalecgosUpdateRaidAssignmentsAction : public Action
+{
+public:
+    KalecgosUpdateRaidAssignmentsAction(PlayerbotAI* botAI)
+        : Action(botAI, "kalecgos update raid assignments") {}
+    bool Execute(Event event) override;
+};
+
+class KalecgosStopAttackingForHoldAction : public Action
+{
+public:
+    KalecgosStopAttackingForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "kalecgos stop attacking for hold") {}
+    bool Execute(Event event) override;
+};
+
+// Takes the target dps assist would take, without attacking it, for a bot in its non-combat engine.
+class KalecgosSelectTargetForHoldAction : public Action
+{
+public:
+    KalecgosSelectTargetForHoldAction(PlayerbotAI* botAI)
+        : Action(botAI, "kalecgos select target for hold") {}
+    bool isUseful() override;
+    bool Execute(Event event) override;
+};
+
+class KalecgosSetPetStanceAction : public Action
+{
+public:
+    KalecgosSetPetStanceAction(PlayerbotAI* botAI)
+        : Action(botAI, "kalecgos set pet stance") {}
+    bool Execute(Event event) override;
+    bool ResetPetStance();
+
+private:
+    std::vector<EncounterHelpers::SavedMinionStance> _previousReactStates;
 };
 
 class KalecgosSurfaceTankPositionDragonAction : public AttackAction
@@ -146,16 +197,18 @@ public:
     BrutallusTanksPositionAndSwapAction(PlayerbotAI* botAI)
         : AttackAction(botAI, "brutallus tanks position and swap") {}
     bool Execute(Event event) override;
-    bool ResetInitialPositionReached()
+    bool ResetMainTankPlacement()
     {
-        if (!_mainTankInitialPositionReached)
+        if (!_mainTankInPlace && !_placementStartMs)
             return false;
-        _mainTankInitialPositionReached = false;
+        _mainTankInPlace = false;
+        _placementStartMs = 0;
         return true;
     }
 
 private:
-    bool _mainTankInitialPositionReached = false;
+    bool _mainTankInPlace = false;
+    uint32 _placementStartMs = 0;
 };
 
 class BrutallusPositionMeleeAtRearCenterAction : public MovementAction
@@ -244,19 +297,20 @@ public:
     bool Execute(Event event) override;
 };
 
+class FelmystMoveToAirGroupPositionAction : public MovementAction
+{
+public:
+    FelmystMoveToAirGroupPositionAction(PlayerbotAI* botAI)
+        : MovementAction(botAI, "felmyst move to air group position") {}
+    bool Execute(Event event) override;
+};
+
 class FelmystAvoidDemonicVaporAction : public MovementAction
 {
 public:
     FelmystAvoidDemonicVaporAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "felmyst avoid demonic vapor") {}
     bool Execute(Event event) override;
-
-private:
-    void AnnounceFlightLeader(Player* leader);
-    bool MoveAwayFromVapor(bool unrestricted = false);
-    bool MoveToFlightLeader(Player* leader);
-
-    ObjectGuid _announcedFlightLeaderGuid;
 };
 
 class FelmystKiteDemonicVaporAction : public MovementAction
@@ -265,6 +319,15 @@ public:
     FelmystKiteDemonicVaporAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "felmyst kite demonic vapor") {}
     bool Execute(Event event) override;
+    bool ResetRouteProgress();
+
+private:
+    ObjectGuid _demonicVaporGuid;
+    std::span<Position const> _route;
+    size_t _routePointIndex = 0;
+    // G1, which the first vapor's target passes through if the second vapor picks it again
+    Position const* _throughPosition = nullptr;
+    void StartRoute(Unit* felmyst, ObjectGuid const& demonicVaporGuid);
 };
 
 class FelmystMoveToSafeFogLaneAction : public MovementAction
@@ -273,12 +336,6 @@ public:
     FelmystMoveToSafeFogLaneAction(PlayerbotAI* botAI)
         : MovementAction(botAI, "felmyst move to safe fog lane") {}
     bool Execute(Event event) override;
-
-private:
-    Position _fogCrateStuckDestination;
-    float _fogCrateStuckNearestDist = std::numeric_limits<float>::max();
-    uint32 _fogCrateStuckSampleMs = 0;
-    bool TryTeleportStuckBotOntoCrate(Position const& destination);
 };
 
 class FelmystMeleeClearTargetAction : public Action
@@ -404,16 +461,16 @@ public:
     bool Execute(Event event) override;
 };
 
-class EredarTwinsControlPetAggressionAction : public Action
+class EredarTwinsSetPetStanceAction : public Action
 {
 public:
-    EredarTwinsControlPetAggressionAction(PlayerbotAI* botAI)
-        : Action(botAI, "eredar twins control pet aggression") {}
+    EredarTwinsSetPetStanceAction(PlayerbotAI* botAI)
+        : Action(botAI, "eredar twins set pet stance") {}
     bool Execute(Event event) override;
+    bool ResetPetStance();
 
 private:
-    ReactStates _previousReactState = REACT_DEFENSIVE;
-    bool _setPassive = false;
+    std::vector<EncounterHelpers::SavedMinionStance> _previousReactStates;
 };
 
 class EredarTwinsConflagrationTargetMoveFromGroupAction : public MovementAction

@@ -11,6 +11,7 @@
 #include "PlayerbotTextMgr.h"
 #include "SWPEncounter_Twins.h"
 #include "SWPShared.h"
+#include "ThreatHelpers.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -20,7 +21,7 @@ using namespace EncounterHelpers;
 
 bool EredarTwinsMeleeJumpFromBalconyAction::Execute(Event /*event*/)
 {
-    Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+    Unit* alythess = GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
     Position const& jumpPosition = EREDAR_TWINS_P1_RANGED_POSITION;
     Position const landingPosition = GetEredarTwinsP2MeleePosition(alythess);
 
@@ -141,17 +142,17 @@ bool EredarTwinsMisdirectToTanksAction::Execute(Event /*event*/)
     Player* tank = nullptr;
     if (hunterIndex == 0)
     {
-        boss = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+        boss = GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
         tank = alythessTank;
     }
     else if (hunterIndex == 1)
     {
-        boss = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+        boss = FindThreatTarget(bot, "lady sacrolash");
         tank = sacrolashTank;
     }
     else if (hunterIndex == 2)
     {
-        boss = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+        boss = FindThreatTarget(bot, "lady sacrolash");
         tank = sacrolashSecondTank;
     }
 
@@ -163,7 +164,7 @@ bool EredarTwinsMisdirectToTanksAction::Execute(Event /*event*/)
 
 bool EredarTwinsPositionSacrolashTanksAction::Execute(Event /*event*/)
 {
-    Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    Unit* sacrolash = FindThreatTarget(bot, "lady sacrolash");
     if (!sacrolash)
         return false;
 
@@ -190,7 +191,7 @@ bool EredarTwinsPositionSacrolashTanksAction::Execute(Event /*event*/)
 
 bool EredarTwinsAlythessTankMoveOutOfBlazeAction::Execute(Event /*event*/)
 {
-    Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+    Unit* alythess = GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
     if (!alythess)
         return false;
 
@@ -272,7 +273,7 @@ bool EredarTwinsAlythessTankMoveOutOfBlazeAction::StepToPosition(
 
 bool EredarTwinsRangedStackAtBalconyEdgeAction::Execute(Event /*event*/)
 {
-    Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    Unit* sacrolash = FindThreatTarget(bot, "lady sacrolash");
     if (sacrolash && sacrolash->GetVictim() != bot && GetEredarTwinsBlazeTarget(bot) != bot)
     {
         Position const& position = EREDAR_TWINS_P1_RANGED_POSITION;
@@ -283,43 +284,42 @@ bool EredarTwinsRangedStackAtBalconyEdgeAction::Execute(Event /*event*/)
             SWP_MAP_ID, position.GetPositionX(), position.GetPositionY(), position.GetPositionZ(),
             false, false, false, false, MovementPriority::MOVEMENT_FORCED, true, false);
     }
+
     // Jump down during Phase 2 or if the bot pulls aggro on Alythess or Sacrolash
-    else if (bot->GetPositionZ() > EREDAR_TWINS_BALCONY_Z)
+    if (bot->GetPositionZ() <= EREDAR_TWINS_BALCONY_Z)
+        return false;
+
+    Unit* alythess = GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
+    Position const& jumpPosition = EREDAR_TWINS_P1_RANGED_POSITION;
+    Position const landingPosition = GetEredarTwinsP2RangedPosition(alythess);
+
+    constexpr float arrivalDistance = 2.0f;
+    float const distanceToJumpPos = bot->GetExactDist2d(jumpPosition);
+
+    if (distanceToJumpPos > arrivalDistance)
     {
-        Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
-        Position const& jumpPosition = EREDAR_TWINS_P1_RANGED_POSITION;
-        Position const landingPosition = GetEredarTwinsP2RangedPosition(alythess);
-
-        constexpr float arrivalDistance = 2.0f;
-        float const distanceToJumpPos = bot->GetExactDist2d(jumpPosition);
-
-        if (distanceToJumpPos > arrivalDistance)
+        float moveX;
+        float moveY;
+        bool backwards;
+        if (!GetStepToPosition(
+                bot, jumpPosition, arrivalDistance, nullptr, moveX, moveY, backwards))
         {
-            float moveX;
-            float moveY;
-            bool backwards;
-            if (!GetStepToPosition(
-                    bot, jumpPosition, arrivalDistance, nullptr, moveX, moveY, backwards))
-            {
-                return false;
-            }
-
-            return MoveTo(
-                SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
-                MovementPriority::MOVEMENT_FORCED, true, false);
+            return false;
         }
 
-        return JumpTo(
-            SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
-            landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
+        return MoveTo(
+            SWP_MAP_ID, moveX, moveY, bot->GetPositionZ(), false, false, false, false,
+            MovementPriority::MOVEMENT_FORCED, true, false);
     }
 
-    return false;
+    return JumpTo(
+        SWP_MAP_ID, landingPosition.GetPositionX(), landingPosition.GetPositionY(),
+        landingPosition.GetPositionZ(), MovementPriority::MOVEMENT_FORCED);
 }
 
 bool EredarTwinsStackInRoomCenterAction::Execute(Event /*event*/)
 {
-    Unit* alythess = AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+    Unit* alythess = GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
     if (!alythess)
         return false;
 
@@ -346,9 +346,9 @@ bool EredarTwinsDpsPrioritizeSacrolashAction::Execute(Event /*event*/)
     // Select a target without attacking while the DPS hold is active.
     bool const isDpsHeld = IsEredarTwinsStartHoldActive(botAI);
 
-    Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    Unit* sacrolash = FindThreatTarget(bot, "lady sacrolash");
     Unit* twinTarget =
-        sacrolash ? sacrolash : AI_VALUE2(Unit*, "find target", "grand warlock alythess");
+        sacrolash ? sacrolash : GetSwpBoss(bot, SwpBosses::DATA_EREDAR_TWINS);
 
     if (!twinTarget)
         return false;
@@ -358,7 +358,7 @@ bool EredarTwinsDpsPrioritizeSacrolashAction::Execute(Event /*event*/)
 
     if (shouldHoldThreat)
     {
-        return IsAttackingTarget(bot, *twinTarget) ? StopAttackingTarget(bot, *twinTarget) :
+        return IsAttackingTarget(bot, twinTarget) ? StopAttackingTarget(bot, twinTarget) :
             SelectTarget(botAI, twinTarget);
     }
 
@@ -368,29 +368,16 @@ bool EredarTwinsDpsPrioritizeSacrolashAction::Execute(Event /*event*/)
     return isDpsHeld ? SelectTarget(botAI, twinTarget) : Attack(twinTarget);
 }
 
-bool EredarTwinsControlPetAggressionAction::Execute(Event /*event*/)
+bool EredarTwinsSetPetStanceAction::Execute(Event /*event*/)
 {
-    Pet* pet = bot->GetPet();
-    if (!pet)
-        return false;
+    return SetMinionStancesForHold(bot, IsEredarTwinsStartHoldActive(botAI), _previousReactStates);
+}
 
-    if (IsEredarTwinsStartHoldActive(botAI))
-    {
-        if (!pet->HasReactState(REACT_PASSIVE))
-        {
-            _previousReactState = pet->GetReactState();
-            _setPassive = true;
-            CallBackPets(bot);
-            pet->SetReactState(REACT_PASSIVE);
-        }
-    }
-    else if (_setPassive)
-    {
-        pet->SetReactState(_previousReactState);
-        _setPassive = false;
-    }
-
-    return false;
+bool EredarTwinsSetPetStanceAction::ResetPetStance()
+{
+    bool const restored = SetMinionStancesForHold(bot, false, _previousReactStates);
+    _previousReactStates.clear();
+    return restored;
 }
 
 bool EredarTwinsConflagrationTargetMoveFromGroupAction::Execute(Event /*event*/)
@@ -401,7 +388,7 @@ bool EredarTwinsConflagrationTargetMoveFromGroupAction::Execute(Event /*event*/)
         return true;
     }
 
-    if (AI_VALUE2(Unit*, "find target", "lady sacrolash"))
+    if (FindThreatTarget(bot, "lady sacrolash"))
     {
         Position const& position = PlayerbotAI::IsRanged(bot) ?
             EREDAR_TWINS_RANGED_CONFLAG_POSITION : EREDAR_TWINS_MELEE_CONFLAG_POSITION;
@@ -425,7 +412,7 @@ bool EredarTwinsConflagrationTargetMoveFromGroupAction::Execute(Event /*event*/)
 
 bool EredarTwinsMoveAwayFromSacrolashVictimAction::Execute(Event /*event*/)
 {
-    Unit* sacrolash = AI_VALUE2(Unit*, "find target", "lady sacrolash");
+    Unit* sacrolash = FindThreatTarget(bot, "lady sacrolash");
     if (!sacrolash)
         return false;
 

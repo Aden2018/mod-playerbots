@@ -44,6 +44,7 @@ enum class BtSpells : uint32
 {
     // Trash
     SPELL_SHARED_BONDS              = 41363,
+    SPELL_SHELL_OF_PAIN             = 41371,
     SPELL_SPELL_ABSORPTION          = 41034,
 
     // High Warlord Naj'entus
@@ -242,10 +243,13 @@ inline constexpr uint32 SISTER_OF_PLEASURE_CACHE_INTERVAL_MS = 1000;
 
 GuidVector FindSisterOfPleasureGuids(Player* bot);
 Unit* GetLinkedSisterOfPain(Unit* pleasure);
+// Find any Sister of Pleasure that still has a living linked Sister of Pain.
 Unit* FindLinkedSisterOfPleasure(PlayerbotAI* botAI);
+// Find the Sister of Pleasure linked to a specific Sister of Pain.
 Unit* FindSisterOfPleasureLinkedTo(PlayerbotAI* botAI, Unit* pain);
 Unit* GetSkulledSisterOfPain(Player* bot);
 Unit* FindEngagedSisterOfPain(PlayerbotAI* botAI);
+bool IsSisterOfPainHeld(PlayerbotAI* botAI, Unit* pain);
 
 enum class ChaoticChargeReach : uint8
 {
@@ -341,7 +345,7 @@ inline Position const SUPREMUS_INITIAL_TANK_POSITION = { 700.678f, 698.270f, 71.
 
 bool IsSupremusKitePhase(Unit* supremus);
 float GetSupremusFixateTimeRemaining(Unit* supremus);
-float GetSupremusCatchDistance(Player* bot, Unit* supremus);
+float GetSupremusCatchDistance(Player* bot, Unit const& supremus);
 bool CanSupremusCatchStandingBot(Player* bot, Unit* supremus);
 bool IsSupremusVolcanoErupting(Unit* volcano);
 std::vector<SupremusHazard> FindSupremusHazards(Player* bot);
@@ -490,7 +494,6 @@ inline constexpr EncounterHelpers::ClassRole ZEREVOR_MAGE_TANK_ROLE = {
 inline constexpr float COUNCIL_CLASS_ROLE_ANNOUNCE_DISTANCE = 125.0f;
 // 175 yd extends to the top of the steps leading to the courtyard outside the Council's room.
 inline constexpr float COUNCIL_CLASS_ROLE_REARM_DISTANCE = 175.0f;
-
 inline constexpr float COUNCIL_MEMBER_SEARCH_RADIUS = COUNCIL_CLASS_ROLE_ANNOUNCE_DISTANCE;
 inline constexpr uint32 COUNCIL_DPS_WAIT_MS = 5 * IN_MILLISECONDS; // on pull
 inline constexpr float COUNCIL_AOE_THREAT_CLEARANCE = 15.0f;
@@ -517,6 +520,11 @@ inline constexpr int32 CIRCLE_OF_HEALING_CASTER_MARGIN_MS = 500;
 inline constexpr float COUNTERSPELL_RANGE = 30.0f;
 inline constexpr float WIND_SHEAR_RANGE = 25.0f;
 inline constexpr float SPELL_LOCK_RANGE = 30.0f;
+// Mages and elemental shamans aim this far inside their interrupt's range of Malande.
+inline constexpr float CIRCLE_INTERRUPTER_RANGE_MARGIN = 2.0f;
+// The strategy needs extra spacing and thus assumes all Elemental Shamans have taken Elemental
+// Reach, which is part of the standard ele pve bot build.
+inline constexpr float ELEMENTAL_REACH_BONUS_RANGE = 6.0f;
 
 inline std::array const GATHIOS_TANK_POSITIONS = {
     Position{ 662.977f, 296.246f, 271.688f },
@@ -550,6 +558,10 @@ bool IsInZerevorPatch(Unit* zerevor, Position const& point, float margin = 0.0f)
 bool IsInCouncilPatch(Position const& point, Unit* gathios, Unit* zerevor, float margin = 0.0f);
 bool IsMalandeInCouncilPatch(Unit* malande, Unit* gathios, Unit* zerevor);
 bool ShouldRangedInterruptCircleOfHealing(Unit* malande, Unit* gathios, Unit* zerevor);
+bool IsCircleRangedInterrupter(Player* bot);
+bool IsInMalandeInterruptPosition(PlayerbotAI* botAI, Unit* malande);
+bool FindMalandeInterruptPosition(
+    PlayerbotAI* botAI, IllidariCouncilMembers const& members, Position& destination);
 bool IsZerevorOnMageTank(Player* bot, Unit* zerevor);
 bool FindZerevorAvoidPosition(Player* bot, Unit* gathios, Unit* zerevor, Position& destination);
 bool IsMageTankHealerPositionSafe(Position const& point, Player* mageTank, Unit* zerevor);
@@ -784,7 +796,6 @@ inline constexpr uint32 ILLIDAN_DEMON_FORM_END_HOLD_MS = 3 * IN_MILLISECONDS;
 // phase 5 while in Demon Form is very bad because he will return to humanoid form without a threat
 // wipe and will proceed to kill the warlock tank and then other ranged from phase 4 threat.
 inline constexpr float ILLIDAN_DEMON_FORM_NO_PUSH_HEALTH_PCT = 33.0f;
-
 inline constexpr float ILLIDAN_AURA_OF_DREAD_HAZARD_RADIUS = 15.0f;
 inline constexpr float ILLIDAN_AURA_OF_DREAD_CLEARANCE =
     ILLIDAN_AURA_OF_DREAD_HAZARD_RADIUS + 2.0f;
@@ -796,7 +807,6 @@ inline constexpr float ILLIDAN_SHADOW_BLAST_CLEARANCE = ILLIDAN_SHADOW_BLAST_HAZ
 inline constexpr float ILLIDAN_SHADOW_DEMON_CHASE_DISTANCE = 10.0f;
 inline constexpr float ILLIDAN_SHADOW_DEMON_GAP_CLOSER_DISTANCE =
     ILLIDAN_AURA_OF_DREAD_CLEARANCE + 3.0f;
-
 // When the Seed of Corruption and/or warlock tank Searing Pain action is active, use Life Tap when
 // below 20% mana and above 50% HP to ensure enough mana to cast the applicable spell.
 inline constexpr float ILLIDAN_LIFE_TAP_MANA_PCT = 20.0f;
@@ -805,7 +815,6 @@ inline constexpr float ILLIDAN_LIFE_TAP_HEALTH_PCT = 75.0f;
 // only 1.5 yd in Demon Form, so a standard 30 yd spell (like Searing Pain) has a 33 yd range.
 inline constexpr float ILLIDAN_WARLOCK_POSITION_DISTANCE = 31.0f;
 inline constexpr float ILLIDAN_WARLOCK_POSITION_ANGLE = 75.0f * static_cast<float>(M_PI) / 180.0f;
-
 // 10s before the end of phase 4, the main tank moves to the pickup position in front of the raid,
 // just outside Aura of Dread and 22.5 yd from the warlock tank, to prepare for the phase 3/5
 // pickup. The move from a melee slot is 23 to 43 yd. There is no Flame Burst possible within the
@@ -868,18 +877,18 @@ IllidanPhase GetIllidanPhase(Unit* illidan);
 bool IsIllidanSpeechInProgress(Player* bot);
 bool RecordIllidanPhase(uint32 instanceId, IllidanPhase phase);
 bool IsIllidanPhaseStartWithin(Unit const& illidan, IllidanPhase phase, uint32 durationMs);
-IllidanPhase GetIllidanPhaseBefore(Unit const& illidan, IllidanPhase phase);
-bool IsIllidanDemonFormEnding(Unit const& illidan, uint32 durationMs);
+IllidanPhase GetIllidanPhaseBefore(Unit* illidan, IllidanPhase phase);
+bool IsIllidanDemonFormEnding(Unit* illidan, uint32 durationMs);
 IllidanDpsHold GetIllidanHoldWindow(Unit* illidan);
 IllidanDpsHold GetIllidanDpsHold(Player* bot, Unit* illidan);
-bool IsFlameOfAzzinothDpsHeld(Unit const& illidan);
-bool IsOnlineOnIllidanThreatList(Unit const& illidan, Player* bot);
-bool IsIllidanTankAggroPending(Unit const& illidan, IllidanPhase phase);
-bool DoIllidanTanksHaveAggro(Player* bot, Unit const& illidan, IllidanPhase phase);
+bool IsFlameOfAzzinothDpsHeld(Unit* illidan);
+bool IsOnlineOnIllidanThreatList(Unit* illidan, Player* bot);
+bool IsIllidanTankAggroPending(Unit* illidan, IllidanPhase phase);
+bool DoIllidanTanksHaveAggro(Player* bot, Unit* illidan, IllidanPhase phase);
 bool IsIllidanPickupPending(Player* bot, Unit* illidan);
 bool IsIllidanPickupExemptTarget(Unit* target, bool isAoe);
 bool ShouldIllidanPetsBePassive(Player* bot, Unit* illidan);
-bool IsIllidanPickupChannelHeld(Player* bot, Unit* illidan, Spell const& channel);
+bool IsIllidanPickupChannelHeld(Player* bot, Unit* illidan, Spell const* channel);
 float GetGrateAngle(Position const& position);
 Position GetRingPoint(float angle, float radius);
 Position GetIllidanSettlePosition(Unit const& illidan);
@@ -906,19 +915,19 @@ bool IsFrostTrapAt(Player* bot, Position const& infectionPosition, int32 minDura
 int32 GetIllidanRangedIndex(Player* player, size_t slotCount, bool inDemonForm);
 int32 GetIllidanHealerIndex(Player* bot, size_t slotCount);
 int32 GetIllidanMeleeIndex(Player* bot, size_t slotCount);
-int32 GetIllidanGrateIndex(Player* bot, Unit const& illidan);
+int32 GetIllidanGrateIndex(Player* bot, Unit* illidan);
 int32 GetIllidanGrateStackIndex(Player* bot);
 Aura* GetParasiticShadowfiendAura(Player* player);
 bool HasParasiticShadowfiend(Player* player);
 GuidVector FindParasiticShadowfiendGuids(Player* bot);
-Unit* GetNearestParasiticShadowfiend(PlayerbotAI* botAI, Unit const& unit);
+Unit* GetNearestParasiticShadowfiend(PlayerbotAI* botAI, Unit* unit);
 bool IsNearNewParasiticShadowfiend(PlayerbotAI* botAI);
 GuidVector FindInfectedPlayerGuids(Player* bot);
 std::vector<ShadowDemon> FindShadowDemons(Player* bot);
-Unit* GetShadowDemonForRangedToAttack(PlayerbotAI* botAI, Unit const& from);
+Unit* GetShadowDemonForRangedToAttack(PlayerbotAI* botAI, Unit* from);
 Unit* GetShadowDemonMovingToWarlockTank(PlayerbotAI* botAI);
-Unit* GetShadowDemonForMeleeToAttack(PlayerbotAI* botAI, Unit const& from);
-Unit* GetShadowDemonForPetToAttack(PlayerbotAI* botAI, Pet const& pet);
+Unit* GetShadowDemonForMeleeToAttack(PlayerbotAI* botAI, Unit* from);
+Unit* GetShadowDemonForPetToAttack(PlayerbotAI* botAI, Pet* pet);
 bool IsTargetingShadowDemon(PlayerbotAI* botAI);
 Position GetClosestPointOnSegment(
     Position const& start, Position const& end, Position const& point);

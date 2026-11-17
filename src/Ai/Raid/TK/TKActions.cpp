@@ -1356,7 +1356,7 @@ bool KaelthasSunstriderAssignLegendaryWeaponDpsPriorityAction::HandleDevastation
     // Just in case melee ends up on the axe despite the priority list leaving them off. The
     // priority loop then picks the next weapon.
     if (isMeleeDps && AI_VALUE(Unit*, "current target") == axe)
-        StopAttackingTarget(bot, *axe);
+        StandDown(botAI);
 
     return result;
 }
@@ -2080,7 +2080,7 @@ bool KaelthasSunstriderSpreadOutInMidairAction::HoverAndSpread()
         return (hash >> 8) / static_cast<float>(1 << 24);
     };
 
-    Aura* lapse = bot->GetAura(Id(TkSpells::SPELL_GRAVITY_LAPSE_AURA));
+    Aura const* lapse = bot->GetAura(Id(TkSpells::SPELL_GRAVITY_LAPSE_AURA));
     if (!lapse)
         return false;
 

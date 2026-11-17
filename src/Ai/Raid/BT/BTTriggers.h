@@ -10,7 +10,6 @@
 #include "BTHelpers.h"
 #include "EncounterHelpers.h"
 #include "Trigger.h"
-#include <optional>
 #include <string>
 
 // Shared
@@ -31,7 +30,6 @@ public:
 
 protected:
     virtual bool IsActiveInEncounter() = 0;
-
     Unit* GetEncounterBoss() { return BtHelpers::GetBtBoss(bot, _boss); }
 
 private:
@@ -58,15 +56,11 @@ class BlackTempleHunterShouldMisdirectTrigger : public BlackTempleEncounterTrigg
 {
 public:
     BlackTempleHunterShouldMisdirectTrigger(
-        PlayerbotAI* botAI, std::string const& name, BtHelpers::BtBosses boss,
-        std::optional<std::string_view> target = std::nullopt)
-        : BlackTempleEncounterTrigger(botAI, name, boss), _target(target) {}
+        PlayerbotAI* botAI, std::string const& name, BtHelpers::BtBosses boss)
+        : BlackTempleEncounterTrigger(botAI, name, boss) {}
 
 protected:
     bool IsActiveInEncounter() override;
-
-private:
-    std::optional<std::string_view> const _target;
 };
 
 // Trash
@@ -570,6 +564,18 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
+class IllidariCouncilRangedInterrupterShouldRepositionTrigger : public BlackTempleEncounterTrigger
+{
+public:
+    IllidariCouncilRangedInterrupterShouldRepositionTrigger(PlayerbotAI* botAI)
+        : BlackTempleEncounterTrigger(
+            botAI, "illidari council ranged interrupter should reposition",
+            BtHelpers::BtBosses::DATA_ILLIDARI_COUNCIL) {}
+
+protected:
+    bool IsActiveInEncounter() override;
+};
+
 class IllidariCouncilNonTanksShouldAvoidZerevorTrigger : public BlackTempleEncounterTrigger
 {
 public:
@@ -700,12 +706,12 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class IllidanStormragePetsDieToHazardsTrigger : public BlackTempleEncounterTrigger
+class IllidanStormrageShouldManagePetAggressionTrigger : public BlackTempleEncounterTrigger
 {
 public:
-    IllidanStormragePetsDieToHazardsTrigger(PlayerbotAI* botAI)
+    IllidanStormrageShouldManagePetAggressionTrigger(PlayerbotAI* botAI)
         : BlackTempleEncounterTrigger(
-            botAI, "illidan stormrage pets die to hazards",
+            botAI, "illidan stormrage should manage pet aggression",
             BtHelpers::BtBosses::DATA_ILLIDAN_STORMRAGE) {}
 
 protected:

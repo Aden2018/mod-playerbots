@@ -180,6 +180,9 @@ void RaidBlackTempleStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("illidari council mage tank healer should reposition",
         { NextAction("illidari council position mage tank healer", ACTION_RAID + 1) }));
 
+    triggers.push_back(new TriggerNode("illidari council ranged interrupter should reposition",
+        { NextAction("illidari council position to interrupt malande", ACTION_RAID) }));
+
     triggers.push_back(new TriggerNode("illidari council non-tanks should avoid zerevor",
         { NextAction("illidari council non-tanks avoid zerevor", ACTION_EMERGENCY + 2) }));
 
@@ -214,12 +217,8 @@ void RaidBlackTempleStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("illidan stormrage flames of azzinoth should be tanked",
         { NextAction("illidan stormrage assist tanks handle flames", ACTION_EMERGENCY + 1) }));
 
-    triggers.push_back(new TriggerNode("illidan stormrage pets die to hazards",
-        { NextAction("illidan stormrage control pet aggression", ACTION_RAID + 4) }));
-
-    // A pet still passive after a wipe gets its stance back.
-    triggers.push_back(new TriggerNode("black temple no encounter in progress",
-        { NextAction("illidan stormrage control pet aggression", ACTION_RAID + 4) }));
+    triggers.push_back(new TriggerNode("illidan stormrage should manage pet aggression",
+        { NextAction("illidan stormrage set pet stance", ACTION_RAID + 4) }));
 
     triggers.push_back(new TriggerNode("illidan stormrage pet should attack shadowfiend",
         { NextAction("illidan stormrage command pet attack add", ACTION_RAID + 3) }));
@@ -330,6 +329,10 @@ void RaidBlackTempleStrategy::InitMultipliers(std::vector<Multiplier*>& multipli
     multipliers.push_back(new IllidanStormrageHoldDpsMultiplier(botAI));
     multipliers.push_back(new IllidanStormrageDisableTankSoulshatterMultiplier(botAI));
     multipliers.push_back(new IllidanStormrageDisableAoeOnShadowDemonsMultiplier(botAI));
+
+    // Must be registered last because an action blocked by another multiplier does not reach the
+    // threat check that clears the flag, causing it to carry over to whatever action comes next.
+    multipliers.push_back(new IllidanStormrageNeglectThreatOnAddsMultiplier(botAI));
 }
 
 namespace
@@ -343,8 +346,11 @@ void AppendSisterOfPainExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
     for (ObjectGuid const& guid :
          botAI->GetAiObjectContext()->GetValue<GuidVector>("attackers")->RefGet())
     {
-        if (guid.GetEntry() == Id(BtNpcs::NPC_SISTER_OF_PAIN))
+        if (guid.GetEntry() == Id(BtNpcs::NPC_SISTER_OF_PAIN) &&
+            IsSisterOfPainHeld(botAI, botAI->GetUnit(guid)))
+        {
             exclusions.insert(guid);
+        }
     }
 }
 
@@ -420,8 +426,8 @@ void AppendIllidanMeleeExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
         exclusions.insert(demon->GetGUID());
 }
 
-// Stock "on attacker" DoTs go on every member, and their ticks would add threat on Zerevor for
-// everyone but the mage tank, who is the only one that should be building it.
+// Exclude secondary DoTs on Zerevor to not take aggro from the Mage tank at pull (and after pull,
+// Zerevor will be out of range anyway).
 void AppendZerevorDebuffExclusion(Player* bot, GuidSet& exclusions)
 {
     if (!IsBossInProgress(bot, BT_MAP_ID, Id(BtBosses::DATA_ILLIDARI_COUNCIL)))

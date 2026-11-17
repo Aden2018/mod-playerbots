@@ -10,7 +10,6 @@
 #include "Playerbots.h"
 #include "SharedDefines.h"
 #include "Spell.h"
-#include "ThreatHelpers.h"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -31,13 +30,13 @@ bool BlackTempleClassRolesShouldBeAssignedTrigger::IsActive()
 }
 
 // Misdirect immediately after the pull. Used for High Warlord Naj'entus, Supremus, Teron Gorefiend,
-// Gurtogg Bloodboil, Mother Shahraz, and the Illidari Council (on Gathios).
+// Gurtogg Bloodboil, Mother Shahraz, and the Illidari Council.
 bool BlackTempleHunterShouldMisdirectTrigger::IsActiveInEncounter()
 {
     if (bot->getClass() != CLASS_HUNTER)
         return false;
 
-    Unit* boss = _target ? FindThreatTarget(bot, *_target) : GetEncounterBoss();
+    Unit* boss = GetEncounterBoss();
     return boss && boss->GetHealthPct() > BOSS_ENGAGED_HEALTH_PCT;
 }
 
@@ -51,7 +50,8 @@ bool SisterOfPleasureShouldBeFocusedTrigger::IsActive()
     if (PlayerbotAI::IsTank(bot))
         return false;
 
-    return FindEngagedSisterOfPain(botAI);
+    Unit* pain = FindEngagedSisterOfPain(botAI);
+    return pain && IsSisterOfPainHeld(botAI, pain);
 }
 
 // Wands keep shooting once started, so a multiplier alone can't stop wanding.
@@ -80,15 +80,12 @@ bool ShadowmoonReaverShouldControlCasterPetTrigger::IsActive()
 
 bool HighWarlordNajentusShouldBeTankedTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsTank(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsTank(bot);
 }
 
 bool HighWarlordNajentusRangedShouldSpreadTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsRanged(bot))
-        return false;
-
-    if (!GetEncounterBoss())
         return false;
 
     return GetNearestPlayerInRadius(bot, NAJENTUS_RANGED_SPREAD_DISTANCE);
@@ -97,9 +94,6 @@ bool HighWarlordNajentusRangedShouldSpreadTrigger::IsActiveInEncounter()
 bool HighWarlordNajentusImpaledPlayerNeedsRemoverTrigger::IsActiveInEncounter()
 {
     if (!IsMechanicTrackerBot(bot, BT_MAP_ID))
-        return false;
-
-    if (!GetEncounterBoss())
         return false;
 
     return FindNajentusUnassignedImpaledPlayer(bot);
@@ -113,9 +107,6 @@ bool HighWarlordNajentusImpalingSpineOnGroupMemberTrigger::IsActiveInEncounter()
 bool HighWarlordNajentusNeedsSpineThrowerTrigger::IsActiveInEncounter()
 {
     if (!IsMechanicTrackerBot(bot, BT_MAP_ID))
-        return false;
-
-    if (!GetEncounterBoss())
         return false;
 
     return !GetNajentusSpineThrower(bot);
@@ -186,9 +177,6 @@ bool SupremusFixatedOnBotTrigger::IsActiveInEncounter()
 
 bool SupremusNearFireTrigger::IsActiveInEncounter()
 {
-    if (!GetEncounterBoss())
-        return false;
-
     if (bot->isMoving() && CanMoveThroughSupremusFire(bot))
         return false;
 
@@ -199,9 +187,6 @@ bool SupremusNearFireTrigger::IsActiveInEncounter()
 
 bool SupremusReachBlockedByFireTrigger::IsActiveInEncounter()
 {
-    if (!GetEncounterBoss())
-        return false;
-
     return GetSupremusFireBlockedReachTarget(botAI);
 }
 
@@ -223,12 +208,12 @@ bool ShadeOfAkamaShouldAttackChannelersAndSorcerersTrigger::IsActiveInEncounter(
 
 bool TeronGorefiendShouldBeTankedTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsTank(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsTank(bot);
 }
 
 bool TeronGorefiendRangedShouldPositionOnBalconyTrigger::IsActiveInEncounter()
 {
-    return PlayerbotAI::IsRanged(bot) && GetEncounterBoss();
+    return PlayerbotAI::IsRanged(bot);
 }
 
 // Feign Death and Vanish cancel the Shadow of Death cast. It is Blizzlike for Ice Block and Divine
@@ -250,7 +235,7 @@ bool TeronGorefiendCastsShadowOfDeathTrigger::IsActiveInEncounter()
 
 bool TeronGorefiendShouldPositionForVengefulSpiritTrigger::IsActiveInEncounter()
 {
-    Aura* shadow = bot->GetAura(Id(BtSpells::SPELL_SHADOW_OF_DEATH));
+    Aura const* shadow = bot->GetAura(Id(BtSpells::SPELL_SHADOW_OF_DEATH));
     return shadow && shadow->GetDuration() <= GOREFIEND_SHADOW_OF_DEATH_MOVE_MS;
 }
 
@@ -319,7 +304,7 @@ bool GurtoggBloodboilRangedShouldAvoidFrontalConeTrigger::IsActiveInEncounter()
 
     // Arcing Smash only hits in front of Gurtogg, but he turns faster than bots can react, so at
     // the start of Fel Rage, everyone near the target moves away.
-    Aura* felRage = gurtogg->GetAura(Id(BtSpells::SPELL_BOSS_FEL_RAGE));
+    Aura const* felRage = gurtogg->GetAura(Id(BtSpells::SPELL_BOSS_FEL_RAGE));
     if (felRage && GetAuraElapsedMs(felRage) < GURTOGG_FEL_RAGE_EARLY_AVOID_MS)
         return true;
 
@@ -335,7 +320,7 @@ bool GurtoggBloodboilFelRageOnBotTrigger::IsActiveInEncounter()
 bool GurtoggBloodboilShouldStopAttackingTrigger::IsActiveInEncounter()
 {
     Unit* gurtogg = GetEncounterBoss();
-    return gurtogg && IsAttackingTarget(bot, *gurtogg) &&
+    return gurtogg && IsAttackingTarget(bot, gurtogg) &&
         IsGurtoggThreatHoldActive(botAI, gurtogg);
 }
 
@@ -404,9 +389,6 @@ bool MotherShahrazShouldBeTankedTrigger::IsActiveInEncounter()
     if (!PlayerbotAI::IsTank(bot))
         return false;
 
-    if (!GetEncounterBoss())
-        return false;
-
     return !bot->HasAura(Id(BtSpells::SPELL_FATAL_ATTRACTION));
 }
 
@@ -421,9 +403,6 @@ bool MotherShahrazBeingPositionedTrigger::IsActiveInEncounter()
 bool MotherShahrazRangedShouldPositionUnderStatueTrigger::IsActiveInEncounter()
 {
     if (!PlayerbotAI::IsRanged(bot))
-        return false;
-
-    if (!GetEncounterBoss())
         return false;
 
     return !bot->HasAura(Id(BtSpells::SPELL_FATAL_ATTRACTION));
@@ -523,6 +502,15 @@ bool IllidariCouncilMageTankHealerShouldRepositionTrigger::IsActiveInEncounter()
     Player* mageTank = GetZerevorMageTank(bot);
     return !IsMageTankHealerPositionSafe(bot->GetPosition(), mageTank, zerevor) ||
         !bot->IsWithinLOSInMap(mageTank);
+}
+
+bool IllidariCouncilRangedInterrupterShouldRepositionTrigger::IsActiveInEncounter()
+{
+    if (!IsCircleRangedInterrupter(bot) || bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL))
+        return false;
+
+    Unit* malande = GetIllidariCouncilMembers(bot).malande;
+    return malande && !IsInMalandeInterruptPosition(botAI, malande);
 }
 
 bool IllidariCouncilNonTanksShouldAvoidZerevorTrigger::IsActiveInEncounter()
@@ -728,17 +716,13 @@ bool IllidanStormrageFlamesOfAzzinothShouldBeTankedTrigger::IsActiveInEncounter(
     return IsFlameOfAzzinothTank(bot) && !IsIllidanInfectionPositionKeptInFlight(bot);
 }
 
-bool IllidanStormragePetsDieToHazardsTrigger::IsActiveInEncounter()
+bool IllidanStormrageShouldManagePetAggressionTrigger::IsActiveInEncounter()
 {
-    Pet* pet = bot->GetPet();
-    if (!pet || !pet->IsAlive())
+    if (!HasControllableMinion(bot))
         return false;
 
     Unit* illidan = GetEncounterBoss();
-    if (!illidan)
-        return false;
-
-    return ShouldIllidanPetsBePassive(bot, illidan) != pet->HasReactState(REACT_PASSIVE);
+    return illidan && IsMinionStanceWrongForHold(bot, ShouldIllidanPetsBePassive(bot, illidan));
 }
 
 // Pets are ideal for killing Shadowfiends because they cannot be infected.
@@ -767,7 +751,7 @@ bool IllidanStormragePetShouldAttackShadowfiendTrigger::IsActiveInEncounter()
     IllidanPhase const phase = GetIllidanPhase(illidan);
     if (phase == IllidanPhase::Demon)
     {
-        if (GetShadowDemonForPetToAttack(botAI, *pet))
+        if (GetShadowDemonForPetToAttack(botAI, pet))
             return false;
     }
     else if (phase == IllidanPhase::Initial || phase == IllidanPhase::Flying ||
@@ -787,7 +771,7 @@ bool IllidanStormragePetShouldAttackShadowfiendTrigger::IsActiveInEncounter()
         return false;
     }
 
-    return GetNearestParasiticShadowfiend(botAI, *pet);
+    return GetNearestParasiticShadowfiend(botAI, pet);
 }
 
 bool IllidanStormragePetShouldAttackShadowDemonTrigger::IsActiveInEncounter()
@@ -804,7 +788,7 @@ bool IllidanStormragePetShouldAttackShadowDemonTrigger::IsActiveInEncounter()
     if (!illidan || GetIllidanPhase(illidan) != IllidanPhase::Demon)
         return false;
 
-    return GetShadowDemonForPetToAttack(botAI, *pet);
+    return GetShadowDemonForPetToAttack(botAI, pet);
 }
 
 bool IllidanStormrageShouldPositionAboveGrateTrigger::IsActiveInEncounter()
@@ -860,10 +844,7 @@ bool IllidanStormrageImmunityNoLongerNeededTrigger::IsActiveInEncounter()
     // Below half health is a proxy for a scenario in which the immunity is keeping the bot from
     // dying, so do not remove it.
     constexpr float keepImmunityHealthPct = 50.0f;
-    if (bot->GetHealthPct() <= keepImmunityHealthPct)
-        return false;
-
-    return GetEncounterBoss();
+    return bot->GetHealthPct() > keepImmunityHealthPct;
 }
 
 bool IllidanStormrageShamanHasTotemsBeforeTanksHaveAggroTrigger::IsActiveInEncounter()
@@ -879,7 +860,7 @@ bool IllidanStormrageShamanHasTotemsBeforeTanksHaveAggroTrigger::IsActiveInEncou
         return false;
 
     Unit* illidan = GetEncounterBoss();
-    return illidan && IsIllidanTankAggroPending(*illidan, GetIllidanPhase(illidan));
+    return illidan && IsIllidanTankAggroPending(illidan, GetIllidanPhase(illidan));
 }
 
 bool IllidanStormrageShouldPositionForLandingTrigger::IsActiveInEncounter()
@@ -900,11 +881,10 @@ bool IllidanStormrageShouldStopAttackingTrigger::IsActiveInEncounter()
     if (!illidan)
         return false;
 
-    Spell* channel = bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL);
-    if (channel && IsIllidanPickupChannelHeld(bot, illidan, *channel))
+    if (IsIllidanPickupChannelHeld(bot, illidan, bot->GetCurrentSpell(CURRENT_CHANNELED_SPELL)))
         return true;
 
-    return IsAttackingTarget(bot, *illidan) &&
+    return IsAttackingTarget(bot, illidan) &&
         GetIllidanDpsHold(bot, illidan) != IllidanDpsHold::None;
 }
 
@@ -1021,13 +1001,12 @@ bool IllidanStormrageShouldAssignTargetPriorityTrigger::IsActiveInEncounter()
         return true;
 
     return phase == IllidanPhase::Demon &&
-        !IsIllidanDemonFormEnding(*illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS);
+        !IsIllidanDemonFormEnding(illidan, ILLIDAN_MAIN_TANK_MOVE_IN_MS);
 }
 
 bool IllidanStormrageShouldManageDpsTimersTrigger::IsActiveInEncounter()
 {
-    return IsMechanicTrackerBot(bot, BT_MAP_ID) &&
-        GetEncounterBoss();
+    return IsMechanicTrackerBot(bot, BT_MAP_ID);
 }
 
 // Destroying hazards after phase 2 is not gated behind CheatMask. The strategy simply cannot work

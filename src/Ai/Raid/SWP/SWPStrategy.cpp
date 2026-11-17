@@ -19,24 +19,23 @@ using namespace EncounterHelpers;
 void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
     // Shared
-    // A pet still passive after a wipe gets its stance back.
     triggers.push_back(new TriggerNode("sunwell no encounter in progress",
-        { NextAction("sunwell reset encounter states", ACTION_EMERGENCY + 10),
-          NextAction("eredar twins control pet aggression", ACTION_RAID + 4) }));
+        { NextAction("sunwell reset encounter states", ACTION_EMERGENCY + 10) }));
 
     triggers.push_back(new TriggerNode("sunwell aura to remove",
         { NextAction("sunwell remove aura", ACTION_EMERGENCY) }));
 
     // Trash
     triggers.push_back(new TriggerNode("volatile fiend self destructs when near",
-        { NextAction("volatile fiend keep enemy away from group", ACTION_EMERGENCY + 1) }));
+        { NextAction("volatile fiend intercept", ACTION_EMERGENCY + 1),
+          NextAction("volatile fiend move away", ACTION_EMERGENCY + 1) }));
 
     triggers.push_back(new TriggerNode("apocalypse guard protected by infernal defense",
         { NextAction("apocalypse guard attack with holy magic", ACTION_RAID) }));
 
     // Kalecgos
     triggers.push_back(new TriggerNode("kalecgos should communicate boss health",
-        { NextAction("kalecgos announce boss health", ACTION_RAID + 1) }));
+        { NextAction("kalecgos announce boss health", ACTION_RAID + 5) }));
 
     triggers.push_back(new TriggerNode("kalecgos hunter should misdirect",
         { NextAction("kalecgos misdirect to main tank", ACTION_RAID + 1) }));
@@ -58,6 +57,18 @@ void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
     triggers.push_back(new TriggerNode("kalecgos bots don't observe gravity",
         { NextAction("kalecgos return to spectral realm ground", ACTION_EMERGENCY + 10) }));
+
+    triggers.push_back(new TriggerNode("kalecgos should manage raid assignments",
+        { NextAction("kalecgos update raid assignments", ACTION_EMERGENCY + 8) }));
+
+    triggers.push_back(new TriggerNode("kalecgos dps hold is active",
+        {
+            NextAction("kalecgos stop attacking for hold", ACTION_EMERGENCY + 2),
+            NextAction("kalecgos select target for hold", ACTION_RAID),
+        }));
+
+    triggers.push_back(new TriggerNode("kalecgos should manage pet aggression",
+        { NextAction("kalecgos set pet stance", ACTION_RAID + 4) }));
 
     // Brutallus
     triggers.push_back(new TriggerNode("brutallus hunter should misdirect",
@@ -97,8 +108,14 @@ void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("felmyst player has gas nova",
         { NextAction("felmyst mass dispel gas nova", ACTION_EMERGENCY + 6) }));
 
+    triggers.push_back(new TriggerNode("felmyst takeoff is near",
+        { NextAction("felmyst move to air group position", ACTION_EMERGENCY + 1) }));
+
+    triggers.push_back(new TriggerNode("felmyst air phase has started",
+        { NextAction("felmyst move to air group position", ACTION_EMERGENCY + 1) }));
+
     triggers.push_back(new TriggerNode("felmyst should avoid demonic vapor trails",
-        { NextAction("felmyst avoid demonic vapor", ACTION_EMERGENCY + 1) }));
+        { NextAction("felmyst avoid demonic vapor", ACTION_EMERGENCY + 2) }));
 
     triggers.push_back(new TriggerNode("felmyst targeted by demonic vapor",
         { NextAction("felmyst kite demonic vapor", ACTION_EMERGENCY + 10) }));
@@ -143,8 +160,8 @@ void RaidSwpStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("eredar twins should focus dps",
         { NextAction("eredar twins dps prioritize sacrolash", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("eredar twins pets should be held",
-        { NextAction("eredar twins control pet aggression", ACTION_RAID + 4) }));
+    triggers.push_back(new TriggerNode("eredar twins should manage pet aggression",
+        { NextAction("eredar twins set pet stance", ACTION_RAID + 4) }));
 
     triggers.push_back(new TriggerNode("eredar twins too many flame touched stacks",
         { NextAction("eredar twins remove flame sear", ACTION_RAID + 3) }));
@@ -257,11 +274,13 @@ void RaidSwpStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
     multipliers.push_back(new KalecgosRestrictTauntMultiplier(botAI));
     multipliers.push_back(new KalecgosSuppressAssistTankPullThreatMultiplier(botAI));
     multipliers.push_back(new KalecgosEnterSpectralRiftMultiplier(botAI));
+    multipliers.push_back(new KalecgosHoldDpsMultiplier(botAI));
 
     // Brutallus
     multipliers.push_back(new BrutallusControlMovementMultiplier(botAI));
     multipliers.push_back(new BrutallusNoKillingSpreeWhenNearbyBurnMultiplier(botAI));
     multipliers.push_back(new BrutallusRestrictTauntMultiplier(botAI));
+    multipliers.push_back(new BrutallusNoRebirthWhileBurningMultiplier(botAI));
 
     // Felmyst
     multipliers.push_back(new FelmystControlMovementMultiplier(botAI));
@@ -270,7 +289,7 @@ void RaidSwpStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
     multipliers.push_back(new FelmystPrioritizeDemonicVaporAvoidanceMultiplier(botAI));
     multipliers.push_back(new FelmystPrioritizeFogAvoidanceMultiplier(botAI));
     multipliers.push_back(new FelmystFocusAttacksOnCharmedPlayerMultiplier(botAI));
-    multipliers.push_back(new FelmystDontDotAddsMultiplier(botAI));
+    multipliers.push_back(new FelmystDisableDotsOnAddsMultiplier(botAI));
 
     // Eredar Twins
     multipliers.push_back(new EredarTwinsDisableAutoTargetingMultiplier(botAI));
@@ -294,23 +313,47 @@ namespace
 {
 
 void AppendVolatileFiendMeleeDpsExclusions(
-    PlayerbotAI* botAI, Player* bot, AiObjectContext* context, GuidSet& exclusions)
+    PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
 {
+    Player* bot = botAI->GetBot();
     if (PlayerbotAI::IsRanged(bot) || PlayerbotAI::IsTank(bot))
         return;
 
-    Creature* volatileFiend = botAI->GetCreature(AI_VALUE(ObjectGuid, "swp volatile fiend"));
-    if (volatileFiend && volatileFiend->IsAlive())
-        exclusions.insert(volatileFiend->GetGUID());
+    for (auto const& guid : context->GetValue<GuidVector>("attackers")->RefGet())
+    {
+        Unit* attacker = botAI->GetUnit(guid);
+        if (attacker && attacker->GetEntry() == Id(SwpNpcs::NPC_VOLATILE_FIEND))
+            exclusions.insert(guid);
+    }
 }
 
-void AppendFelmystVaporPhaseMeleeExclusions(
-    Player* bot, AiObjectContext* context, GuidSet& exclusions)
+void AppendApocalypseGuardInfernalDefenseExclusions(
+    PlayerbotAI* botAI, AiObjectContext* context, GuidSet& exclusions)
+{
+    Player* bot = botAI->GetBot();
+    if (PlayerbotAI::IsTank(bot) || bot->getClass() == CLASS_PALADIN ||
+        bot->getClass() == CLASS_PRIEST)
+    {
+        return;
+    }
+
+    for (auto const& guid : context->GetValue<GuidVector>("attackers")->RefGet())
+    {
+        Unit* attacker = botAI->GetUnit(guid);
+        if (attacker && attacker->GetEntry() == Id(SwpNpcs::NPC_APOCALYPSE_GUARD) &&
+            attacker->HasAura(Id(SwpSpells::SPELL_INFERNAL_DEFENSE)))
+        {
+            exclusions.insert(guid);
+        }
+    }
+}
+
+void AppendFelmystVaporPhaseMeleeExclusions(Player* bot, GuidSet& exclusions)
 {
     if (!PlayerbotAI::IsMelee(bot))
         return;
 
-    Unit* felmyst = AI_VALUE2(Unit*, "find target", "felmyst");
+    Unit* felmyst = GetSwpBoss(bot, SwpBosses::DATA_FELMYST);
     if (felmyst && IsFelmystAirPhaseTargetSuppressed(felmyst))
         exclusions.insert(felmyst->GetGUID());
 }
@@ -333,12 +376,12 @@ void AppendMuruTankExclusions(
     if (!PlayerbotAI::IsTank(bot))
         return;
 
-    Unit* muru = AI_VALUE2(Unit*, "find target", "m'uru");
+    Unit* muru = GetSwpBoss(bot, SwpBosses::DATA_MURU);
     if (!muru || !IsMuruPhaseActive(muru))
         return;
 
     bool const darknessActive = PeekMuruDarknessActiveState(bot);
-    // Even during Darkness, the Sentinel Tank has full freedom to pick up Sentinels
+    // Even during Darkness, the Sentinel Tank has full freedom to pick up Sentinels.
     bool const distanceUnrestricted = darknessActive &&
         PlayerbotAI::IsAssistTankOfIndex(bot, 0, true);
 
@@ -388,12 +431,13 @@ void RaidSwpStrategy::AppendTargetExclusions(
         return;
 
     AiObjectContext* context = botAI->GetAiObjectContext();
-    AppendVolatileFiendMeleeDpsExclusions(botAI, bot, context, exclusions);
+    AppendVolatileFiendMeleeDpsExclusions(botAI, context, exclusions);
+    AppendApocalypseGuardInfernalDefenseExclusions(botAI, context, exclusions);
 
     if (!IsEncounterInProgress(bot, SWP_MAP_ID))
         return;
 
-    AppendFelmystVaporPhaseMeleeExclusions(bot, context, exclusions);
+    AppendFelmystVaporPhaseMeleeExclusions(bot, exclusions);
     AppendMuruDarkFiendExclusions(botAI, context, exclusions);
     AppendMuruTankExclusions(botAI, context, exclusions);
     AppendKiljaedenShieldOrbExclusions(botAI, context, exclusions);

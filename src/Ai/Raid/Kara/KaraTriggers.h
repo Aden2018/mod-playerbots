@@ -29,7 +29,6 @@ public:
 
 protected:
     virtual bool IsActiveInEncounter() = 0;
-
     Unit* GetEncounterBoss() { return KaraHelpers::GetKaraBoss(bot, _boss); }
 
 private:
@@ -39,8 +38,6 @@ private:
 class KarazhanNoEncounterInProgressTrigger : public Trigger
 {
 public:
-    // Throttled to once per second. This trigger is true for all trash and downtime and, being
-    // for between-encounter clean-up, has no real urgency to it.
     KarazhanNoEncounterInProgressTrigger(PlayerbotAI* botAI)
         : Trigger(botAI, "karazhan no encounter in progress", 1000) {}
     bool IsActive() override;
@@ -56,30 +53,30 @@ public:
 
 // Trash
 
-class ManaWarpCastsWarpBreachTrigger : public Trigger
+class ManaWarpIncomingWarpBreachTrigger : public Trigger
 {
 public:
-    ManaWarpCastsWarpBreachTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "mana warp casts warp breach") {}
+    ManaWarpIncomingWarpBreachTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "mana warp incoming warp breach") {}
     bool IsActive() override;
 };
 
-class ManaWarpStunnerShouldHoldTrigger : public Trigger
+class ManaWarpTargetAtLowHealthTrigger : public Trigger
 {
 public:
-    ManaWarpStunnerShouldHoldTrigger(PlayerbotAI* botAI)
-        : Trigger(botAI, "mana warp stunner should hold") {}
+    ManaWarpTargetAtLowHealthTrigger(PlayerbotAI* botAI)
+        : Trigger(botAI, "mana warp target at low health") {}
     bool IsActive() override;
 };
 
 // Attumen the Huntsman
 
-class AttumenTheHuntsmanShouldBeTankedTrigger : public KarazhanEncounterTrigger
+class AttumenTheHuntsmanUnmountedShouldBeTankedTrigger : public KarazhanEncounterTrigger
 {
 public:
-    AttumenTheHuntsmanShouldBeTankedTrigger(PlayerbotAI* botAI)
+    AttumenTheHuntsmanUnmountedShouldBeTankedTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "attumen the huntsman should be tanked",
+            botAI, "attumen the huntsman unmounted should be tanked",
             KaraHelpers::KaraBosses::DATA_ATTUMEN) {}
 
 protected:
@@ -148,12 +145,12 @@ protected:
 
 // Moroes <Tower Steward>
 
-class MoroesShouldPrioritizeAddsTrigger : public KarazhanEncounterTrigger
+class MoroesShouldPrioritizeGuestsTrigger : public KarazhanEncounterTrigger
 {
 public:
-    MoroesShouldPrioritizeAddsTrigger(PlayerbotAI* botAI)
+    MoroesShouldPrioritizeGuestsTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "moroes should prioritize adds", KaraHelpers::KaraBosses::DATA_MOROES) {}
+            botAI, "moroes should prioritize guests", KaraHelpers::KaraBosses::DATA_MOROES, 1000) {}
 
 protected:
     bool IsActiveInEncounter() override;
@@ -195,12 +192,12 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class MaidenOfVirtueShouldGroundHolyFireTrigger : public KarazhanEncounterTrigger
+class MaidenOfVirtueShamanShouldGroundHolyFireTrigger : public KarazhanEncounterTrigger
 {
 public:
-    MaidenOfVirtueShouldGroundHolyFireTrigger(PlayerbotAI* botAI)
+    MaidenOfVirtueShamanShouldGroundHolyFireTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "maiden of virtue should ground holy fire",
+            botAI, "maiden of virtue shaman should ground holy fire",
             KaraHelpers::KaraBosses::DATA_MAIDEN) {}
 
 protected:
@@ -221,24 +218,24 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class BigBadWolfChasingRedHoodTrigger : public KarazhanEncounterTrigger
+class BigBadWolfChasesRedHoodTrigger : public KarazhanEncounterTrigger
 {
 public:
-    BigBadWolfChasingRedHoodTrigger(PlayerbotAI* botAI)
+    BigBadWolfChasesRedHoodTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "big bad wolf chasing red hood",
+            botAI, "big bad wolf chases red hood",
             KaraHelpers::KaraBosses::DATA_OPERA_PERFORMANCE) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class BigBadWolfPaladinShouldProtectRedHoodTrigger : public KarazhanEncounterTrigger
+class BigBadWolfVictimHasRedHoodTrigger : public KarazhanEncounterTrigger
 {
 public:
-    BigBadWolfPaladinShouldProtectRedHoodTrigger(PlayerbotAI* botAI)
+    BigBadWolfVictimHasRedHoodTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "big bad wolf paladin should protect red hood",
+            botAI, "big bad wolf victim has red hood",
             KaraHelpers::KaraBosses::DATA_OPERA_PERFORMANCE) {}
 
 protected:
@@ -247,12 +244,12 @@ protected:
 
 // Romulo and Julianne
 
-class RomuloAndJulianneShouldBeKilledTogetherTrigger : public KarazhanEncounterTrigger
+class RomuloAndJulianneShouldDieTogetherTrigger : public KarazhanEncounterTrigger
 {
 public:
-    RomuloAndJulianneShouldBeKilledTogetherTrigger(PlayerbotAI* botAI)
+    RomuloAndJulianneShouldDieTogetherTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "romulo and julianne should be killed together",
+            botAI, "romulo and julianne should die together",
             KaraHelpers::KaraBosses::DATA_OPERA_PERFORMANCE) {}
 
 protected:
@@ -323,12 +320,12 @@ protected:
 
 // Terestian Illhoof
 
-class TerestianIllhoofShouldPrioritizeChainsTrigger : public KarazhanEncounterTrigger
+class TerestianIllhoofShouldPrioritizeTargetsTrigger : public KarazhanEncounterTrigger
 {
 public:
-    TerestianIllhoofShouldPrioritizeChainsTrigger(PlayerbotAI* botAI)
+    TerestianIllhoofShouldPrioritizeTargetsTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "terestian illhoof should prioritize chains",
+            botAI, "terestian illhoof should prioritize targets",
             KaraHelpers::KaraBosses::DATA_TERESTIAN) {}
 
 protected:
@@ -337,46 +334,47 @@ protected:
 
 // Shade of Aran
 
-class ShadeOfAranArcaneExplosionIsCastingTrigger : public KarazhanEncounterTrigger
+class ShadeOfAranCastingArcaneExplosionTrigger : public KarazhanEncounterTrigger
 {
 public:
-    ShadeOfAranArcaneExplosionIsCastingTrigger(PlayerbotAI* botAI)
+    ShadeOfAranCastingArcaneExplosionTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "shade of aran arcane explosion is casting",
+            botAI, "shade of aran casting arcane explosion",
             KaraHelpers::KaraBosses::DATA_ARAN) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class ShadeOfAranRangedIsInBlizzardTrigger : public KarazhanEncounterTrigger
+class ShadeOfAranRangedInBlizzardTrigger : public KarazhanEncounterTrigger
 {
 public:
-    ShadeOfAranRangedIsInBlizzardTrigger(PlayerbotAI* botAI)
+    ShadeOfAranRangedInBlizzardTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "shade of aran ranged is in blizzard", KaraHelpers::KaraBosses::DATA_ARAN) {}
+            botAI, "shade of aran ranged in blizzard", KaraHelpers::KaraBosses::DATA_ARAN) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class ShadeOfAranFlameWreathIsActiveTrigger : public KarazhanEncounterTrigger
+class ShadeOfAranFlameWreathActiveTrigger : public KarazhanEncounterTrigger
 {
 public:
-    ShadeOfAranFlameWreathIsActiveTrigger(PlayerbotAI* botAI)
+    ShadeOfAranFlameWreathActiveTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "shade of aran flame wreath is active", KaraHelpers::KaraBosses::DATA_ARAN) {}
+            botAI, "shade of aran flame wreath active",
+            KaraHelpers::KaraBosses::DATA_ARAN) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class ShadeOfAranConjuredElementalsSummonedTrigger : public KarazhanEncounterTrigger
+class ShadeOfAranShouldPrioritizeElementalsTrigger : public KarazhanEncounterTrigger
 {
 public:
-    ShadeOfAranConjuredElementalsSummonedTrigger(PlayerbotAI* botAI)
+    ShadeOfAranShouldPrioritizeElementalsTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "shade of aran conjured elementals summoned",
+            botAI, "shade of aran should prioritize elementals",
             KaraHelpers::KaraBosses::DATA_ARAN) {}
 
 protected:
@@ -409,12 +407,13 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class NetherspiteShouldBlockBeamTrigger : public KarazhanEncounterTrigger
+class NetherspiteShouldBlockBlueOrGreenBeamTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NetherspiteShouldBlockBeamTrigger(PlayerbotAI* botAI)
+    NetherspiteShouldBlockBlueOrGreenBeamTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "netherspite should block beam", KaraHelpers::KaraBosses::DATA_NETHERSPITE) {}
+            botAI, "netherspite should block blue or green beam",
+            KaraHelpers::KaraBosses::DATA_NETHERSPITE) {}
 
 protected:
     bool IsActiveInEncounter() override;
@@ -432,12 +431,12 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class NetherspiteShouldPositionAroundBeamsTrigger : public KarazhanEncounterTrigger
+class NetherspiteShouldStandBetweenBeamsTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NetherspiteShouldPositionAroundBeamsTrigger(PlayerbotAI* botAI)
+    NetherspiteShouldStandBetweenBeamsTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "netherspite should position around beams",
+            botAI, "netherspite should stand between beams",
             KaraHelpers::KaraBosses::DATA_NETHERSPITE) {}
 
 protected:
@@ -467,12 +466,13 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class NetherspitePetsShouldBeHeldTrigger : public KarazhanEncounterTrigger
+class NetherspiteShouldManagePetAggressionTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NetherspitePetsShouldBeHeldTrigger(PlayerbotAI* botAI)
+    NetherspiteShouldManagePetAggressionTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "netherspite pets should be held", KaraHelpers::KaraBosses::DATA_NETHERSPITE) {}
+            botAI, "netherspite should manage pet aggression",
+            KaraHelpers::KaraBosses::DATA_NETHERSPITE) {}
 
 protected:
     bool IsActiveInEncounter() override;
@@ -504,13 +504,12 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class PrinceMalchezaarBotInHazardTrigger : public KarazhanEncounterTrigger
+class PrinceMalchezaarNearHazardTrigger : public KarazhanEncounterTrigger
 {
 public:
-    PrinceMalchezaarBotInHazardTrigger(PlayerbotAI* botAI)
+    PrinceMalchezaarNearHazardTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "prince malchezaar bot in hazard",
-            KaraHelpers::KaraBosses::DATA_MALCHEZAAR) {}
+            botAI, "prince malchezaar near hazard", KaraHelpers::KaraBosses::DATA_MALCHEZAAR) {}
 
 protected:
     bool IsActiveInEncounter() override;
@@ -541,23 +540,37 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class NightbaneRangedShouldStackTrigger : public KarazhanEncounterTrigger
+class NightbaneRangedShouldAvoidCharredEarthTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NightbaneRangedShouldStackTrigger(PlayerbotAI* botAI)
+    NightbaneRangedShouldAvoidCharredEarthTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "nightbane ranged should stack", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
+            botAI, "nightbane ranged should avoid charred earth",
+            KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class NightbanePetsShouldBeHeldTrigger : public KarazhanEncounterTrigger
+class NightbaneMeleeShouldAvoidCharredEarthTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NightbanePetsShouldBeHeldTrigger(PlayerbotAI* botAI)
+    NightbaneMeleeShouldAvoidCharredEarthTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "nightbane pets should be held", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
+            botAI, "nightbane melee should avoid charred earth",
+            KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
+
+protected:
+    bool IsActiveInEncounter() override;
+};
+
+class NightbaneShouldManagePetAggressionTrigger : public KarazhanEncounterTrigger
+{
+public:
+    NightbaneShouldManagePetAggressionTrigger(PlayerbotAI* botAI)
+        : KarazhanEncounterTrigger(
+            botAI, "nightbane should manage pet aggression",
+            KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
 
 protected:
     bool IsActiveInEncounter() override;
@@ -574,23 +587,23 @@ protected:
     bool IsActiveInEncounter() override;
 };
 
-class NightbaneShouldStackInFlightTrigger : public KarazhanEncounterTrigger
+class NightbaneInFlightPhaseTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NightbaneShouldStackInFlightTrigger(PlayerbotAI* botAI)
+    NightbaneInFlightPhaseTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "nightbane should stack in flight", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
+            botAI, "nightbane in flight phase", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
 
 protected:
     bool IsActiveInEncounter() override;
 };
 
-class NightbaneShouldStandDownTrigger : public KarazhanEncounterTrigger
+class NightbaneInLandingPhaseTrigger : public KarazhanEncounterTrigger
 {
 public:
-    NightbaneShouldStandDownTrigger(PlayerbotAI* botAI)
+    NightbaneInLandingPhaseTrigger(PlayerbotAI* botAI)
         : KarazhanEncounterTrigger(
-            botAI, "nightbane should stand down", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
+            botAI, "nightbane in landing phase", KaraHelpers::KaraBosses::DATA_NIGHTBANE) {}
 
 protected:
     bool IsActiveInEncounter() override;

@@ -9,7 +9,6 @@
 #include "KaraHelpers.h"
 #include "KaraMultipliers.h"
 #include "Playerbots.h"
-#include "vector"
 
 void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 {
@@ -21,14 +20,14 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("karazhan set tremor totem", ACTION_RAID) }));
 
     // Trash
-    triggers.push_back(new TriggerNode("mana warp casts warp breach",
-        { NextAction("mana warp stun warp breach", ACTION_EMERGENCY + 6) }));
+    triggers.push_back(new TriggerNode("mana warp incoming warp breach",
+        { NextAction("mana warp cast stun spell", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("mana warp stunner should hold",
-        { NextAction("mana warp stunner hold for warp breach", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("mana warp target at low health",
+        { NextAction("mana warp stand by to stun", ACTION_RAID) }));
 
     // Attumen the Huntsman
-    triggers.push_back(new TriggerNode("attumen the huntsman should be tanked",
+    triggers.push_back(new TriggerNode("attumen the huntsman unmounted should be tanked",
         { NextAction("attumen the huntsman assist tank position unmounted", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("attumen the huntsman midnight should be focused",
@@ -48,7 +47,7 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
         { NextAction("attumen the huntsman manage dps timer", ACTION_EMERGENCY + 10) }));
 
     // Moroes
-    triggers.push_back(new TriggerNode("moroes should prioritize adds",
+    triggers.push_back(new TriggerNode("moroes should prioritize guests",
         { NextAction("moroes mark target", ACTION_RAID) }));
 
     // Maiden of Virtue
@@ -61,56 +60,57 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("maiden of virtue ranged should spread",
         { NextAction("maiden of virtue position ranged between pillars", ACTION_RAID + 1) }));
 
-    triggers.push_back(new TriggerNode("maiden of virtue should ground holy fire",
+    triggers.push_back(new TriggerNode("maiden of virtue shaman should ground holy fire",
         { NextAction("maiden of virtue set grounding totem", ACTION_RAID) }));
 
     // The Big Bad Wolf
-    triggers.push_back(new TriggerNode("big bad wolf chasing red hood",
-        { NextAction("big bad wolf red hood run away", ACTION_EMERGENCY + 6) }));
-
-    triggers.push_back(new TriggerNode("big bad wolf paladin should protect red hood",
-        { NextAction("big bad wolf cast hand of protection on red hood", ACTION_EMERGENCY + 5) }));
-
     triggers.push_back(new TriggerNode("big bad wolf should be tanked",
-        { NextAction("big bad wolf position boss", ACTION_RAID) }));
+        { NextAction("big bad wolf tank position boss", ACTION_RAID) }));
+
+    triggers.push_back(new TriggerNode("big bad wolf chases red hood",
+        { NextAction("big bad wolf red hood use escape ability", ACTION_EMERGENCY + 7),
+          NextAction("big bad wolf red hood run away", ACTION_EMERGENCY + 6) }));
+
+    triggers.push_back(new TriggerNode("big bad wolf victim has red hood",
+        { NextAction("big bad wolf protect red hood", ACTION_EMERGENCY + 5) }));
 
     // Romulo and Julianne
-    triggers.push_back(new TriggerNode("romulo and julianne should be killed together",
-        { NextAction("romulo and julianne mark target", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("romulo and julianne should die together",
+        { NextAction("romulo and julianne skull higher health", ACTION_RAID) }));
 
     // The Wizard of Oz
     triggers.push_back(new TriggerNode("wizard of oz should prioritize targets",
-        { NextAction("wizard of oz mark target", ACTION_RAID) }));
+        { NextAction("wizard of oz mark target", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("wizard of oz mage should burn strawman",
-        { NextAction("wizard of oz cast scorch on strawman", ACTION_RAID + 1) }));
+        { NextAction("wizard of oz cast scorch on strawman", ACTION_RAID) }));
 
     // The Curator
     triggers.push_back(new TriggerNode("the curator should prioritize astral flares",
         { NextAction("the curator mark astral flare", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("the curator should be tanked",
-        { NextAction("the curator position boss", ACTION_RAID) }));
+        { NextAction("the curator tank position boss", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("the curator ranged should spread",
         { NextAction("the curator spread ranged", ACTION_RAID) }));
 
     // Terestian Illhoof
-    triggers.push_back(new TriggerNode("terestian illhoof should prioritize chains",
+    triggers.push_back(new TriggerNode("terestian illhoof should prioritize targets",
         { NextAction("terestian illhoof mark target", ACTION_RAID) }));
 
     // Shade of Aran
-    triggers.push_back(new TriggerNode("shade of aran arcane explosion is casting",
+    triggers.push_back(new TriggerNode("shade of aran casting arcane explosion",
         { NextAction("shade of aran run away from arcane explosion", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("shade of aran ranged is in blizzard",
-        { NextAction("shade of aran run out of blizzard", ACTION_EMERGENCY + 5) }));
+    triggers.push_back(new TriggerNode("shade of aran ranged in blizzard",
+        { NextAction("shade of aran move behind blizzard", ACTION_EMERGENCY + 5) }));
 
-    triggers.push_back(new TriggerNode("shade of aran flame wreath is active",
-        { NextAction("shade of aran stop moving during flame wreath", ACTION_EMERGENCY + 7) }));
+    triggers.push_back(new TriggerNode("shade of aran flame wreath active",
+        { NextAction("shade of aran stop moving", ACTION_EMERGENCY + 7) }));
 
-    triggers.push_back(new TriggerNode("shade of aran conjured elementals summoned",
-        { NextAction("shade of aran mark conjured elemental", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("shade of aran should prioritize elementals",
+        { NextAction("shade of aran mark elemental", ACTION_RAID) }));
 
     triggers.push_back(new TriggerNode("shade of aran ranged should maintain distance",
         { NextAction("shade of aran ranged maintain distance", ACTION_RAID + 1) }));
@@ -119,57 +119,60 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
     triggers.push_back(new TriggerNode("netherspite should block red beam",
         { NextAction("netherspite block red beam", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("netherspite should block beam",
-        { NextAction("netherspite block beam", ACTION_EMERGENCY + 6) }));
+    triggers.push_back(new TriggerNode("netherspite should block blue or green beam",
+        { NextAction("netherspite block blue or green beam", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("netherspite next beam blocker should prepare",
         { NextAction("netherspite wait to block beam", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("netherspite should position around beams",
-        { NextAction("netherspite move to beam area", ACTION_EMERGENCY + 6) }));
+    triggers.push_back(new TriggerNode("netherspite should stand between beams",
+        { NextAction("netherspite move between blue and green beams", ACTION_EMERGENCY + 6) }));
 
     triggers.push_back(new TriggerNode("netherspite should spread for netherbreath",
         { NextAction("netherspite move to banish slot", ACTION_EMERGENCY + 1) }));
 
     triggers.push_back(new TriggerNode("netherspite should hold dps",
-        { NextAction("netherspite stop attacking", ACTION_RAID + 3),
+        { NextAction("netherspite stop attacking", ACTION_EMERGENCY + 8),
           NextAction("netherspite select target for hold", ACTION_RAID + 2) }));
 
-    triggers.push_back(new TriggerNode("netherspite pets should be held",
-        { NextAction("netherspite control pet aggression", ACTION_EMERGENCY + 7) }));
+    triggers.push_back(new TriggerNode("netherspite should manage pet aggression",
+        { NextAction("netherspite set pet stance", ACTION_EMERGENCY + 7) }));
 
     triggers.push_back(new TriggerNode("netherspite should manage timers and trackers",
         { NextAction("netherspite manage timers and trackers", ACTION_EMERGENCY + 10) }));
 
     // Prince Malchezaar
     triggers.push_back(new TriggerNode("prince malchezaar bot is enfeebled",
-        { NextAction("prince malchezaar enfeebled bot avoid hazard", ACTION_EMERGENCY + 6) }));
+        { NextAction("prince malchezaar enfeebled bot run to safety", ACTION_EMERGENCY + 6) }));
 
-    triggers.push_back(new TriggerNode("prince malchezaar bot in hazard",
+    triggers.push_back(new TriggerNode("prince malchezaar near hazard",
         { NextAction("prince malchezaar move clear of hazards", ACTION_EMERGENCY + 1) }));
 
     triggers.push_back(new TriggerNode("prince malchezaar should be tanked",
-        { NextAction("prince malchezaar tanks position boss", ACTION_EMERGENCY + 6) }));
+        { NextAction("prince malchezaar tank position boss", ACTION_EMERGENCY + 6) }));
 
     // Nightbane
     triggers.push_back(new TriggerNode("nightbane should be tanked",
         { NextAction("nightbane tank position boss", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("nightbane ranged should stack",
-        { NextAction("nightbane ranged stack", ACTION_EMERGENCY + 1) }));
+    triggers.push_back(new TriggerNode("nightbane ranged should avoid charred earth",
+        { NextAction("nightbane ranged move from charred earth", ACTION_EMERGENCY + 1) }));
 
-    triggers.push_back(new TriggerNode("nightbane pets should be held",
-        { NextAction("nightbane control pet aggression", ACTION_EMERGENCY + 7) }));
+    triggers.push_back(new TriggerNode("nightbane melee should avoid charred earth",
+        { NextAction("nightbane melee move from charred earth", ACTION_EMERGENCY + 1) }));
+
+    triggers.push_back(new TriggerNode("nightbane should manage pet aggression",
+        { NextAction("nightbane set pet stance", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("nightbane should hold dps",
         { NextAction("nightbane stop attacking", ACTION_RAID + 3),
           NextAction("nightbane select target for hold", ACTION_RAID + 2) }));
 
-    triggers.push_back(new TriggerNode("nightbane should stack in flight",
-        { NextAction("nightbane stack in flight", ACTION_RAID) }));
+    triggers.push_back(new TriggerNode("nightbane in flight phase",
+        { NextAction("nightbane stack away from rain of bones", ACTION_RAID) }));
 
-    triggers.push_back(new TriggerNode("nightbane should stand down",
-        { NextAction("nightbane stand down", ACTION_RAID + 1) }));
+    triggers.push_back(new TriggerNode("nightbane in landing phase",
+        { NextAction("nightbane leave combat for landing", ACTION_RAID + 1) }));
 
     triggers.push_back(new TriggerNode("nightbane should manage timers and trackers",
         { NextAction("nightbane manage timers and trackers", ACTION_EMERGENCY + 10) }));
@@ -177,42 +180,49 @@ void RaidKarazhanStrategy::InitTriggers(std::vector<TriggerNode*>& triggers)
 
 void RaidKarazhanStrategy::InitMultipliers(std::vector<Multiplier*>& multipliers)
 {
-    multipliers.push_back(new KarazhanSetTremorTotemMultiplier(botAI));
+    multipliers.push_back(new KarazhanKeepTremorTotemMultiplier(botAI));
     multipliers.push_back(new KarazhanDelayDpsCooldownsMultiplier(botAI));
     multipliers.push_back(new ManaWarpSaveStunsMultiplier(botAI));
+    multipliers.push_back(new KarazhanDisableCombatFormationMoveMultiplier(
+        botAI, "attumen the huntsman disable combat formation move",
+        KaraHelpers::KaraBosses::DATA_ATTUMEN));
     multipliers.push_back(new AttumenTheHuntsmanDisableAutoTargetingMultiplier(botAI));
     multipliers.push_back(new AttumenTheHuntsmanStayStackedMultiplier(botAI));
     multipliers.push_back(new AttumenTheHuntsmanHoldDpsMultiplier(botAI));
-    multipliers.push_back(new MaidenOfVirtueDisableCombatFormationMoveMultiplier(botAI));
-    multipliers.push_back(new MaidenOfVirtueSetGroundingTotemMultiplier(botAI));
+    multipliers.push_back(new KarazhanDisableCombatFormationMoveMultiplier(
+        botAI, "maiden of virtue disable combat formation move",
+        KaraHelpers::KaraBosses::DATA_MAIDEN));
+    multipliers.push_back(new MaidenOfVirtueKeepGroundingTotemMultiplier(botAI));
+    multipliers.push_back(new BigBadWolfRedHoodHunterStayDownMultiplier(botAI));
     multipliers.push_back(new TheCuratorDisableTankAssistMultiplier(botAI));
-    multipliers.push_back(new TheCuratorDisableCombatFormationMoveMultiplier(botAI));
-    multipliers.push_back(new TerestianIllhoofDontDotFiendishImpsMultiplier(botAI));
-    multipliers.push_back(new ShadeOfAranArcaneExplosionRunAwayMultiplier(botAI));
+    multipliers.push_back(new KarazhanDisableCombatFormationMoveMultiplier(
+        botAI, "the curator disable combat formation move",
+        KaraHelpers::KaraBosses::DATA_CURATOR));
+    multipliers.push_back(new TerestianIllhoofDisableDotsOnFiendishImpsMultiplier(botAI));
+    multipliers.push_back(new ShadeOfAranArcaneExplosionDisableMovementMultiplier(botAI));
     multipliers.push_back(new ShadeOfAranDisableReactiveMovementMultiplier(botAI));
     multipliers.push_back(new ShadeOfAranFlameWreathDisableMovementMultiplier(botAI));
     multipliers.push_back(new NetherspiteDisableReactiveMovementMultiplier(botAI));
     multipliers.push_back(new NetherspiteHoldDpsMultiplier(botAI));
     multipliers.push_back(new PrinceMalchezaarDisableReactiveMovementMultiplier(botAI));
-    multipliers.push_back(new PrinceMalchezaarEnfeebleMultiplier(botAI));
-    multipliers.push_back(new NightbaneDisablePetsMultiplier(botAI));
+    multipliers.push_back(new PrinceMalchezaarEnfeebledBotFocusOnEscapeMultiplier(botAI));
+    multipliers.push_back(new NightbaneDelaySummonsAndPetAttacksMultiplier(botAI));
     multipliers.push_back(new NightbaneHoldDpsMultiplier(botAI));
-    multipliers.push_back(new NightbaneDisableAvoidAoeMultiplier(botAI));
     multipliers.push_back(new NightbaneDisableMovementMultiplier(botAI));
 }
 
-void RaidKarazhanStrategy::AppendTargetExclusions(
-    GuidSet& exclusions, TargetValueExclusionType /*type*/)
+void AppendNightbaneFlightPhaseExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
 {
     Unit* nightbane =
         KaraHelpers::GetKaraBoss(botAI->GetBot(), KaraHelpers::KaraBosses::DATA_NIGHTBANE);
     if (!nightbane)
         return;
 
-    if (KaraHelpers::IsNightbaneFlying(*nightbane))
+    if (KaraHelpers::IsNightbaneFlying(nightbane))
         exclusions.insert(nightbane->GetGUID());
 
-    // Reach would walk a bot off the terrace after a skeleton that spawned out of bounds.
+    // Somehow, skeletons can get out of bounds, and bots can chase them out of bounds as a result.
+    // So we ensure only in-bounds skeletons are valid targets.
     uint32 const skeletonEntry = KaraHelpers::Id(KaraHelpers::KaraNpcs::NPC_RESTLESS_SKELETON);
     GuidVector const targets =
         botAI->GetAiObjectContext()->GetValue<GuidVector>("attackers")->Get();
@@ -222,7 +232,34 @@ void RaidKarazhanStrategy::AppendTargetExclusions(
             continue;
 
         Unit* skeleton = botAI->GetUnit(guid);
-        if (skeleton && KaraHelpers::IsOutsideNightbaneTerrace(*skeleton))
+        if (skeleton && KaraHelpers::IsOutsideNightbaneTerrace(skeleton))
             exclusions.insert(guid);
     }
+}
+
+// Midnight is the phase 1 target. Do not count Attumen for AoE or put secondary DoTs on him, or
+// DPS him at all.
+void AppendAttumenUnmountedNonTankExclusions(PlayerbotAI* botAI, GuidSet& exclusions)
+{
+    Unit* attumen = KaraHelpers::GetKaraBoss(
+        botAI->GetBot(), KaraHelpers::KaraBosses::DATA_ATTUMEN);
+    if (!attumen || attumen->GetEntry() ==
+            KaraHelpers::Id(KaraHelpers::KaraNpcs::NPC_ATTUMEN_THE_HUNTSMAN_MOUNTED))
+    {
+        return;
+    }
+
+    exclusions.insert(attumen->GetGUID());
+}
+
+void RaidKarazhanStrategy::AppendTargetExclusions(
+    GuidSet& exclusions, TargetValueExclusionType type)
+{
+    if (botAI->GetBot()->GetMapId() != KaraHelpers::KARA_MAP_ID)
+        return;
+
+    AppendNightbaneFlightPhaseExclusions(botAI, exclusions);
+
+    if (type != TargetValueExclusionType::TankTarget)
+        AppendAttumenUnmountedNonTankExclusions(botAI, exclusions);
 }

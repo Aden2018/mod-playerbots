@@ -53,6 +53,15 @@ public:
         creators["kalecgos bots don't observe gravity"] =
             &RaidSwpTriggerContext::kalecgos_bots_dont_observe_gravity;
 
+        creators["kalecgos should manage raid assignments"] =
+            &RaidSwpTriggerContext::kalecgos_should_manage_raid_assignments;
+
+        creators["kalecgos dps hold is active"] =
+            &RaidSwpTriggerContext::kalecgos_dps_hold_is_active;
+
+        creators["kalecgos should manage pet aggression"] =
+            &RaidSwpTriggerContext::kalecgos_should_manage_pet_aggression;
+
         // Brutallus
         creators["brutallus hunter should misdirect"] =
             &RaidSwpTriggerContext::brutallus_hunter_should_misdirect;
@@ -89,6 +98,11 @@ public:
 
         creators["felmyst player has gas nova"] =
             &RaidSwpTriggerContext::felmyst_player_has_gas_nova;
+
+        creators["felmyst takeoff is near"] = &RaidSwpTriggerContext::felmyst_takeoff_is_near;
+
+        creators["felmyst air phase has started"] =
+            &RaidSwpTriggerContext::felmyst_air_phase_has_started;
 
         creators["felmyst should avoid demonic vapor trails"] =
             &RaidSwpTriggerContext::felmyst_should_avoid_demonic_vapor_trails;
@@ -139,8 +153,8 @@ public:
         creators["eredar twins should focus dps"] =
             &RaidSwpTriggerContext::eredar_twins_should_focus_dps;
 
-        creators["eredar twins pets should be held"] =
-            &RaidSwpTriggerContext::eredar_twins_pets_should_be_held;
+        creators["eredar twins should manage pet aggression"] =
+            &RaidSwpTriggerContext::eredar_twins_should_manage_pet_aggression;
 
         creators["eredar twins active conflagration target"] =
             &RaidSwpTriggerContext::eredar_twins_active_conflagration_target;
@@ -249,7 +263,7 @@ private:
     static Trigger* kalecgos_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new SunwellHunterShouldMisdirectTrigger(
-            botAI, "kalecgos hunter should misdirect", "kalecgos");
+            botAI, "kalecgos hunter should misdirect", SwpHelpers::SwpBosses::DATA_KALECGOS);
     }
     static Trigger* kalecgos_should_communicate_boss_health(PlayerbotAI* botAI)
     {
@@ -279,12 +293,24 @@ private:
     {
         return new KalecgosBotsDontObserveGravityTrigger(botAI);
     }
+    static Trigger* kalecgos_should_manage_raid_assignments(PlayerbotAI* botAI)
+    {
+        return new KalecgosShouldManageRaidAssignmentsTrigger(botAI);
+    }
+    static Trigger* kalecgos_dps_hold_is_active(PlayerbotAI* botAI)
+    {
+        return new KalecgosDpsHoldIsActiveTrigger(botAI);
+    }
+    static Trigger* kalecgos_should_manage_pet_aggression(PlayerbotAI* botAI)
+    {
+        return new KalecgosShouldManagePetAggressionTrigger(botAI);
+    }
 
     // Brutallus
     static Trigger* brutallus_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new SunwellHunterShouldMisdirectTrigger(
-            botAI, "brutallus hunter should misdirect", "brutallus");
+            botAI, "brutallus hunter should misdirect", SwpHelpers::SwpBosses::DATA_BRUTALLUS);
     }
     static Trigger* brutallus_requires_two_tanks(PlayerbotAI* botAI)
     {
@@ -332,6 +358,14 @@ private:
     {
         return new FelmystPlayerHasGasNovaTrigger(botAI);
     }
+    static Trigger* felmyst_takeoff_is_near(PlayerbotAI* botAI)
+    {
+        return new FelmystTakeoffIsNearTrigger(botAI);
+    }
+    static Trigger* felmyst_air_phase_has_started(PlayerbotAI* botAI)
+    {
+        return new FelmystAirPhaseHasStartedTrigger(botAI);
+    }
     static Trigger* felmyst_should_avoid_demonic_vapor_trails(PlayerbotAI* botAI)
     {
         return new FelmystShouldAvoidDemonicVaporTrailsTrigger(botAI);
@@ -373,7 +407,8 @@ private:
     static Trigger* eredar_twins_hunter_should_misdirect(PlayerbotAI* botAI)
     {
         return new SunwellHunterShouldMisdirectTrigger(
-            botAI, "eredar twins hunter should misdirect", "grand warlock alythess");
+            botAI, "eredar twins hunter should misdirect",
+            SwpHelpers::SwpBosses::DATA_EREDAR_TWINS);
     }
     static Trigger* eredar_twins_sacrolash_requires_two_tanks(PlayerbotAI* botAI)
     {
@@ -399,9 +434,9 @@ private:
     {
         return new EredarTwinsShouldFocusDpsTrigger(botAI);
     }
-    static Trigger* eredar_twins_pets_should_be_held(PlayerbotAI* botAI)
+    static Trigger* eredar_twins_should_manage_pet_aggression(PlayerbotAI* botAI)
     {
-        return new EredarTwinsPetsShouldBeHeldTrigger(botAI);
+        return new EredarTwinsShouldManagePetAggressionTrigger(botAI);
     }
     static Trigger* eredar_twins_active_conflagration_target(PlayerbotAI* botAI)
     {

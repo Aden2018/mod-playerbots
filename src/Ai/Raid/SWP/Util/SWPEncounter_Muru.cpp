@@ -7,10 +7,10 @@
 #include "SWPEncounter_Muru.h"
 #include "AiObjectContext.h"
 #include "Playerbots.h"
+#include "SWPInstanceState.h"
 #include <algorithm>
 #include <limits>
 #include <list>
-#include <mutex>
 
 namespace SwpHelpers
 {
@@ -137,9 +137,6 @@ Unit* SelectNearestQualifying(
     return best;
 }
 
-std::mutex muruStateMutex;
-std::unordered_map<uint32, MuruEncounterState> muruStates;
-
 MuruDarknessState& GetOrEmplaceDarkness(uint32 instanceId)
 {
     std::optional<MuruDarknessState>& darkness = MuruState(instanceId).darkness;
@@ -163,7 +160,7 @@ bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru)
     uint32 const instanceId = bot->GetInstanceId();
     uint32 const now = getMSTime();
 
-    if (Aura* darkness = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS)))
+    if (Aura const* darkness = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS)))
     {
         int32 const remainingMs = std::max(darkness->GetDuration(), 0);
         int32 const elapsedZoneMs = std::max(darkness->GetMaxDuration() - remainingMs, 0);
@@ -173,7 +170,7 @@ bool TryGetMuruDarknessActiveState(Player* bot, Unit* muru)
             MURU_DARKNESS_PRE_EFFECT_MS + static_cast<uint32>(elapsedZoneMs),
             static_cast<uint32>(remainingMs));
     }
-    else if (Aura* preEffect = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS_PRE_EFFECT)))
+    else if (Aura const* preEffect = muru->GetAura(Id(SwpSpells::SPELL_DARKNESS_PRE_EFFECT)))
     {
         int32 const duration = preEffect->GetDuration();
         uint32 const remainingPreEffectMs = duration < 0 ?
@@ -535,29 +532,17 @@ Creature* FindAvailableVoidSpawnForEnslave(PlayerbotAI* botAI)
 
 MuruEncounterState& MuruState(uint32 instanceId)
 {
-    std::lock_guard lock(muruStateMutex);
-    return muruStates[instanceId];
+    std::optional<MuruEncounterState>& state = SwpState(instanceId).muru;
+    if (!state)
+        state.emplace();
+
+    return *state;
 }
 
 MuruEncounterState* FindMuruState(uint32 instanceId)
 {
-    std::lock_guard lock(muruStateMutex);
-    auto it = muruStates.find(instanceId);
-    return it != muruStates.end() ? &it->second : nullptr;
-}
-
-bool MuruResetInstance(uint32 instanceId)
-{
-    std::lock_guard lock(muruStateMutex);
-    auto it = muruStates.find(instanceId);
-    if (it == muruStates.end())
-        return false;
-
-    MuruEncounterState const& state = it->second;
-    bool const wasSet = state.darkness || !state.voidSentinelTankAssignments.empty();
-
-    muruStates.erase(it);
-    return wasSet;
+    SwpInstanceState* state = FindSwpState(instanceId);
+    return state && state->muru ? &*state->muru : nullptr;
 }
 
 }
